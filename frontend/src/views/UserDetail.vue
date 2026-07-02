@@ -89,7 +89,7 @@ async function handleDelete() {
       <div class="flex gap-3 pt-6">
         <button @click="handleDelete"
           class="apple-button apple-button-secondary py-2.5 text-sm !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
-          Elimina Utente definitamente
+          Elimina {{ user.username }} definitamente
         </button>
       </div>
     </div>

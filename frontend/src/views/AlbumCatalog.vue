@@ -3,6 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/stores/api'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import ErrorMessage from '@/components/ErrorMessage.vue'
+import AlbumCard from '@/components/AlbumCard.vue'
 
 const authStore = useAuthStore()
 
@@ -152,9 +155,7 @@ async function handleInlineArtistCreate() {
     <transition name="page">
       <div v-if="showForm" class="glass-panel p-6 md:p-8 rounded-apple-2xl shadow-2xl">
         <h3 class="text-2xl font-bold mb-6 text-center">Pubblica un nuovo album</h3>
-        <div v-if="formError" class="mb-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
-          {{ formError }}
-        </div>
+        <ErrorMessage v-if="formError" :message="formError" />
         <form @submit.prevent="handleCreate" class="space-y-6">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div class="sm:col-span-2 space-y-2">
@@ -261,53 +262,22 @@ async function handleInlineArtistCreate() {
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
-      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
-    </div>
+    <LoadingSpinner v-if="loading" />
 
     <!-- Lista album (Apple Grid) -->
     <div v-else-if="filteredAlbums.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
-      <RouterLink
-        v-for="(album, index) in filteredAlbums" :key="album.id_album"
+      <AlbumCard
+        v-for="(album, index) in filteredAlbums"
+        :key="album.id_album"
+        :idAlbum="album.id_album"
+        :title="album.title"
+        :artists="album.artists"
+        :coverPath="album.coverPath"
+        :genre="album.genre"
+        :releaseYear="album.releaseYear"
         :to="`/albums/${album.id_album}`"
-        class="group flex flex-col gap-4 animate-slide-up"
-        :style="{ animationDelay: `${index * 30}ms` }"
-      >
-        <!-- Album Art / Placeholder -->
-        <div class="aspect-square glass-card overflow-hidden relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500 flex items-center justify-center">
-          <img v-if="album.coverPath"
-            :src="`/api/albums/${album.id_album}/cover`"
-            :alt="album.title"
-            class="w-full h-full object-cover"
-          />
-          <div v-else class="w-full h-full flex items-center justify-center bg-white/5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="opacity-15 group-hover:opacity-30 group-hover:rotate-12 transition-all duration-500"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
-          </div>
-          
-          <!-- Hover indicator -->
-          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 scale-90 group-hover:scale-100 transition-transform duration-500">
-               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- Info -->
-        <div class="space-y-1 px-1">
-          <h3 class="font-bold text-base leading-tight line-clamp-1 group-hover:text-brand-secondary transition-colors">
-            {{ album.title }}
-          </h3>
-          <p class="text-white/40 text-sm font-semibold tracking-tight truncate">
-            {{ album.artists?.map(a => a.name).join(', ') || 'Artista sconosciuto' }}
-          </p>
-          <div class="flex items-center gap-2 mt-1 text-[10px] font-bold text-white/20 uppercase tracking-wider">
-            <span v-if="album.releaseYear">{{ album.releaseYear }}</span>
-            <span v-if="album.releaseYear && album.genre">&middot;</span>
-            <span v-if="album.genre" class="truncate">{{ album.genre }}</span>
-          </div>
-        </div>
-      </RouterLink>
+        :index="index"
+      />
     </div>
 
     <!-- Empty state -->

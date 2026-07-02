@@ -16,9 +16,6 @@ import { RouterLink } from 'vue-router'
         </div>
         <span class="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">GrooveBox</span>
       </div>
-      <RouterLink to="/login" class="text-sm font-bold opacity-60 hover:opacity-100 transition-opacity uppercase tracking-widest">
-        Accedi
-      </RouterLink>
     </header>
 
     <!-- Hero Content -->
@@ -27,31 +24,31 @@ import { RouterLink } from 'vue-router'
         La tua musica,<br />collezionata con cura.
       </h1>
       <p class="text-white/40 text-lg md:text-xl font-medium max-w-2xl mb-12 leading-relaxed">
-        GrooveBox è il caveau digitale per la tua collezione di dischi. 
-        Catalogazione in stile Apple, sincronizzazione istantanea con la community e statistiche avanzate.
+        GrooveBox è il caveau digitale per la tua collezione musicale. 
+        Consulta il catalogo della community, aggiungi i tuoi album e tieni traccia della tua collezione personale.
       </p>
       <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
         <RouterLink
           to="/register"
           class="apple-button apple-button-primary text-base shadow-2xl shadow-white/5"
         >
-          Crea il tuo profilo
+          Registrati
         </RouterLink>
         <RouterLink
           to="/login"
           class="apple-button apple-button-secondary text-base"
         >
-          Accedi al caveau
+          Accedi
         </RouterLink>
       </div>
     </div>
 
-    <!-- Minimal Apple Footer -->
+    <!-- Minimal Footer -->
     <footer class="border-t border-white/5 py-8 px-6 opacity-30 hover:opacity-75 transition-opacity duration-700 z-10">
       <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-        <p class="text-xs tracking-tight">© 2026 GrooveBox Studio. Progettato per collezionisti di musica.</p>
+        <p class="text-xs tracking-tight">GrooveBox. Progettato per collezionisti di musica.</p>
         <div class="flex gap-6 text-xs font-semibold">
-          <span class="text-slate-500">Esame Web 2-Tier</span>
+          <span class="text-slate-500">Omar Balde.</span>
         </div>
       </div>
     </footer>

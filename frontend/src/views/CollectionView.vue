@@ -2,6 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { api } from '@/stores/api'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import ErrorMessage from '@/components/ErrorMessage.vue'
+import AlbumCard from '@/components/AlbumCard.vue'
 
 const route = useRoute()
 
@@ -198,9 +201,7 @@ async function handleDeleteCopy(copy) {
     <transition name="page">
       <div v-if="showForm" class="glass-panel p-6 md:p-8 rounded-apple-2xl shadow-2xl">
         <h3 class="text-2xl font-bold mb-6 text-center">Registra una copia fisica</h3>
-        <div v-if="formError" class="mb-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
-          {{ formError }}
-        </div>
+        <ErrorMessage v-if="formError" :message="formError" />
         
         <!-- Apple-style Segmented Control -->
         <div class="flex p-1 bg-white/5 border border-white/5 rounded-2xl mb-8 max-w-sm mx-auto">
@@ -374,48 +375,24 @@ async function handleDeleteCopy(copy) {
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
-      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
-    </div>
+    <LoadingSpinner v-if="loading" />
 
     <!-- Lista copie (Apple Grid) -->
     <div v-else-if="filteredCopies.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10">
-      <RouterLink 
-        v-for="(copy, index) in filteredCopies" 
-        :key="copy.id_copy" 
+      <AlbumCard
+        v-for="(copy, index) in filteredCopies"
+        :key="copy.id_copy"
+        :idAlbum="copy.id_album"
+        :title="copy.album_title"
+        :artists="copy.artists"
+        :coverPath="copy.coverPath"
+        :genre="copy.genre"
+        :releaseYear="copy.releaseYear"
         :to="`/collection/${copy.id_copy}`"
-        class="group flex flex-col gap-4 animate-slide-up"
-        :style="{ animationDelay: `${index * 30}ms` }"
-      >
-        <div class="aspect-square glass-card overflow-hidden relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500 flex items-center justify-center">
-          <img v-if="copy.coverPath"
-            :src="`/api/albums/${copy.id_album}/cover`"
-            :alt="copy.album_title"
-            class="w-full h-full object-cover"
-          />
-          <div v-else class="w-full h-full flex items-center justify-center bg-white/5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="opacity-15 group-hover:opacity-30 group-hover:rotate-12 transition-all duration-500"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
-          </div>
-          
-          <div class="absolute bottom-3 right-3 z-10">
-             <span class="inline-flex items-center px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest text-white/90 border border-white/15">
-                {{ copy.format }}
-             </span>
-          </div>
-        </div>
-        
-        <div class="space-y-1 px-1">
-          <h3 class="font-bold text-base leading-tight line-clamp-1 group-hover:text-brand-secondary transition-colors">{{ copy.album_title }}</h3>
-          <p class="text-white/40 text-xs font-semibold truncate">
-            {{ copy.artists?.map(a => a.name).join(', ') || 'Artista sconosciuto' }}
-          </p>
-          <div class="flex items-center justify-between text-white/30 text-[10px] font-bold uppercase tracking-wider mt-0.5">
-            <span>{{ copy.genre }}</span>
-            <span class="text-emerald-400 font-extrabold">{{ copy.condition }}</span>
-          </div>
-        </div>
-      </RouterLink>
+        :format="copy.format"
+        :condition="copy.condition"
+        :index="index"
+      />
     </div>
 
     <!-- Empty state -->

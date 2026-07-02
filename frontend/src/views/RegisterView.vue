@@ -131,7 +131,7 @@ async function handleRegister() {
             v-model="form.email"
             type="email"
             required
-            placeholder="la-tua@email.com"
+            placeholder="latua@email.com"
             class="apple-input"
           />
         </div>
