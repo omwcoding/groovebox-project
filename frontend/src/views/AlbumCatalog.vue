@@ -20,6 +20,15 @@ const form = ref({
   genre: '',
   artist_ids: []
 })
+const coverFile = ref(null)
+const coverPreview = ref(null)
+
+function handleCoverPick(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  coverFile.value = file
+  coverPreview.value = URL.createObjectURL(file)
+}
 
 const filteredAlbums = computed(() => {
   if (!search.value.trim()) return albums.value
@@ -48,6 +57,8 @@ onMounted(async () => {
 
 function resetForm() {
   form.value = { title: '', releaseYear: '', genre: '', artist_ids: [] }
+  coverFile.value = null
+  coverPreview.value = null
   formError.value = ''
   showForm.value = false
 }
@@ -67,7 +78,19 @@ async function handleCreate() {
       artist_ids: form.value.artist_ids
     }
     const res = await api.post('/albums', payload)
-    albums.value.unshift(res.data)
+    const newAlbum = res.data
+
+    // Upload copertina se selezionata
+    if (coverFile.value) {
+      const fd = new FormData()
+      fd.append('file', coverFile.value)
+      try {
+        const coverRes = await api.post(`/albums/${newAlbum.id_album}/cover`, fd)
+        newAlbum.coverPath = coverRes.coverPath
+      } catch (_) { /* cover non bloccante */ }
+    }
+
+    albums.value.unshift(newAlbum)
     resetForm()
   } catch (err) {
     formError.value = err.message || 'Errore durante la creazione'
@@ -195,6 +218,22 @@ async function handleInlineArtistCreate() {
             </div>
           </div>
 
+          <!-- Copertina album -->
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Copertina (opzionale)</label>
+            <label class="flex items-center gap-4 cursor-pointer group">
+              <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0 group-hover:border-white/20 transition-colors">
+                <img v-if="coverPreview" :src="coverPreview" class="w-full h-full object-cover" />
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" class="opacity-20"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+              <div class="space-y-1">
+                <p class="text-sm font-semibold text-white/60 group-hover:text-white transition-colors">{{ coverFile ? coverFile.name : 'Scegli un\'immagine' }}</p>
+                <p class="text-[10px] text-white/30">JPG, PNG o WebP</p>
+              </div>
+              <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleCoverPick" />
+            </label>
+          </div>
+
           <div class="pt-4 flex flex-col sm:flex-row gap-3">
             <button type="submit" :disabled="formLoading"
               class="apple-button apple-button-primary w-full sm:w-auto shadow-xl shadow-white/5">
@@ -237,7 +276,12 @@ async function handleInlineArtistCreate() {
       >
         <!-- Album Art / Placeholder -->
         <div class="aspect-square glass-card overflow-hidden relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500 flex items-center justify-center">
-          <div class="w-full h-full flex items-center justify-center bg-white/5">
+          <img v-if="album.coverPath"
+            :src="`/api/albums/${album.id_album}/cover`"
+            :alt="album.title"
+            class="w-full h-full object-cover"
+          />
+          <div v-else class="w-full h-full flex items-center justify-center bg-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="opacity-15 group-hover:opacity-30 group-hover:rotate-12 transition-all duration-500"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
           </div>
           

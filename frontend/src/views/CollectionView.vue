@@ -389,7 +389,12 @@ async function handleDeleteCopy(copy) {
         :style="{ animationDelay: `${index * 30}ms` }"
       >
         <div class="aspect-square glass-card overflow-hidden relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500 flex items-center justify-center">
-          <div class="w-full h-full flex items-center justify-center bg-white/5">
+          <img v-if="copy.coverPath"
+            :src="`/api/albums/${copy.id_album}/cover`"
+            :alt="copy.album_title"
+            class="w-full h-full object-cover"
+          />
+          <div v-else class="w-full h-full flex items-center justify-center bg-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="opacity-15 group-hover:opacity-30 group-hover:rotate-12 transition-all duration-500"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
           </div>
           

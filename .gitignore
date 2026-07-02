@@ -106,4 +106,4 @@ backend/local_settings.py
 # Environment Variables (Generic)
 # ==============================================================================
 backend/groovebox.db
-
+backend/uploads/

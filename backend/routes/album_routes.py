@@ -12,9 +12,16 @@ Gestisce anche la relazione PUBLISHES (ALBUM_ARTIST) in modo trasparente:
   - In scrittura: accetta un array artist_ids per creare le associazioni.
 """
 
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
 from auth import token_required
 from database import get_db
+import os, uuid
+from werkzeug.utils import secure_filename
+
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+
+def _allowed(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 bp = Blueprint("albums", __name__, url_prefix="/api/albums")
 
@@ -280,3 +287,69 @@ def delete_album(album_id):
         "status": "success",
         "message": "Album eliminato dal catalogo con successo"
     })
+
+# --------------------------------------------------------------------------
+# POST /api/albums/<id>/cover
+# Carica una copertina per l'album (Collector proprietario o Admin).
+# Form-data: file = <image>
+# --------------------------------------------------------------------------
+@bp.route("/<int:album_id>/cover", methods=["POST"])
+@token_required
+def upload_cover(album_id):
+    conn = get_db()
+    album = conn.execute("SELECT * FROM ALBUM WHERE id_album = ?", (album_id,)).fetchone()
+    if not album:
+        conn.close()
+        return jsonify({"status": "error", "message": "Album non trovato"}), 404
+
+    role = g.current_user["role"]
+    if role == "collector" and album["id_user"] != g.current_user["id_user"]:
+        conn.close()
+        return jsonify({"status": "error", "message": "Non autorizzato"}), 403
+    if role not in ("collector", "administrator"):
+        conn.close()
+        return jsonify({"status": "error", "message": "Non autorizzato"}), 403
+
+    if "file" not in request.files:
+        conn.close()
+        return jsonify({"status": "error", "message": "Nessun file fornito"}), 400
+
+    file = request.files["file"]
+    if file.filename == "" or not _allowed(file.filename):
+        conn.close()
+        return jsonify({"status": "error", "message": "Formato non supportato (jpg, png, webp)"}), 400
+
+    upload_dir = os.path.join(current_app.root_path, "uploads", "covers")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    ext = file.filename.rsplit(".", 1)[1].lower()
+    filename = f"album_{album_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    file.save(os.path.join(upload_dir, filename))
+
+    # Rimuove copertina precedente se diversa
+    old = album["coverPath"]
+    if old and old != filename:
+        old_path = os.path.join(upload_dir, old)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    conn.execute("UPDATE ALBUM SET coverPath = ? WHERE id_album = ?", (filename, album_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "success", "coverPath": filename}), 200
+
+
+# --------------------------------------------------------------------------
+# GET /api/albums/<id>/cover
+# Serve il file immagine della copertina.
+# --------------------------------------------------------------------------
+@bp.route("/<int:album_id>/cover", methods=["GET"])
+def get_cover(album_id):
+    conn = get_db()
+    row = conn.execute("SELECT coverPath FROM ALBUM WHERE id_album = ?", (album_id,)).fetchone()
+    conn.close()
+    if not row or not row["coverPath"]:
+        return jsonify({"status": "error", "message": "Nessuna copertina"}), 404
+    upload_dir = os.path.join(current_app.root_path, "uploads", "covers")
+    return send_from_directory(upload_dir, row["coverPath"])

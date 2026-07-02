@@ -49,7 +49,7 @@ def get_my_copies():
 
     conn = get_db()
     copies = conn.execute(
-        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre
+        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
            FROM PHYSICAL_COPY pc
            JOIN ALBUM al ON pc.id_album = al.id_album
            WHERE pc.id_user = ?
@@ -85,7 +85,7 @@ def get_copy(copy_id):
 
     conn = get_db()
     copy = conn.execute(
-        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre
+        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
            FROM PHYSICAL_COPY pc
            JOIN ALBUM al ON pc.id_album = al.id_album
            WHERE pc.id_copy = ? AND pc.id_user = ?""",
@@ -178,7 +178,7 @@ def create_copy():
 
     # Recupera la copia completa
     copy = conn.execute(
-        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre
+        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
            FROM PHYSICAL_COPY pc
            JOIN ALBUM al ON pc.id_album = al.id_album
            WHERE pc.id_copy = ?""",
@@ -253,7 +253,7 @@ def update_copy(copy_id):
 
     # Recupera la copia aggiornata
     copy = conn.execute(
-        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre
+        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
            FROM PHYSICAL_COPY pc
            JOIN ALBUM al ON pc.id_album = al.id_album
            WHERE pc.id_copy = ?""",

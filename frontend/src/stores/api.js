@@ -10,8 +10,9 @@ const API_BASE = '/api'
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('groovebox_token')
 
+  const isFormData = options.body instanceof FormData
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers
   }
 
@@ -38,7 +39,10 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   get: (url) => request(url),
-  post: (url, body) => request(url, { method: 'POST', body: JSON.stringify(body) }),
+  post: (url, body) => request(url, {
+    method: 'POST',
+    body: body instanceof FormData ? body : JSON.stringify(body)
+  }),
   put: (url, body) => request(url, { method: 'PUT', body: JSON.stringify(body) }),
   delete: (url) => request(url, { method: 'DELETE' })
 }

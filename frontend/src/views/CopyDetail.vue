@@ -83,8 +83,13 @@ async function handleDelete() {
       <!-- Vista lettura -->
       <div v-if="!editing" class="flex flex-col md:flex-row">
         <!-- Left Side: Cover Art -->
-        <div class="w-full md:w-1/2 aspect-square bg-white/5 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative">
-          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-15"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
+        <div class="w-full md:w-1/2 aspect-square bg-white/5 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative overflow-hidden">
+          <img v-if="copy.coverPath"
+            :src="`/api/albums/${copy.id_album}/cover`"
+            :alt="copy.album_title"
+            class="w-full h-full object-cover"
+          />
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-15"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
         </div>
 
         <!-- Right Side: Content -->
@@ -122,7 +127,7 @@ async function handleDelete() {
                 <p class="font-semibold text-white/80">{{ copy.genre || '—' }}</p>
               </div>
               <div class="space-y-1">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Acquisito il</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Aggiunto il</p>
                 <p class="font-semibold text-white/80">{{ copy.addedDate }}</p>
               </div>
             </div>
@@ -142,7 +147,7 @@ async function handleDelete() {
             </button>
             <button @click="handleDelete"
               class="apple-button apple-button-secondary w-full sm:flex-1 !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
-              Rimuovi Caveau
+              Rimuovi Copia
             </button>
           </div>
         </div>
