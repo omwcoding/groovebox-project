@@ -71,7 +71,7 @@ async function handleSave() {
 }
 
 async function handleDeleteAccount() {
-  if (!confirm('Sei sicuro di voler eliminare il tuo account? Questa azione e\' irreversibile.')) {
+  if (!confirm('Sei sicuro di voler eliminare il tuo account? Questa azione è irreversibile.')) {
     return
   }
   try {
@@ -85,61 +85,64 @@ async function handleDeleteAccount() {
 </script>
 
 <template>
-  <div class="p-6 md:p-8 max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6">Il Mio Profilo</h1>
+  <div class="max-w-2xl mx-auto space-y-8 animate-fade-in">
+    <div class="space-y-1">
+      <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+        Il Mio Profilo
+      </h1>
+      <p class="text-white/40 text-lg font-medium">Gestisci le informazioni personali del tuo account.</p>
+    </div>
 
     <!-- Messaggi -->
-    <div v-if="message" class="mb-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm rounded-lg px-4 py-3">
+    <div v-if="message" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-2xl px-4 py-3">
       {{ message }}
     </div>
-    <div v-if="error" class="mb-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
+    <div v-if="error" class="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
       {{ error }}
     </div>
 
     <!-- Card Profilo -->
-    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 md:p-8">
+    <div class="glass-panel p-8 rounded-apple-2xl shadow-2xl">
 
       <!-- Vista lettura -->
-      <div v-if="!editing" class="space-y-4">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-16 h-16 rounded-full bg-violet-600 flex items-center justify-center text-2xl font-bold text-white">
+      <div v-if="!editing" class="space-y-8">
+        <div class="flex items-center gap-4 pb-6 border-b border-white/5">
+          <div class="w-16 h-16 rounded-full bg-brand-secondary/20 flex items-center justify-center text-xl font-bold text-brand-secondary">
             {{ authStore.user?.name?.charAt(0) }}{{ authStore.user?.surname?.charAt(0) }}
           </div>
           <div>
-            <h2 class="text-xl font-semibold">{{ authStore.user?.name }} {{ authStore.user?.surname }}</h2>
-            <p class="text-slate-400 text-sm">@{{ authStore.user?.username }}</p>
+            <h2 class="text-xl font-bold">{{ authStore.user?.name }} {{ authStore.user?.surname }}</h2>
+            <p class="text-white/30 text-sm font-medium">@{{ authStore.user?.username }}</p>
           </div>
-          <span class="ml-auto px-3 py-1 rounded-full text-xs font-medium"
+          <span class="ml-auto px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border"
                 :class="authStore.isAdmin
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                  : 'bg-violet-500/10 text-violet-400 border border-violet-500/30'">
-            {{ authStore.isAdmin ? 'Administrator' : 'Collector' }}
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  : 'bg-brand-secondary/10 text-brand-secondary border-brand-secondary/20'">
+            {{ authStore.isAdmin ? 'Admin' : 'Collector' }}
           </span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span class="text-slate-500 block mb-1">Email</span>
-            <span>{{ authStore.user?.email }}</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+          <div class="space-y-1">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/30 block">Indirizzo Email</span>
+            <span class="font-medium text-white/80">{{ authStore.user?.email }}</span>
           </div>
-          <div>
-            <span class="text-slate-500 block mb-1">Username</span>
-            <span>{{ authStore.user?.username }}</span>
+          <div class="space-y-1">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/30 block">Nome utente</span>
+            <span class="font-medium text-white/80">@{{ authStore.user?.username }}</span>
           </div>
         </div>
 
-        <div class="flex gap-3 pt-4 border-t border-slate-800 mt-6" v-if="authStore.isCollector">
+        <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-white/5" v-if="authStore.isCollector">
           <button
             @click="editing = true"
-            class="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium
-                   rounded-xl transition-colors"
+            class="apple-button apple-button-primary text-sm shadow-xl shadow-white/5"
           >
             Modifica profilo
           </button>
           <button
             @click="handleDeleteAccount"
-            class="px-5 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10
-                   text-sm font-medium rounded-xl transition-colors"
+            class="apple-button apple-button-secondary text-sm !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/20"
           >
             Elimina account
           </button>
@@ -147,56 +150,46 @@ async function handleDeleteAccount() {
       </div>
 
       <!-- Vista modifica (solo Collector) -->
-      <form v-else @submit.prevent="handleSave" class="space-y-5">
+      <form v-else @submit.prevent="handleSave" class="space-y-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label for="profile-name" class="block text-sm font-medium text-slate-300 mb-1.5">Nome</label>
-            <input id="profile-name" v-model="form.name" type="text" required
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
+          <div class="space-y-2">
+            <label for="profile-name" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Nome</label>
+            <input id="profile-name" v-model="form.name" type="text" required class="apple-input" />
           </div>
-          <div>
-            <label for="profile-surname" class="block text-sm font-medium text-slate-300 mb-1.5">Cognome</label>
-            <input id="profile-surname" v-model="form.surname" type="text" required
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
+          <div class="space-y-2">
+            <label for="profile-surname" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Cognome</label>
+            <input id="profile-surname" v-model="form.surname" type="text" required class="apple-input" />
           </div>
         </div>
 
-        <div>
-          <label for="profile-email" class="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
-          <input id="profile-email" v-model="form.email" type="email" required
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                   focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
+        <div class="space-y-2">
+          <label for="profile-email" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Email</label>
+          <input id="profile-email" v-model="form.email" type="email" required class="apple-input" />
         </div>
 
-        <hr class="border-slate-800" />
-        <p class="text-xs text-slate-500">Lascia vuoti i campi password per non modificarla.</p>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label for="profile-password" class="block text-sm font-medium text-slate-300 mb-1.5">Nuova password</label>
-            <input id="profile-password" v-model="form.password" type="password" autocomplete="new-password"
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
+        <div class="border-t border-white/5 pt-6 space-y-4">
+          <div class="space-y-1">
+            <h3 class="text-sm font-bold">Cambio Password</h3>
+            <p class="text-xs text-white/30">Lascia vuoti i campi password per non modificarla.</p>
           </div>
-          <div>
-            <label for="profile-confirm" class="block text-sm font-medium text-slate-300 mb-1.5">Conferma password</label>
-            <input id="profile-confirm" v-model="form.confirmPassword" type="password" autocomplete="new-password"
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label for="profile-password" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Nuova password</label>
+              <input id="profile-password" v-model="form.password" type="password" autocomplete="new-password" placeholder="········" class="apple-input" />
+            </div>
+            <div class="space-y-2">
+              <label for="profile-confirm" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Conferma password</label>
+              <input id="profile-confirm" v-model="form.confirmPassword" type="password" autocomplete="new-password" placeholder="········" class="apple-input" />
+            </div>
           </div>
         </div>
 
-        <div class="flex gap-3 pt-2">
-          <button type="submit" :disabled="loading"
-            class="px-5 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm
-                   font-medium rounded-xl transition-colors">
+        <div class="flex gap-3 pt-4">
+          <button type="submit" :disabled="loading" class="apple-button apple-button-primary text-sm shadow-xl shadow-white/5">
             {{ loading ? 'Salvataggio...' : 'Salva modifiche' }}
           </button>
-          <button type="button" @click="resetForm"
-            class="px-5 py-2 border border-slate-700 text-slate-300 hover:text-white text-sm
-                   font-medium rounded-xl transition-colors">
+          <button type="button" @click="resetForm" class="apple-button apple-button-secondary text-sm">
             Annulla
           </button>
         </div>

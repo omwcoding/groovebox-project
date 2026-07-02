@@ -19,6 +19,22 @@ bp = Blueprint("copies", __name__, url_prefix="/api/copies")
 
 
 # --------------------------------------------------------------------------
+# Helper: arricchisce un dizionario copia con la lista degli artisti dell'album
+# --------------------------------------------------------------------------
+def _enrich_copy_with_artists(conn, copy_dict):
+    artists = conn.execute(
+        """SELECT ar.id_artist, ar.name
+           FROM ARTIST ar
+           JOIN ALBUM_ARTIST aa ON ar.id_artist = aa.id_artist
+           WHERE aa.id_album = ?
+           ORDER BY ar.name""",
+        (copy_dict["id_album"],)
+    ).fetchall()
+    copy_dict["artists"] = [dict(a) for a in artists]
+    return copy_dict
+
+
+# --------------------------------------------------------------------------
 # GET /api/copies
 # Restituisce tutte le copie fisiche dell'utente autenticato (solo Collector).
 # --------------------------------------------------------------------------
@@ -40,11 +56,17 @@ def get_my_copies():
            ORDER BY pc.addedDate DESC""",
         (g.current_user["id_user"],)
     ).fetchall()
+    
+    result = []
+    for c in copies:
+        cd = dict(c)
+        _enrich_copy_with_artists(conn, cd)
+        result.append(cd)
+        
     conn.close()
-
     return jsonify({
         "status": "success",
-        "data": [dict(c) for c in copies]
+        "data": result
     })
 
 
@@ -69,15 +91,17 @@ def get_copy(copy_id):
            WHERE pc.id_copy = ? AND pc.id_user = ?""",
         (copy_id, g.current_user["id_user"])
     ).fetchone()
-    conn.close()
 
     if not copy:
+        conn.close()
         return jsonify({
             "status": "error",
             "message": "Copia fisica non trovata"
         }), 404
 
-    return jsonify({"status": "success", "data": dict(copy)})
+    result = _enrich_copy_with_artists(conn, dict(copy))
+    conn.close()
+    return jsonify({"status": "success", "data": result})
 
 
 # --------------------------------------------------------------------------
@@ -130,7 +154,11 @@ def create_copy():
         }), 404
 
     added_date = datetime.date.today().isoformat()
-    personal_notes = data.get("personalNotes", "").strip() or None
+    personal_notes = data.get("personalNotes")
+    if isinstance(personal_notes, str):
+        personal_notes = personal_notes.strip() or None
+    else:
+        personal_notes = None
 
     cursor = conn.execute(
         """INSERT INTO PHYSICAL_COPY
@@ -156,12 +184,13 @@ def create_copy():
            WHERE pc.id_copy = ?""",
         (copy_id,)
     ).fetchone()
+    result = _enrich_copy_with_artists(conn, dict(copy))
     conn.close()
 
     return jsonify({
         "status": "success",
         "message": "Copia fisica aggiunta alla collezione",
-        "data": dict(copy)
+        "data": result
     }), 201
 
 
@@ -230,12 +259,13 @@ def update_copy(copy_id):
            WHERE pc.id_copy = ?""",
         (copy_id,)
     ).fetchone()
+    result = _enrich_copy_with_artists(conn, dict(copy))
     conn.close()
 
     return jsonify({
         "status": "success",
         "message": "Copia fisica aggiornata con successo",
-        "data": dict(copy)
+        "data": result
     })
 
 

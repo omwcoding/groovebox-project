@@ -35,7 +35,7 @@ async function handleRegister() {
       email: form.value.email,
       password: form.value.password
     })
-    // Dopo la registrazione, effettua il login automatico
+    // Dopo la registrazione, login automatico
     await authStore.login(form.value.username, form.value.password)
     router.push('/dashboard')
   } catch (err) {
@@ -47,36 +47,38 @@ async function handleRegister() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center px-4 py-12">
-    <div class="w-full max-w-md">
+  <div class="min-h-screen flex items-center justify-center px-4 py-16 relative overflow-hidden animate-fade-in">
+    <!-- Background glow -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-secondary/15 rounded-full blur-[130px] animate-pulse pointer-events-none"></div>
+
+    <div class="w-full max-w-md z-10">
       <!-- Header -->
       <div class="text-center mb-8">
-        <RouterLink to="/" class="inline-block mb-4">
-          <h1 class="text-3xl font-bold">
-            Groove<span class="text-violet-400">Box</span>
-          </h1>
+        <RouterLink to="/" class="inline-flex p-3 bg-white/5 rounded-2xl border border-white/10 mb-4 hover:scale-105 transition-transform">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-brand-secondary"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
         </RouterLink>
-        <p class="text-slate-400">Crea il tuo account da collezionista</p>
+        <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+          Crea il tuo profilo
+        </h1>
+        <p class="text-white/30 text-sm font-medium mt-1">Unisciti alla community di collezionisti di GrooveBox</p>
       </div>
 
       <!-- Card -->
       <form
         @submit.prevent="handleRegister"
-        class="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 space-y-5
-               backdrop-blur-sm shadow-xl"
+        class="glass-panel p-8 rounded-apple-2xl space-y-5 shadow-2xl"
       >
         <!-- Errore -->
         <div
           v-if="error"
-          class="bg-rose-500/10 border border-rose-500/30 text-rose-400
-                 text-sm rounded-lg px-4 py-3"
+          class="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3"
         >
           {{ error }}
         </div>
 
         <!-- Username -->
-        <div>
-          <label for="reg-username" class="block text-sm font-medium text-slate-300 mb-1.5">
+        <div class="space-y-1.5">
+          <label for="reg-username" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
             Username
           </label>
           <input
@@ -84,18 +86,15 @@ async function handleRegister() {
             v-model="form.username"
             type="text"
             required
-            autocomplete="username"
             placeholder="Scegli un username"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl
-                   text-slate-100 placeholder-slate-500 focus:border-violet-500
-                   focus:ring-1 focus:ring-violet-500 transition-colors outline-none"
+            class="apple-input"
           />
         </div>
 
         <!-- Nome e Cognome -->
         <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label for="reg-name" class="block text-sm font-medium text-slate-300 mb-1.5">
+          <div class="space-y-1.5">
+            <label for="reg-name" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
               Nome
             </label>
             <input
@@ -103,15 +102,12 @@ async function handleRegister() {
               v-model="form.name"
               type="text"
               required
-              autocomplete="given-name"
               placeholder="Mario"
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl
-                     text-slate-100 placeholder-slate-500 focus:border-violet-500
-                     focus:ring-1 focus:ring-violet-500 transition-colors outline-none"
+              class="apple-input"
             />
           </div>
-          <div>
-            <label for="reg-surname" class="block text-sm font-medium text-slate-300 mb-1.5">
+          <div class="space-y-1.5">
+            <label for="reg-surname" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
               Cognome
             </label>
             <input
@@ -119,18 +115,15 @@ async function handleRegister() {
               v-model="form.surname"
               type="text"
               required
-              autocomplete="family-name"
               placeholder="Rossi"
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl
-                     text-slate-100 placeholder-slate-500 focus:border-violet-500
-                     focus:ring-1 focus:ring-violet-500 transition-colors outline-none"
+              class="apple-input"
             />
           </div>
         </div>
 
         <!-- Email -->
-        <div>
-          <label for="reg-email" class="block text-sm font-medium text-slate-300 mb-1.5">
+        <div class="space-y-1.5">
+          <label for="reg-email" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
             Email
           </label>
           <input
@@ -138,17 +131,14 @@ async function handleRegister() {
             v-model="form.email"
             type="email"
             required
-            autocomplete="email"
             placeholder="la-tua@email.com"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl
-                   text-slate-100 placeholder-slate-500 focus:border-violet-500
-                   focus:ring-1 focus:ring-violet-500 transition-colors outline-none"
+            class="apple-input"
           />
         </div>
 
         <!-- Password -->
-        <div>
-          <label for="reg-password" class="block text-sm font-medium text-slate-300 mb-1.5">
+        <div class="space-y-1.5">
+          <label for="reg-password" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
             Password
           </label>
           <input
@@ -156,17 +146,14 @@ async function handleRegister() {
             v-model="form.password"
             type="password"
             required
-            autocomplete="new-password"
             placeholder="Scegli una password"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl
-                   text-slate-100 placeholder-slate-500 focus:border-violet-500
-                   focus:ring-1 focus:ring-violet-500 transition-colors outline-none"
+            class="apple-input"
           />
         </div>
 
         <!-- Conferma Password -->
-        <div>
-          <label for="reg-confirm" class="block text-sm font-medium text-slate-300 mb-1.5">
+        <div class="space-y-1.5">
+          <label for="reg-confirm" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
             Conferma Password
           </label>
           <input
@@ -174,29 +161,30 @@ async function handleRegister() {
             v-model="form.confirmPassword"
             type="password"
             required
-            autocomplete="new-password"
             placeholder="Ripeti la password"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl
-                   text-slate-100 placeholder-slate-500 focus:border-violet-500
-                   focus:ring-1 focus:ring-violet-500 transition-colors outline-none"
+            class="apple-input"
           />
         </div>
 
         <!-- Submit -->
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-50
-                 disabled:cursor-not-allowed text-white font-semibold rounded-xl
-                 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/25"
-        >
-          {{ loading ? 'Registrazione...' : 'Registrati' }}
-        </button>
+        <div class="pt-2">
+          <button
+            type="submit"
+            :disabled="loading"
+            class="apple-button apple-button-primary w-full py-4 text-sm font-bold shadow-xl shadow-white/5"
+          >
+            <span v-if="loading" class="flex items-center justify-center gap-2">
+              <div class="w-4 h-4 border-2 border-brand-background/30 border-t-brand-background rounded-full animate-spin"></div>
+              Creazione...
+            </span>
+            <span v-else>Registrati</span>
+          </button>
+        </div>
 
         <!-- Link login -->
-        <p class="text-center text-sm text-slate-400">
-          Hai gia' un account?
-          <RouterLink to="/login" class="text-violet-400 hover:text-violet-300 font-medium">
+        <p class="text-center text-xs font-bold text-white/30 hover:text-white transition-colors uppercase tracking-widest pt-2">
+          Hai già un account?
+          <RouterLink to="/login" class="text-brand-secondary hover:underline">
             Accedi
           </RouterLink>
         </p>

@@ -62,105 +62,132 @@ async function handleDelete() {
 </script>
 
 <template>
-  <div class="p-6 md:p-8 max-w-3xl mx-auto">
-    <RouterLink to="/collection" class="inline-flex items-center text-sm text-slate-400 hover:text-violet-400 mb-6 transition-colors">
-      &larr; Torna alla collezione
+  <div class="space-y-6 animate-fade-in max-w-4xl mx-auto">
+    <RouterLink to="/collection" class="inline-flex items-center gap-2 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Torna alla collezione
     </RouterLink>
 
-    <div v-if="loading" class="text-center py-16 text-slate-400">Caricamento...</div>
-    <div v-else-if="error && !copy" class="text-center py-16 text-rose-400">{{ error }}</div>
+    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
+      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
+    </div>
+    
+    <div v-else-if="error && !copy" class="py-20 text-center text-rose-400 font-semibold">{{ error }}</div>
 
-    <div v-else-if="copy" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 md:p-8">
-      <div v-if="error" class="mb-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
+    <div v-else-if="copy" class="glass-panel rounded-apple-2xl overflow-hidden shadow-2xl border border-white/10 relative">
+      <div v-if="error" class="m-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
         {{ error }}
       </div>
 
       <!-- Vista lettura -->
-      <div v-if="!editing">
-        <div class="flex items-start gap-5 mb-6">
-          <div class="w-20 h-20 bg-slate-800 rounded-xl flex items-center justify-center text-4xl shrink-0">
-            &#128191;
-          </div>
-          <div>
-            <RouterLink :to="`/albums/${copy.id_album}`" class="text-xl font-bold hover:text-violet-400 transition-colors">
-              {{ copy.album_title }}
-            </RouterLink>
-            <div class="flex flex-wrap gap-2 mt-2">
-              <span class="px-2.5 py-1 bg-violet-500/10 border border-violet-500/30 text-violet-400 text-xs font-medium rounded-lg">
-                {{ copy.format }}
-              </span>
-              <span class="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium rounded-lg">
-                {{ copy.condition }}
-              </span>
-            </div>
-          </div>
+      <div v-if="!editing" class="flex flex-col md:flex-row">
+        <!-- Left Side: Cover Art -->
+        <div class="w-full md:w-1/2 aspect-square bg-white/5 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative">
+          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-15"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
         </div>
 
-        <div class="space-y-3 text-sm border-t border-slate-800 pt-6">
-          <div class="grid grid-cols-2 gap-4">
+        <!-- Right Side: Content -->
+        <div class="flex-grow p-8 md:p-12 flex flex-col justify-between">
+          <div class="space-y-6">
             <div>
-              <span class="text-slate-500 block mb-1">Anno</span>
-              <span>{{ copy.releaseYear || '—' }}</span>
-            </div>
-            <div>
-              <span class="text-slate-500 block mb-1">Genere</span>
-              <span>{{ copy.genre || '—' }}</span>
-            </div>
-            <div>
-              <span class="text-slate-500 block mb-1">Aggiunta il</span>
-              <span>{{ copy.addedDate }}</span>
-            </div>
-          </div>
-          <div v-if="copy.personalNotes" class="pt-2">
-            <span class="text-slate-500 block mb-1">Note personali</span>
-            <p class="text-slate-300 bg-slate-800/50 rounded-lg px-4 py-3">{{ copy.personalNotes }}</p>
-          </div>
-        </div>
+              <RouterLink :to="`/albums/${copy.id_album}`" class="text-3xl font-extrabold tracking-tight hover:text-brand-secondary transition-colors line-clamp-2">
+                {{ copy.album_title }}
+              </RouterLink>
+              
+              <div v-if="copy.artists?.length" class="flex flex-wrap gap-2 mt-3 mb-1">
+                <RouterLink
+                  v-for="artist in copy.artists" :key="artist.id_artist"
+                  :to="`/artists/${artist.id_artist}`"
+                  class="px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary
+                         rounded-full text-xs font-bold hover:bg-brand-secondary/25 transition-all"
+                >
+                  {{ artist.name }}
+                </RouterLink>
+              </div>
 
-        <div class="flex gap-3 pt-6 mt-6 border-t border-slate-800">
-          <button @click="startEdit"
-            class="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-colors">
-            Modifica
-          </button>
-          <button @click="handleDelete"
-            class="px-5 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-sm font-medium rounded-xl transition-colors">
-            Rimuovi dalla collezione
-          </button>
+              <div class="flex flex-wrap gap-2 mt-4">
+                <span class="px-3.5 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold uppercase tracking-wider rounded-full">
+                  {{ copy.format }}
+                </span>
+                <span class="px-3.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider rounded-full">
+                  {{ copy.condition }}
+                </span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/5 text-sm">
+              <div class="space-y-1">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Genere</p>
+                <p class="font-semibold text-white/80">{{ copy.genre || '—' }}</p>
+              </div>
+              <div class="space-y-1">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Acquisito il</p>
+                <p class="font-semibold text-white/80">{{ copy.addedDate }}</p>
+              </div>
+            </div>
+
+            <div v-if="copy.personalNotes" class="pt-6 border-t border-white/5 space-y-2">
+              <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Note personali</p>
+              <p class="text-sm text-white/60 leading-relaxed italic bg-white/5 border border-white/5 rounded-2xl p-4">
+                "{{ copy.personalNotes }}"
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 mt-12 pt-6 border-t border-white/5">
+            <button @click="startEdit"
+              class="apple-button apple-button-primary w-full sm:flex-1">
+              Modifica Copia
+            </button>
+            <button @click="handleDelete"
+              class="apple-button apple-button-secondary w-full sm:flex-1 !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
+              Rimuovi Caveau
+            </button>
+          </div>
         </div>
       </div>
 
       <!-- Vista modifica -->
-      <form v-else @submit.prevent="handleSave" class="space-y-4">
-        <h3 class="text-lg font-semibold mb-2">Modifica copia: {{ copy.album_title }}</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-1.5">Formato</label>
-            <select v-model="form.format" required
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none">
-              <option v-for="f in formatOptions" :key="f" :value="f">{{ f }}</option>
-            </select>
+      <form v-else @submit.prevent="handleSave" class="p-8 space-y-6">
+        <h3 class="text-2xl font-bold mb-6 text-center">Modifica Copia: {{ copy.album_title }}</h3>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Formato</label>
+            <div class="relative">
+              <select v-model="form.format" required class="apple-input appearance-none cursor-pointer">
+                <option v-for="f in formatOptions" :key="f" :value="f">{{ f }}</option>
+              </select>
+              <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-300 mb-1.5">Condizione</label>
-            <select v-model="form.condition" required
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none">
-              <option v-for="c in conditionOptions" :key="c" :value="c">{{ c }}</option>
-            </select>
+          
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Condizione</label>
+            <div class="relative">
+              <select v-model="form.condition" required class="apple-input appearance-none cursor-pointer">
+                <option v-for="c in conditionOptions" :key="c" :value="c">{{ c }}</option>
+              </select>
+              <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
           </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1.5">Note personali</label>
-          <textarea v-model="form.personalNotes" rows="3"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                   focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none resize-none"></textarea>
+        
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
+          <textarea v-model="form.personalNotes" rows="3" class="apple-input resize-none"></textarea>
         </div>
-        <div class="flex gap-3">
-          <button type="submit" class="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-colors">
-            Salva
+        
+        <div class="flex gap-3 pt-4 border-t border-white/5">
+          <button type="submit" class="apple-button apple-button-primary">
+            Salva modifiche
           </button>
-          <button type="button" @click="editing = false" class="px-5 py-2 border border-slate-700 text-slate-300 text-sm rounded-xl transition-colors">
+          <button type="button" @click="editing = false" class="apple-button apple-button-secondary">
             Annulla
           </button>
         </div>

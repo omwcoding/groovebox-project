@@ -7,16 +7,29 @@ const route = useRoute()
 
 const copies = ref([])
 const albums = ref([])
+const artists = ref([])
 const loading = ref(true)
 const search = ref('')
+const filterFormat = ref('')
 const showForm = ref(false)
 const formError = ref('')
 const formLoading = ref(false)
+const tab = ref('existing') // 'existing' | 'new'
 
 const form = ref({
   id_album: '',
-  format: '',
-  condition: '',
+  format: 'Vinile',
+  condition: 'Mint',
+  personalNotes: ''
+})
+
+const formNew = ref({
+  title: '',
+  artist_name: '',
+  releaseYear: '',
+  genre: '',
+  format: 'Vinile',
+  condition: 'Mint',
   personalNotes: ''
 })
 
@@ -24,29 +37,33 @@ const formatOptions = ['Vinile', 'CD', 'Cassetta', 'Musicassetta', 'Mini Disc', 
 const conditionOptions = ['Mint', 'Near Mint', 'Very Good Plus', 'Very Good', 'Good Plus', 'Good', 'Fair', 'Poor']
 
 const filteredCopies = computed(() => {
-  if (!search.value.trim()) return copies.value
-  const q = search.value.toLowerCase()
-  return copies.value.filter(c =>
-    c.album_title?.toLowerCase().includes(q) ||
-    c.format?.toLowerCase().includes(q) ||
-    c.condition?.toLowerCase().includes(q) ||
-    c.genre?.toLowerCase().includes(q)
-  )
+  return copies.value.filter(c => {
+    const matchesSearch = !search.value.trim() || 
+      c.album_title?.toLowerCase().includes(search.value.toLowerCase()) ||
+      c.genre?.toLowerCase().includes(search.value.toLowerCase())
+    
+    const matchesFormat = !filterFormat.value || c.format === filterFormat.value
+    
+    return matchesSearch && matchesFormat
+  })
 })
 
 onMounted(async () => {
   try {
-    const [copiesRes, albumsRes] = await Promise.all([
+    const [copiesRes, albumsRes, artistsRes] = await Promise.all([
       api.get('/copies'),
-      api.get('/albums')
+      api.get('/albums'),
+      api.get('/artists')
     ])
     copies.value = copiesRes.data
     albums.value = albumsRes.data
+    artists.value = artistsRes.data
 
     // Auto-apri form se arrivo da pagina album con query param
     if (route.query.addAlbum) {
       form.value.id_album = parseInt(route.query.addAlbum)
       showForm.value = true
+      tab.value = 'existing'
     }
   } catch (err) {
     console.error(err)
@@ -56,29 +73,92 @@ onMounted(async () => {
 })
 
 function resetForm() {
-  form.value = { id_album: '', format: '', condition: '', personalNotes: '' }
+  form.value = { id_album: '', format: 'Vinile', condition: 'Mint', personalNotes: '' }
+  formNew.value = { title: '', artist_name: '', releaseYear: '', genre: '', format: 'Vinile', condition: 'Mint', personalNotes: '' }
   formError.value = ''
   showForm.value = false
 }
 
 async function handleCreate() {
   formError.value = ''
-  if (!form.value.id_album || !form.value.format || !form.value.condition) {
-    formError.value = 'Album, formato e condizione sono obbligatori'
-    return
-  }
   formLoading.value = true
+  
   try {
-    const res = await api.post('/copies', {
-      id_album: parseInt(form.value.id_album),
-      format: form.value.format,
-      condition: form.value.condition,
-      personalNotes: form.value.personalNotes || null
-    })
-    copies.value.unshift(res.data)
-    resetForm()
+    if (tab.value === 'existing') {
+      if (!form.value.id_album || !form.value.format || !form.value.condition) {
+        formError.value = 'Album, formato e condizione sono obbligatori'
+        formLoading.value = false
+        return
+      }
+      
+      const res = await api.post('/copies', {
+        id_album: parseInt(form.value.id_album),
+        format: form.value.format,
+        condition: form.value.condition,
+        personalNotes: form.value.personalNotes || null
+      })
+      copies.value.unshift(res.data)
+      resetForm()
+    } else {
+      // TAB 'new' - Creazione a cascata
+      const title = formNew.value.title.trim()
+      const artistName = formNew.value.artist_name.trim()
+      const format = formNew.value.format
+      const condition = formNew.value.condition
+      
+      if (!title || !artistName || !format || !condition) {
+        formError.value = 'Titolo, Artista, Formato e Condizione sono obbligatori'
+        formLoading.value = false
+        return
+      }
+      
+      // 1. Cerca o crea Artista
+      let artistId = null
+      const existingArtist = artists.value.find(
+        a => a.name.toLowerCase() === artistName.toLowerCase()
+      )
+      
+      if (existingArtist) {
+        artistId = existingArtist.id_artist
+      } else {
+        const newArtistRes = await api.post('/artists', { name: artistName })
+        artists.value.unshift(newArtistRes.data)
+        artistId = newArtistRes.data.id_artist
+      }
+      
+      // 2. Cerca o crea Album
+      let albumId = null
+      const existingAlbum = albums.value.find(
+        a => a.title.toLowerCase() === title.toLowerCase() && 
+             a.artists?.some(art => art.id_artist === artistId)
+      )
+      
+      if (existingAlbum) {
+        albumId = existingAlbum.id_album
+      } else {
+        const newAlbumRes = await api.post('/albums', {
+          title: title,
+          releaseYear: formNew.value.releaseYear ? parseInt(formNew.value.releaseYear) : null,
+          genre: formNew.value.genre || null,
+          artist_ids: [artistId]
+        })
+        albums.value.unshift(newAlbumRes.data)
+        albumId = newAlbumRes.data.id_album
+      }
+      
+      // 3. Aggiungi Copia Fisica
+      const copyRes = await api.post('/copies', {
+        id_album: albumId,
+        format: format,
+        condition: condition,
+        personalNotes: formNew.value.personalNotes || null
+      })
+      
+      copies.value.unshift(copyRes.data)
+      resetForm()
+    }
   } catch (err) {
-    formError.value = err.message || 'Errore durante l\'aggiunta'
+    formError.value = err.message || "Errore durante l'inserimento"
   } finally {
     formLoading.value = false
   }
@@ -96,135 +176,255 @@ async function handleDeleteCopy(copy) {
 </script>
 
 <template>
-  <div class="p-6 md:p-8 max-w-5xl mx-auto">
+  <div class="space-y-8 animate-fade-in pb-20">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-      <div>
-        <h1 class="text-3xl font-bold">La Tua Collezione</h1>
-        <p class="text-slate-400 text-sm mt-1">{{ copies.length }} copie fisiche</p>
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+      <div class="space-y-1">
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+          La tua collezione
+        </h1>
+        <p class="text-white/40 text-lg font-medium">{{ filteredCopies.length }} copie salvate nel tuo archivio.</p>
       </div>
+      
       <button @click="showForm = !showForm"
-        class="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium
-               rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/25">
-        {{ showForm ? 'Annulla' : '+ Aggiungi Copia' }}
+        class="apple-button apple-button-primary shadow-xl shadow-white/5 self-start sm:self-auto">
+        <svg v-if="!showForm" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        {{ showForm ? 'Annulla' : 'Aggiungi Copia' }}
       </button>
     </div>
 
     <!-- Form nuova copia -->
-    <div v-if="showForm" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-6">
-      <h3 class="text-lg font-semibold mb-4">Aggiungi una copia alla collezione</h3>
-      <div v-if="formError" class="mb-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
-        {{ formError }}
-      </div>
-      <form @submit.prevent="handleCreate" class="space-y-4">
-        <div>
-          <label for="copy-album" class="block text-sm font-medium text-slate-300 mb-1.5">Album *</label>
-          <select id="copy-album" v-model="form.id_album" required
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                   focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none">
-            <option value="" disabled>Seleziona un album</option>
-            <option v-for="album in albums" :key="album.id_album" :value="album.id_album">
-              {{ album.title }} {{ album.releaseYear ? `(${album.releaseYear})` : '' }}
-            </option>
-          </select>
+    <transition name="page">
+      <div v-if="showForm" class="glass-panel p-6 md:p-8 rounded-apple-2xl shadow-2xl">
+        <h3 class="text-2xl font-bold mb-6 text-center">Registra una copia fisica</h3>
+        <div v-if="formError" class="mb-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
+          {{ formError }}
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label for="copy-format" class="block text-sm font-medium text-slate-300 mb-1.5">Formato *</label>
-            <select id="copy-format" v-model="form.format" required
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none">
-              <option value="" disabled>Seleziona formato</option>
-              <option v-for="f in formatOptions" :key="f" :value="f">{{ f }}</option>
-            </select>
-          </div>
-          <div>
-            <label for="copy-condition" class="block text-sm font-medium text-slate-300 mb-1.5">Condizione *</label>
-            <select id="copy-condition" v-model="form.condition" required
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none">
-              <option value="" disabled>Seleziona condizione</option>
-              <option v-for="c in conditionOptions" :key="c" :value="c">{{ c }}</option>
-            </select>
-          </div>
+        
+        <!-- Apple-style Segmented Control -->
+        <div class="flex p-1 bg-white/5 border border-white/5 rounded-2xl mb-8 max-w-sm mx-auto">
+          <button 
+            type="button"
+            @click="tab = 'existing'" 
+            :class="tab === 'existing' ? 'bg-white/10 text-white shadow-lg' : 'text-white/40 hover:text-white/60'" 
+            class="flex-grow py-2.5 rounded-xl text-xs font-bold transition-all"
+          >
+            Dall'Hub
+          </button>
+          <button 
+            type="button"
+            @click="tab = 'new'" 
+            :class="tab === 'new' ? 'bg-white/10 text-white shadow-lg' : 'text-white/40 hover:text-white/60'" 
+            class="flex-grow py-2.5 rounded-xl text-xs font-bold transition-all"
+          >
+            Nuovo Disco
+          </button>
         </div>
-        <div>
-          <label for="copy-notes" class="block text-sm font-medium text-slate-300 mb-1.5">Note personali</label>
-          <textarea id="copy-notes" v-model="form.personalNotes" rows="2"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                   placeholder-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500
-                   transition-colors outline-none resize-none"
-            placeholder="Es. Prima stampa UK, edizione speciale..."></textarea>
-        </div>
-        <button type="submit" :disabled="formLoading"
-          class="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white
-                 text-sm font-medium rounded-xl transition-colors">
-          {{ formLoading ? 'Aggiunta...' : 'Aggiungi alla collezione' }}
-        </button>
-      </form>
-    </div>
 
-    <!-- Barra ricerca -->
-    <div class="mb-6">
-      <input v-model="search" type="text" placeholder="Cerca nella tua collezione..."
-        class="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-slate-100
-               placeholder-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500
-               transition-colors outline-none" />
+        <form @submit.prevent="handleCreate" class="space-y-6">
+          <!-- TAB 1: Existing Album -->
+          <div v-if="tab === 'existing'" class="space-y-6">
+            <div class="space-y-2">
+              <label for="copy-album" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Seleziona Album *</label>
+              <div class="relative">
+                <select id="copy-album" v-model="form.id_album" required class="apple-input appearance-none cursor-pointer pr-10">
+                  <option value="" disabled>-- Scegli dal catalogo --</option>
+                  <option v-for="album in albums" :key="album.id_album" :value="album.id_album">
+                    {{ album.title }} &mdash; {{ album.artists?.map(a => a.name).join(', ') || 'Artista' }} {{ album.releaseYear ? `(${album.releaseYear})` : '' }}
+                  </option>
+                </select>
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label for="copy-format" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Formato *</label>
+                <div class="relative">
+                  <select id="copy-format" v-model="form.format" required class="apple-input appearance-none cursor-pointer">
+                    <option v-for="f in formatOptions" :key="f" :value="f">{{ f }}</option>
+                  </select>
+                  <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="space-y-2">
+                <label for="copy-condition" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Condizione *</label>
+                <div class="relative">
+                  <select id="copy-condition" v-model="form.condition" required class="apple-input appearance-none cursor-pointer">
+                    <option v-for="c in conditionOptions" :key="c" :value="c">{{ c }}</option>
+                  </select>
+                  <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <label for="copy-notes" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
+              <textarea id="copy-notes" v-model="form.personalNotes" rows="2"
+                class="apple-input resize-none"
+                placeholder="Edizione limitata, prima stampa, firmato..."></textarea>
+            </div>
+          </div>
+
+          <!-- TAB 2: New Album Creation + Copy -->
+          <div v-else class="space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label for="new-album-title" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Titolo Album *</label>
+                <input id="new-album-title" v-model="formNew.title" type="text" required placeholder="Es. Let It Be" class="apple-input" />
+              </div>
+              <div class="space-y-2">
+                <label for="new-album-artist" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Artista *</label>
+                <input id="new-album-artist" v-model="formNew.artist_name" type="text" required placeholder="Es. The Beatles" class="apple-input" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label for="new-album-year" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Anno di uscita</label>
+                <input id="new-album-year" v-model="formNew.releaseYear" type="number" min="1900" max="2099" placeholder="Es. 1970" class="apple-input" />
+              </div>
+              <div class="space-y-2">
+                <label for="new-album-genre" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Genere</label>
+                <input id="new-album-genre" v-model="formNew.genre" type="text" placeholder="Es. Rock" class="apple-input" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+              <div class="space-y-2">
+                <label for="new-copy-format" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Formato *</label>
+                <div class="relative">
+                  <select id="new-copy-format" v-model="formNew.format" required class="apple-input appearance-none cursor-pointer">
+                    <option v-for="f in formatOptions" :key="f" :value="f">{{ f }}</option>
+                  </select>
+                  <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="space-y-2">
+                <label for="new-copy-condition" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Condizione *</label>
+                <div class="relative">
+                  <select id="new-copy-condition" v-model="formNew.condition" required class="apple-input appearance-none cursor-pointer">
+                    <option v-for="c in conditionOptions" :key="c" :value="c">{{ c }}</option>
+                  </select>
+                  <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <label for="new-copy-notes" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
+              <textarea id="new-copy-notes" v-model="formNew.personalNotes" rows="2"
+                class="apple-input resize-none"
+                placeholder="Edizione limitata, prima stampa, firmato..."></textarea>
+            </div>
+          </div>
+          
+          <div class="pt-4 flex flex-col sm:flex-row gap-3">
+            <button type="submit" :disabled="formLoading"
+              class="apple-button apple-button-primary w-full sm:w-auto shadow-xl shadow-white/5">
+              {{ formLoading ? 'Aggiunta...' : 'Registra copia' }}
+            </button>
+            <button type="button" @click="resetForm" class="apple-button apple-button-secondary w-full sm:w-auto">
+              Annulla
+            </button>
+          </div>
+        </form>
+      </div>
+    </transition>
+
+    <!-- Filters (Floating Glass Bar) -->
+    <div class="glass-panel rounded-apple-xl p-3 flex flex-col sm:flex-row gap-3 items-center border border-white/5 shadow-xl">
+      <div class="relative w-full sm:flex-grow">
+        <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none opacity-30">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <input 
+          v-model="search" 
+          type="text" 
+          placeholder="Cerca nella tua collezione..." 
+          class="w-full bg-white/5 border border-white/5 text-white text-sm rounded-full pl-11 pr-4 py-3 focus:outline-none focus:bg-white/10 transition-all font-medium placeholder:text-white/20"
+        >
+      </div>
+      
+      <div class="relative w-full sm:w-48">
+        <select 
+          v-model="filterFormat"
+          class="w-full bg-white/5 border border-white/5 text-white text-sm rounded-full px-5 py-3 focus:outline-none focus:bg-white/10 appearance-none transition-all cursor-pointer font-medium"
+        >
+          <option value="">Tutti i formati</option>
+          <option v-for="f in formatOptions" :key="f" :value="f">{{ f }}</option>
+        </select>
+        <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-center py-16 text-slate-400">Caricamento collezione...</div>
+    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
+      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
+    </div>
 
-    <!-- Lista copie -->
-    <div v-else-if="filteredCopies.length > 0" class="space-y-3">
-      <div
-        v-for="copy in filteredCopies" :key="copy.id_copy"
-        class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5
-               flex flex-col sm:flex-row sm:items-center gap-4 hover:border-slate-700 transition-colors"
+    <!-- Lista copie (Apple Grid) -->
+    <div v-else-if="filteredCopies.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10">
+      <RouterLink 
+        v-for="(copy, index) in filteredCopies" 
+        :key="copy.id_copy" 
+        :to="`/collection/${copy.id_copy}`"
+        class="group flex flex-col gap-4 animate-slide-up"
+        :style="{ animationDelay: `${index * 30}ms` }"
       >
-        <!-- Info album -->
-        <RouterLink :to="`/albums/${copy.id_album}`" class="flex items-center gap-4 flex-1 min-w-0 group">
-          <div class="w-14 h-14 bg-slate-800 rounded-xl flex items-center justify-center text-2xl
-                      group-hover:bg-slate-700/80 transition-colors shrink-0">
-            &#128191;
+        <div class="aspect-square glass-card overflow-hidden relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500 flex items-center justify-center">
+          <div class="w-full h-full flex items-center justify-center bg-white/5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="opacity-15 group-hover:opacity-30 group-hover:rotate-12 transition-all duration-500"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
           </div>
-          <div class="min-w-0">
-            <h3 class="font-semibold group-hover:text-violet-400 transition-colors truncate">{{ copy.album_title }}</h3>
-            <div class="flex flex-wrap gap-2 text-xs text-slate-500 mt-1">
-              <span v-if="copy.releaseYear">{{ copy.releaseYear }}</span>
-              <span v-if="copy.genre">&middot; {{ copy.genre }}</span>
-            </div>
+          
+          <div class="absolute bottom-3 right-3 z-10">
+             <span class="inline-flex items-center px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest text-white/90 border border-white/15">
+                {{ copy.format }}
+             </span>
           </div>
-        </RouterLink>
-
-        <!-- Dettagli copia -->
-        <div class="flex items-center gap-3 shrink-0">
-          <span class="px-2.5 py-1 bg-violet-500/10 border border-violet-500/30 text-violet-400 text-xs font-medium rounded-lg">
-            {{ copy.format }}
-          </span>
-          <span class="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium rounded-lg">
-            {{ copy.condition }}
-          </span>
-          <RouterLink :to="`/collection/${copy.id_copy}`"
-            class="px-3 py-1.5 text-xs text-slate-400 hover:text-violet-400 transition-colors">
-            Dettagli
-          </RouterLink>
-          <button @click="handleDeleteCopy(copy)"
-            class="px-3 py-1.5 text-xs text-slate-400 hover:text-rose-400 transition-colors">
-            Rimuovi
-          </button>
         </div>
-      </div>
+        
+        <div class="space-y-1 px-1">
+          <h3 class="font-bold text-base leading-tight line-clamp-1 group-hover:text-brand-secondary transition-colors">{{ copy.album_title }}</h3>
+          <p class="text-white/40 text-xs font-semibold truncate">
+            {{ copy.artists?.map(a => a.name).join(', ') || 'Artista sconosciuto' }}
+          </p>
+          <div class="flex items-center justify-between text-white/30 text-[10px] font-bold uppercase tracking-wider mt-0.5">
+            <span>{{ copy.genre }}</span>
+            <span class="text-emerald-400 font-extrabold">{{ copy.condition }}</span>
+          </div>
+        </div>
+      </RouterLink>
     </div>
 
     <!-- Empty state -->
-    <div v-else class="text-center py-16">
-      <div class="text-5xl mb-4">&#128191;</div>
-      <p class="text-slate-400 mb-4">
-        {{ search ? 'Nessuna copia trovata.' : 'La tua collezione e\' ancora vuota.' }}
-      </p>
-      <RouterLink v-if="!search" to="/albums"
-        class="inline-flex px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-colors">
+    <div v-else class="py-32 flex flex-col items-center justify-center gap-6 glass-panel rounded-apple-2xl border-dashed border-white/10 text-center px-10">
+      <div class="bg-white/5 p-6 rounded-full">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-20"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
+      </div>
+      <div class="space-y-1">
+        <p class="text-xl font-bold">Nessun album trovato</p>
+        <p class="text-white/40 text-sm">
+          {{ search ? 'Modifica i filtri di ricerca.' : 'La tua collezione personale è ancora vuota.' }}
+        </p>
+      </div>
+      <RouterLink v-if="!search" to="/albums" class="apple-button apple-button-primary mt-2">
         Esplora il catalogo
       </RouterLink>
     </div>

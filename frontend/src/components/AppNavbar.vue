@@ -1,193 +1,218 @@
 <script setup>
-import { ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 const mobileMenuOpen = ref(false)
+const scrolled = ref(false)
+
+const handleScroll = () => {
+  scrolled.value = window.scrollY > 20
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 
 function handleLogout() {
   authStore.logout()
-  // Il navigation guard redirigera' automaticamente al login
+  router.push('/login')
 }
 
-/** Controlla se la rotta corrente inizia con il path dato. */
 function isActive(path) {
   return route.path === path || route.path.startsWith(path + '/')
 }
 </script>
 
 <template>
-  <nav class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6">
-      <div class="flex items-center justify-between h-16">
-
+  <header 
+    class="fixed top-6 left-1/2 -translate-x-1/2 w-[92%] max-w-5xl z-[100] transition-all duration-500"
+    :class="{ 'top-3 w-[95%]': scrolled }"
+  >
+    <div class="glass-panel rounded-3xl md:rounded-full px-6 py-3 flex items-center justify-between shadow-2xl">
+      
+      <!-- Brand & Desktop Nav -->
+      <div class="flex items-center gap-8">
         <!-- Logo -->
-        <RouterLink to="/dashboard" class="flex items-center gap-2 shrink-0">
-          <span class="text-xl">&#127926;</span>
-          <span class="text-xl font-bold">
-            Groove<span class="text-violet-400">Box</span>
-          </span>
+        <RouterLink to="/dashboard" class="flex items-center gap-2 font-bold text-lg tracking-tight group">
+          <div class="bg-brand-secondary/20 p-1.5 rounded-lg group-hover:rotate-12 transition-transform duration-300 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-brand-secondary"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
+          </div>
+          <span class="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">GrooveBox</span>
         </RouterLink>
 
         <!-- Links Desktop -->
-        <div class="hidden md:flex items-center gap-1">
-          <!-- Collector links -->
-          <template v-if="authStore.isCollector">
-            <RouterLink
-              to="/collection"
-              class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              :class="isActive('/collection')
-                ? 'text-violet-400 bg-violet-500/10'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'"
-            >
-              La Mia Collezione
-            </RouterLink>
-          </template>
+        <nav class="hidden md:flex items-center gap-1.5 text-sm font-medium">
+          <RouterLink
+            to="/dashboard"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="isActive('/dashboard') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
+          >
+            Dashboard
+          </RouterLink>
+          
+          <RouterLink
+            v-if="authStore.isCollector"
+            to="/collection"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="isActive('/collection') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
+          >
+            Libreria
+          </RouterLink>
 
-          <!-- Admin links -->
-          <template v-if="authStore.isAdmin">
-            <RouterLink
-              to="/users"
-              class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              :class="isActive('/users')
-                ? 'text-violet-400 bg-violet-500/10'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'"
-            >
-              Utenti
-            </RouterLink>
-          </template>
+          <RouterLink
+            v-if="authStore.isAdmin"
+            to="/users"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="isActive('/users') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
+          >
+            Utenti
+          </RouterLink>
 
-          <!-- Links comuni -->
           <RouterLink
             to="/albums"
-            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            :class="isActive('/albums')
-              ? 'text-violet-400 bg-violet-500/10'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="isActive('/albums') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
           >
             Album
           </RouterLink>
 
           <RouterLink
+            v-if="authStore.isAdmin"
             to="/artists"
-            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            :class="isActive('/artists')
-              ? 'text-violet-400 bg-violet-500/10'
-              : 'text-slate-300 hover:text-white hover:bg-slate-800'"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="isActive('/artists') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
           >
             Artisti
           </RouterLink>
 
-          <!-- Admin: Statistiche -->
-          <template v-if="authStore.isAdmin">
-            <RouterLink
-              to="/stats"
-              class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              :class="isActive('/stats')
-                ? 'text-violet-400 bg-violet-500/10'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'"
-            >
-              Statistiche
-            </RouterLink>
-          </template>
-        </div>
-
-        <!-- User Menu Desktop -->
-        <div class="hidden md:flex items-center gap-3">
           <RouterLink
-            to="/profile"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm
-                   text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            <span class="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center
-                         text-xs font-bold text-white">
-              {{ authStore.user?.name?.charAt(0) }}{{ authStore.user?.surname?.charAt(0) }}
-            </span>
-            <span>{{ authStore.user?.username }}</span>
-          </RouterLink>
-          <button
-            @click="handleLogout"
-            class="px-3 py-1.5 rounded-lg text-sm text-slate-400 hover:text-rose-400
-                   hover:bg-slate-800 transition-colors"
-          >
-            Esci
-          </button>
-        </div>
-
-        <!-- Mobile Menu Toggle -->
-        <button
-          @click="mobileMenuOpen = !mobileMenuOpen"
-          class="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-        >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              v-if="!mobileMenuOpen"
-              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-            <path
-              v-else
-              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
-
-      <!-- Mobile Menu -->
-      <div v-if="mobileMenuOpen" class="md:hidden pb-4 space-y-1">
-        <template v-if="authStore.isCollector">
-          <RouterLink
-            to="/collection" @click="mobileMenuOpen = false"
-            class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800"
-          >
-            La Mia Collezione
-          </RouterLink>
-        </template>
-        <template v-if="authStore.isAdmin">
-          <RouterLink
-            to="/users" @click="mobileMenuOpen = false"
-            class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800"
-          >
-            Utenti
-          </RouterLink>
-        </template>
-        <RouterLink
-          to="/albums" @click="mobileMenuOpen = false"
-          class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800"
-        >
-          Album
-        </RouterLink>
-        <RouterLink
-          to="/artists" @click="mobileMenuOpen = false"
-          class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800"
-        >
-          Artisti
-        </RouterLink>
-        <template v-if="authStore.isAdmin">
-          <RouterLink
-            to="/stats" @click="mobileMenuOpen = false"
-            class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800"
+            v-if="authStore.isAdmin"
+            to="/stats"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="isActive('/stats') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
           >
             Statistiche
           </RouterLink>
-        </template>
-        <hr class="border-slate-800 my-2" />
+        </nav>
+      </div>
+
+      <!-- Right Side Actions (Desktop) -->
+      <div class="hidden md:flex items-center gap-4">
         <RouterLink
-          to="/profile" @click="mobileMenuOpen = false"
-          class="block px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800"
+          to="/profile"
+          class="flex items-center gap-2 px-3.5 py-1.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10 transition-all"
         >
-          Profilo
+          <span class="w-5 h-5 rounded-full bg-brand-secondary/20 flex items-center justify-center text-[10px] font-bold text-brand-secondary">
+            {{ authStore.user?.name?.charAt(0) }}{{ authStore.user?.surname?.charAt(0) }}
+          </span>
+          <span class="text-xs font-semibold text-white/80 tracking-wide uppercase">{{ authStore.user?.username }}</span>
         </RouterLink>
         <button
-          @click="handleLogout(); mobileMenuOpen = false"
-          class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-rose-400 hover:bg-slate-800"
+          @click="handleLogout"
+          class="text-xs font-bold text-white/40 hover:text-brand-accent transition-colors uppercase tracking-widest"
         >
           Esci
         </button>
       </div>
+
+      <!-- Mobile Menu Toggle -->
+      <button
+        @click="mobileMenuOpen = !mobileMenuOpen"
+        class="md:hidden p-1.5 text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line v-if="!mobileMenuOpen" x1="3" x2="21" y1="12" y2="12"/>
+          <line v-if="!mobileMenuOpen" x1="3" x2="21" y1="6" y2="6"/>
+          <line v-if="!mobileMenuOpen" x1="3" x2="21" y1="18" y2="18"/>
+          <path v-else d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+
     </div>
-  </nav>
+
+    <!-- Mobile Drawer -->
+    <transition name="fade">
+      <div 
+        v-if="mobileMenuOpen" 
+        class="md:hidden mt-3 glass-panel rounded-3xl p-4 flex flex-col gap-2 border border-white/10 shadow-2xl animate-fade-in"
+      >
+        <RouterLink 
+          to="/dashboard" @click="mobileMenuOpen = false" 
+          class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
+          :class="isActive('/dashboard') ? 'bg-white/10 text-white' : 'text-white/60'"
+        >
+          Dashboard
+        </RouterLink>
+        <RouterLink 
+          v-if="authStore.isCollector"
+          to="/collection" @click="mobileMenuOpen = false" 
+          class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
+          :class="isActive('/collection') ? 'bg-white/10 text-white' : 'text-white/60'"
+        >
+          La mia collezione
+        </RouterLink>
+        <RouterLink 
+          v-if="authStore.isAdmin"
+          to="/users" @click="mobileMenuOpen = false" 
+          class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
+          :class="isActive('/users') ? 'bg-white/10 text-white' : 'text-white/60'"
+        >
+          Gestione utenti
+        </RouterLink>
+        <RouterLink 
+          to="/albums" @click="mobileMenuOpen = false" 
+          class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
+          :class="isActive('/albums') ? 'bg-white/10 text-white' : 'text-white/60'"
+        >
+          Catalogo album
+        </RouterLink>
+        <RouterLink 
+          v-if="authStore.isAdmin"
+          to="/artists" @click="mobileMenuOpen = false" 
+          class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
+          :class="isActive('/artists') ? 'bg-white/10 text-white' : 'text-white/60'"
+        >
+          Catalogo artisti
+        </RouterLink>
+        <RouterLink 
+          v-if="authStore.isAdmin"
+          to="/stats" @click="mobileMenuOpen = false" 
+          class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
+          :class="isActive('/stats') ? 'bg-white/10 text-white' : 'text-white/60'"
+        >
+          Statistiche
+        </RouterLink>
+        <hr class="border-white/5 my-1" />
+        <div class="flex items-center justify-between px-4 py-2.5">
+          <RouterLink to="/profile" @click="mobileMenuOpen = false" class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-brand-secondary/20 flex items-center justify-center text-[10px] font-bold text-brand-secondary">
+              {{ authStore.user?.name?.charAt(0) }}
+            </span>
+            <span class="text-sm font-semibold text-white/70">{{ authStore.user?.username }}</span>
+          </RouterLink>
+          <button @click="handleLogout(); mobileMenuOpen = false" class="text-xs font-bold text-brand-accent uppercase tracking-widest">
+            Esci
+          </button>
+        </div>
+      </div>
+    </transition>
+  </header>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+</style>

@@ -27,36 +27,38 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center px-4">
-    <div class="w-full max-w-md">
+  <div class="min-h-screen flex items-center justify-center px-4 relative overflow-hidden animate-fade-in">
+    <!-- Background glow -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-secondary/15 rounded-full blur-[130px] animate-pulse pointer-events-none"></div>
+
+    <div class="w-full max-w-md z-10">
       <!-- Header -->
-      <div class="text-center mb-8">
-        <RouterLink to="/" class="inline-block mb-4">
-          <h1 class="text-3xl font-bold">
-            Groove<span class="text-violet-400">Box</span>
-          </h1>
+      <div class="text-center mb-10">
+        <RouterLink to="/" class="inline-flex p-3 bg-white/5 rounded-2xl border border-white/10 mb-4 hover:scale-105 transition-transform">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-brand-secondary"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
         </RouterLink>
-        <p class="text-slate-400">Accedi al tuo account</p>
+        <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+          Bentornato su GrooveBox
+        </h1>
+        <p class="text-white/30 text-sm font-medium mt-1">Accedi per gestire il tuo caveau musicale</p>
       </div>
 
       <!-- Card -->
       <form
         @submit.prevent="handleLogin"
-        class="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 space-y-5
-               backdrop-blur-sm shadow-xl"
+        class="glass-panel p-8 rounded-apple-2xl space-y-6 shadow-2xl"
       >
         <!-- Errore -->
         <div
           v-if="error"
-          class="bg-rose-500/10 border border-rose-500/30 text-rose-400
-                 text-sm rounded-lg px-4 py-3"
+          class="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3"
         >
           {{ error }}
         </div>
 
         <!-- Username -->
-        <div>
-          <label for="login-username" class="block text-sm font-medium text-slate-300 mb-1.5">
+        <div class="space-y-2">
+          <label for="login-username" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
             Username
           </label>
           <input
@@ -65,16 +67,14 @@ async function handleLogin() {
             type="text"
             required
             autocomplete="username"
-            placeholder="Il tuo username"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl
-                   text-slate-100 placeholder-slate-500 focus:border-violet-500
-                   focus:ring-1 focus:ring-violet-500 transition-colors outline-none"
+            placeholder="Nome utente"
+            class="apple-input"
           />
         </div>
 
         <!-- Password -->
-        <div>
-          <label for="login-password" class="block text-sm font-medium text-slate-300 mb-1.5">
+        <div class="space-y-2">
+          <label for="login-password" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
             Password
           </label>
           <input
@@ -83,28 +83,30 @@ async function handleLogin() {
             type="password"
             required
             autocomplete="current-password"
-            placeholder="La tua password"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl
-                   text-slate-100 placeholder-slate-500 focus:border-violet-500
-                   focus:ring-1 focus:ring-violet-500 transition-colors outline-none"
+            placeholder="········"
+            class="apple-input"
           />
         </div>
 
         <!-- Submit -->
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-50
-                 disabled:cursor-not-allowed text-white font-semibold rounded-xl
-                 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/25"
-        >
-          {{ loading ? 'Accesso in corso...' : 'Accedi' }}
-        </button>
+        <div class="pt-2">
+          <button
+            type="submit"
+            :disabled="loading"
+            class="apple-button apple-button-primary w-full py-4 text-sm font-bold shadow-xl shadow-white/5"
+          >
+            <span v-if="loading" class="flex items-center justify-center gap-2">
+              <div class="w-4 h-4 border-2 border-brand-background/30 border-t-brand-background rounded-full animate-spin"></div>
+              Attendere...
+            </span>
+            <span v-else>Accedi</span>
+          </button>
+        </div>
 
         <!-- Link registrazione -->
-        <p class="text-center text-sm text-slate-400">
+        <p class="text-center text-xs font-bold text-white/30 hover:text-white transition-colors uppercase tracking-widest pt-2">
           Non hai un account?
-          <RouterLink to="/register" class="text-violet-400 hover:text-violet-300 font-medium">
+          <RouterLink to="/register" class="text-brand-secondary hover:underline">
             Registrati
           </RouterLink>
         </p>

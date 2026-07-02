@@ -78,7 +78,7 @@ const routes = [
     path: '/artists',
     name: 'artists',
     component: ArtistCatalog,
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, role: 'administrator' }
   },
   {
     path: '/artists/:id',

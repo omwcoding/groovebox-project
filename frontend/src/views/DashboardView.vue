@@ -6,90 +6,98 @@ const authStore = useAuthStore()
 </script>
 
 <template>
-  <div class="p-6 md:p-8 max-w-5xl mx-auto">
+  <div class="space-y-12 animate-fade-in">
     <!-- Benvenuto -->
-    <div class="mb-10">
-      <h1 class="text-3xl font-bold mb-2">
-        Ciao, <span class="text-violet-400">{{ authStore.user?.name }}</span> &#128075;
+    <div class="space-y-2">
+      <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+        Ciao, {{ authStore.user?.name }}
       </h1>
-      <p class="text-slate-400">
-        {{ authStore.isAdmin ? 'Pannello di amministrazione GrooveBox' : 'Benvenuto nella tua GrooveBox' }}
+      <p class="text-white/40 text-lg font-medium">
+        {{ authStore.isAdmin ? 'Pannello di controllo GrooveBox' : 'Esplora e gestisci il tuo archivio musicale.' }}
       </p>
     </div>
 
     <!-- Quick Links — Collector -->
-    <div v-if="authStore.isCollector" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div v-if="authStore.isCollector" class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl">
       <RouterLink
         to="/collection"
-        class="group bg-slate-900/80 border border-slate-800 hover:border-violet-500/50
-               rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/5"
+        class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"
       >
-        <div class="text-3xl mb-3">&#128191;</div>
-        <h3 class="font-semibold text-lg mb-1 group-hover:text-violet-400 transition-colors">La Tua Collezione</h3>
-        <p class="text-sm text-slate-400">Gestisci le tue copie fisiche</p>
+        <div class="w-12 h-12 bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+          &#128191;
+        </div>
+        <div class="space-y-1">
+          <h3 class="font-bold text-lg group-hover:text-brand-secondary transition-colors">La Tua Collezione</h3>
+          <p class="text-sm text-white/40">Visualizza, modifica e gestisci le tue copie fisiche private.</p>
+        </div>
       </RouterLink>
 
       <RouterLink
         to="/albums"
-        class="group bg-slate-900/80 border border-slate-800 hover:border-violet-500/50
-               rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/5"
+        class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"
       >
-        <div class="text-3xl mb-3">&#127925;</div>
-        <h3 class="font-semibold text-lg mb-1 group-hover:text-violet-400 transition-colors">Catalogo Album</h3>
-        <p class="text-sm text-slate-400">Esplora e aggiungi nuovi album</p>
-      </RouterLink>
-
-      <RouterLink
-        to="/artists"
-        class="group bg-slate-900/80 border border-slate-800 hover:border-violet-500/50
-               rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/5"
-      >
-        <div class="text-3xl mb-3">&#127908;</div>
-        <h3 class="font-semibold text-lg mb-1 group-hover:text-violet-400 transition-colors">Catalogo Artisti</h3>
-        <p class="text-sm text-slate-400">Scopri gli artisti nel catalogo</p>
+        <div class="w-12 h-12 bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+          &#127925;
+        </div>
+        <div class="space-y-1">
+          <h3 class="font-bold text-lg group-hover:text-brand-secondary transition-colors">Catalogo Album</h3>
+          <p class="text-sm text-white/40">Esplora il catalogo della community o inserisci un nuovo album.</p>
+        </div>
       </RouterLink>
     </div>
 
     <!-- Quick Links — Admin -->
-    <div v-if="authStore.isAdmin" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div v-if="authStore.isAdmin" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <RouterLink
         to="/users"
-        class="group bg-slate-900/80 border border-slate-800 hover:border-violet-500/50
-               rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/5"
+        class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"
       >
-        <div class="text-3xl mb-3">&#128101;</div>
-        <h3 class="font-semibold text-lg mb-1 group-hover:text-violet-400 transition-colors">Gestione Utenti</h3>
-        <p class="text-sm text-slate-400">Elenco e moderazione Collector</p>
+        <div class="w-12 h-12 bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+          &#128101;
+        </div>
+        <div class="space-y-1">
+          <h3 class="font-bold text-lg group-hover:text-brand-secondary transition-colors">Gestione Utenti</h3>
+          <p class="text-sm text-white/40">Modera i profili collector registrati.</p>
+        </div>
       </RouterLink>
 
       <RouterLink
         to="/albums"
-        class="group bg-slate-900/80 border border-slate-800 hover:border-violet-500/50
-               rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/5"
+        class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"
       >
-        <div class="text-3xl mb-3">&#127925;</div>
-        <h3 class="font-semibold text-lg mb-1 group-hover:text-violet-400 transition-colors">Catalogo Album</h3>
-        <p class="text-sm text-slate-400">Modera il catalogo globale</p>
+        <div class="w-12 h-12 bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+          &#127925;
+        </div>
+        <div class="space-y-1">
+          <h3 class="font-bold text-lg group-hover:text-brand-secondary transition-colors">Modera Album</h3>
+          <p class="text-sm text-white/40">Modifica o elimina gli album dal catalogo.</p>
+        </div>
       </RouterLink>
 
       <RouterLink
         to="/artists"
-        class="group bg-slate-900/80 border border-slate-800 hover:border-violet-500/50
-               rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/5"
+        class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"
       >
-        <div class="text-3xl mb-3">&#127908;</div>
-        <h3 class="font-semibold text-lg mb-1 group-hover:text-violet-400 transition-colors">Catalogo Artisti</h3>
-        <p class="text-sm text-slate-400">Gestisci gli artisti</p>
+        <div class="w-12 h-12 bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+          &#127908;
+        </div>
+        <div class="space-y-1">
+          <h3 class="font-bold text-lg group-hover:text-brand-secondary transition-colors">Modera Artisti</h3>
+          <p class="text-sm text-white/40">Gestisci i nomi degli artisti nel catalogo.</p>
+        </div>
       </RouterLink>
 
       <RouterLink
         to="/stats"
-        class="group bg-slate-900/80 border border-slate-800 hover:border-violet-500/50
-               rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/5"
+        class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"
       >
-        <div class="text-3xl mb-3">&#128202;</div>
-        <h3 class="font-semibold text-lg mb-1 group-hover:text-violet-400 transition-colors">Statistiche</h3>
-        <p class="text-sm text-slate-400">Report e dati della piattaforma</p>
+        <div class="w-12 h-12 bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+          &#128202;
+        </div>
+        <div class="space-y-1">
+          <h3 class="font-bold text-lg group-hover:text-brand-secondary transition-colors">Statistiche</h3>
+          <p class="text-sm text-white/40">Monitora l'andamento della piattaforma.</p>
+        </div>
       </RouterLink>
     </div>
   </div>

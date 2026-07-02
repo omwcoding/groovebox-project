@@ -52,82 +52,94 @@ async function handleDelete() {
 </script>
 
 <template>
-  <div class="p-6 md:p-8 max-w-3xl mx-auto">
-    <RouterLink to="/artists" class="inline-flex items-center text-sm text-slate-400 hover:text-violet-400 mb-6 transition-colors">
-      &larr; Torna al catalogo artisti
-    </RouterLink>
+  <div class="space-y-6 animate-fade-in max-w-3xl mx-auto">
+    <button 
+      @click="router.back()" 
+      class="inline-flex items-center gap-2 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Indietro
+    </button>
 
-    <div v-if="loading" class="text-center py-16 text-slate-400">Caricamento...</div>
-    <div v-else-if="error && !artist" class="text-center py-16 text-rose-400">{{ error }}</div>
+    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
+      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
+    </div>
+    
+    <div v-else-if="error && !artist" class="py-20 text-center text-rose-400 font-semibold">{{ error }}</div>
 
-    <div v-else-if="artist" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 md:p-8">
-      <div v-if="error" class="mb-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
+    <div v-else-if="artist" class="glass-panel p-8 rounded-apple-2xl shadow-2xl border border-white/10 relative">
+      <div v-if="error" class="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
         {{ error }}
       </div>
 
       <!-- Header artista -->
-      <div class="flex items-center gap-5 mb-6">
-        <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center text-4xl shrink-0">
+      <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-white/5">
+        <div class="w-20 h-20 bg-white/5 border border-white/5 rounded-full flex items-center justify-center text-4xl shrink-0">
           &#127908;
         </div>
-        <div class="min-w-0 flex-1">
-          <div v-if="!editing">
-            <h1 class="text-2xl md:text-3xl font-bold">{{ artist.name }}</h1>
-            <p class="text-slate-400 text-sm mt-1">
-              {{ artist.albums?.length || 0 }} album nel catalogo
+        
+        <div class="min-w-0 flex-grow text-center sm:text-left space-y-1">
+          <div v-if="!editing" class="space-y-2">
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+              {{ artist.name }}
+            </h1>
+            <p class="text-white/40 text-sm font-semibold tracking-tight">
+              {{ artist.albums?.length || 0 }} album associati nel catalogo
             </p>
           </div>
-          <form v-else @submit.prevent="handleSave" class="flex gap-3">
-            <input v-model="editName" type="text" required
-              class="flex-1 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
-            <button type="submit" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-colors">
-              Salva
-            </button>
-            <button type="button" @click="editing = false" class="px-4 py-2 border border-slate-700 text-slate-300 text-sm rounded-xl transition-colors">
-              Annulla
-            </button>
+          
+          <form v-else @submit.prevent="handleSave" class="flex flex-col sm:flex-row gap-3 pt-2">
+            <input v-model="editName" type="text" required class="apple-input" />
+            <div class="flex gap-2">
+              <button type="submit" class="apple-button apple-button-primary py-2.5">
+                Salva
+              </button>
+              <button type="button" @click="editing = false" class="apple-button apple-button-secondary py-2.5">
+                Annulla
+              </button>
+            </div>
           </form>
         </div>
       </div>
 
       <!-- Azioni Admin -->
-      <div v-if="authStore.isAdmin && !editing" class="flex gap-3 mb-6">
+      <div v-if="authStore.isAdmin && !editing" class="flex gap-3 pt-6">
         <button @click="startEdit"
-          class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-colors">
-          Modifica
+          class="apple-button apple-button-primary py-2 text-sm">
+          Modifica Artista
         </button>
         <button @click="handleDelete"
-          class="px-4 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-sm font-medium rounded-xl transition-colors">
+          class="apple-button apple-button-secondary py-2 text-sm !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
           Elimina
         </button>
       </div>
 
       <!-- Discografia -->
-      <div class="border-t border-slate-800 pt-6">
-        <h2 class="text-lg font-semibold mb-4">Discografia</h2>
-        <div v-if="artist.albums?.length > 0" class="space-y-3">
+      <div class="pt-8 mt-8 border-t border-white/5">
+        <h2 class="text-xl font-bold mb-6">Discografia</h2>
+        
+        <div v-if="artist.albums?.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <RouterLink
             v-for="album in artist.albums" :key="album.id_album"
             :to="`/albums/${album.id_album}`"
-            class="flex items-center gap-4 p-4 bg-slate-800/50 border border-slate-700/50
-                   hover:border-violet-500/40 rounded-xl transition-colors group"
+            class="group p-4 bg-white/5 border border-white/5 hover:border-brand-secondary/30 rounded-2xl transition-all flex items-center gap-4 hover:shadow-lg hover:shadow-brand-secondary/5"
           >
-            <div class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl
-                        group-hover:bg-slate-600/80 transition-colors shrink-0">
+            <div class="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform duration-300">
               &#127925;
             </div>
-            <div class="min-w-0 flex-1">
-              <p class="font-medium group-hover:text-violet-400 transition-colors truncate">{{ album.title }}</p>
-              <div class="flex gap-2 text-xs text-slate-500">
+            <div class="min-w-0 flex-grow">
+              <p class="font-bold group-hover:text-brand-secondary transition-colors truncate">{{ album.title }}</p>
+              <div class="flex gap-2 text-xs text-white/30 font-semibold uppercase tracking-wider mt-0.5">
                 <span v-if="album.releaseYear">{{ album.releaseYear }}</span>
                 <span v-if="album.releaseYear && album.genre">&middot;</span>
-                <span v-if="album.genre">{{ album.genre }}</span>
+                <span v-if="album.genre" class="truncate">{{ album.genre }}</span>
               </div>
             </div>
           </RouterLink>
         </div>
-        <p v-else class="text-slate-500 text-sm">Nessun album associato a questo artista.</p>
+        
+        <p v-else class="text-white/30 text-sm font-semibold italic">Nessun album associato a questo artista.</p>
       </div>
     </div>
   </div>

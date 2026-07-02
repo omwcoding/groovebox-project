@@ -13,10 +13,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+  <div class="min-h-screen bg-brand-background text-brand-foreground font-sans selection:bg-brand-secondary selection:text-white overflow-x-hidden antialiased flex flex-col">
     <AppNavbar v-if="authStore.isAuthenticated" />
-    <main>
-      <RouterView />
+    <main 
+      class="w-full flex-grow flex flex-col"
+      :class="{ 'pt-28 pb-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto': authStore.isAuthenticated }"
+    >
+      <RouterView v-slot="{ Component }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </RouterView>
     </main>
   </div>
 </template>

@@ -55,7 +55,7 @@ function resetForm() {
 async function handleCreate() {
   formError.value = ''
   if (!form.value.title.trim()) {
-    formError.value = 'Il titolo e\' obbligatorio'
+    formError.value = 'Il titolo è obbligatorio'
     return
   }
   formLoading.value = true
@@ -81,130 +81,202 @@ function toggleArtist(id) {
   if (idx >= 0) form.value.artist_ids.splice(idx, 1)
   else form.value.artist_ids.push(id)
 }
+
+const showNewArtistInput = ref(false)
+const newArtistName = ref('')
+const inlineArtistLoading = ref(false)
+
+async function handleInlineArtistCreate() {
+  if (!newArtistName.value.trim()) return
+  inlineArtistLoading.value = true
+  try {
+    const res = await api.post('/artists', { name: newArtistName.value.trim() })
+    artists.value.unshift(res.data)
+    form.value.artist_ids.push(res.data.id_artist)
+    newArtistName.value = ''
+    showNewArtistInput.value = false
+  } catch (err) {
+    formError.value = err.message || "Errore durante la creazione dell'artista"
+  } finally {
+    inlineArtistLoading.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="p-6 md:p-8 max-w-5xl mx-auto">
+  <div class="space-y-8 animate-fade-in">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-      <div>
-        <h1 class="text-3xl font-bold">Catalogo Album</h1>
-        <p class="text-slate-400 text-sm mt-1">{{ albums.length }} album nel catalogo</p>
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+      <div class="space-y-1">
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+          Catalogo Album
+        </h1>
+        <p class="text-white/40 text-lg font-medium">{{ albums.length }} album disponibili nell'hub globale.</p>
       </div>
+      
       <button
         v-if="authStore.isCollector"
         @click="showForm = !showForm"
-        class="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium
-               rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/25"
+        class="apple-button apple-button-primary shadow-xl shadow-white/5 self-start sm:self-auto"
       >
-        {{ showForm ? 'Annulla' : '+ Nuovo Album' }}
+        <svg v-if="!showForm" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        {{ showForm ? 'Annulla' : 'Aggiungi disco' }}
       </button>
     </div>
 
     <!-- Form Nuovo Album -->
-    <div v-if="showForm" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-6">
-      <h3 class="text-lg font-semibold mb-4">Inserisci un nuovo album</h3>
-      <div v-if="formError" class="mb-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm rounded-lg px-4 py-3">
-        {{ formError }}
-      </div>
-      <form @submit.prevent="handleCreate" class="space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="sm:col-span-2">
-            <label for="album-title" class="block text-sm font-medium text-slate-300 mb-1.5">Titolo *</label>
-            <input id="album-title" v-model="form.title" type="text" required
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
-          </div>
-          <div>
-            <label for="album-year" class="block text-sm font-medium text-slate-300 mb-1.5">Anno</label>
-            <input id="album-year" v-model="form.releaseYear" type="number" min="1900" max="2099"
-              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
-          </div>
+    <transition name="page">
+      <div v-if="showForm" class="glass-panel p-6 md:p-8 rounded-apple-2xl shadow-2xl">
+        <h3 class="text-2xl font-bold mb-6 text-center">Pubblica un nuovo album</h3>
+        <div v-if="formError" class="mb-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
+          {{ formError }}
         </div>
-        <div>
-          <label for="album-genre" class="block text-sm font-medium text-slate-300 mb-1.5">Genere</label>
-          <input id="album-genre" v-model="form.genre" type="text"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
-                   focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors outline-none" />
-        </div>
+        <form @submit.prevent="handleCreate" class="space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="sm:col-span-2 space-y-2">
+              <label for="album-title" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Titolo dell'album *</label>
+              <input id="album-title" v-model="form.title" type="text" required placeholder="Es. Abbey Road" class="apple-input" />
+            </div>
+            <div class="space-y-2">
+              <label for="album-year" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Anno di uscita</label>
+              <input id="album-year" v-model="form.releaseYear" type="number" min="1900" max="2099" placeholder="Es. 1969" class="apple-input" />
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label for="album-genre" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Genere</label>
+            <input id="album-genre" v-model="form.genre" type="text" placeholder="Es. Rock, Pop..." class="apple-input" />
+          </div>
 
-        <!-- Selezione artisti -->
-        <div v-if="artists.length > 0">
-          <label class="block text-sm font-medium text-slate-300 mb-2">Artisti</label>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="artist in artists" :key="artist.id_artist"
-              type="button"
-              @click="toggleArtist(artist.id_artist)"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border"
-              :class="form.artist_ids.includes(artist.id_artist)
-                ? 'bg-violet-600 border-violet-500 text-white'
-                : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'"
-            >
-              {{ artist.name }}
+          <!-- Selezione artisti -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Associa Artisti</label>
+              <button 
+                type="button"
+                @click="showNewArtistInput = !showNewArtistInput"
+                class="text-xs font-bold text-brand-secondary hover:underline"
+              >
+                {{ showNewArtistInput ? 'Usa Esistenti' : '+ Nuovo Artista' }}
+              </button>
+            </div>
+
+            <!-- Input rapido artista inline -->
+            <div v-if="showNewArtistInput" class="flex gap-2 animate-fade-in">
+              <input 
+                v-model="newArtistName" 
+                type="text" 
+                placeholder="Nome nuovo artista" 
+                class="apple-input !py-2.5 !rounded-full"
+                @keyup.enter.prevent="handleInlineArtistCreate"
+              />
+              <button 
+                type="button" 
+                @click="handleInlineArtistCreate" 
+                :disabled="inlineArtistLoading"
+                class="apple-button apple-button-primary !py-2.5 !px-4 text-xs shrink-0"
+              >
+                Aggiungi
+              </button>
+            </div>
+
+            <div v-if="artists.length > 0" class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1 border border-white/5 rounded-2xl bg-white/5">
+              <button
+                v-for="artist in artists" :key="artist.id_artist"
+                type="button"
+                @click="toggleArtist(artist.id_artist)"
+                class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border"
+                :class="form.artist_ids.includes(artist.id_artist)
+                  ? 'bg-brand-secondary border-brand-secondary text-white shadow-md shadow-brand-secondary/20'
+                  : 'bg-white/5 border-white/5 text-white/60 hover:border-white/20 hover:text-white'"
+              >
+                {{ artist.name }}
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-4 flex flex-col sm:flex-row gap-3">
+            <button type="submit" :disabled="formLoading"
+              class="apple-button apple-button-primary w-full sm:w-auto shadow-xl shadow-white/5">
+              {{ formLoading ? 'Pubblicazione...' : 'Pubblica Album' }}
+            </button>
+            <button type="button" @click="resetForm" class="apple-button apple-button-secondary w-full sm:w-auto">
+              Annulla
             </button>
           </div>
-        </div>
+        </form>
+      </div>
+    </transition>
 
-        <button type="submit" :disabled="formLoading"
-          class="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white
-                 text-sm font-medium rounded-xl transition-colors">
-          {{ formLoading ? 'Inserimento...' : 'Inserisci album' }}
-        </button>
-      </form>
-    </div>
-
-    <!-- Barra ricerca -->
-    <div class="mb-6">
+    <!-- Barra ricerca (Floating Glass Bar style) -->
+    <div class="relative w-full">
+      <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none opacity-30">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </div>
       <input
         v-model="search"
         type="text"
-        placeholder="Cerca per titolo, genere o artista..."
-        class="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-slate-100
-               placeholder-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500
-               transition-colors outline-none"
+        placeholder="Filtra album per titolo, genere o artista..."
+        class="w-full bg-white/5 border border-white/5 text-white text-sm rounded-full pl-11 pr-4 py-3.5 focus:outline-none focus:bg-white/10 transition-all font-medium placeholder:text-white/20"
       />
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-center py-16 text-slate-400">
-      Caricamento catalogo...
+    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
+      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
     </div>
 
-    <!-- Lista album -->
-    <div v-else-if="filteredAlbums.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- Lista album (Apple Grid) -->
+    <div v-else-if="filteredAlbums.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
       <RouterLink
-        v-for="album in filteredAlbums" :key="album.id_album"
+        v-for="(album, index) in filteredAlbums" :key="album.id_album"
         :to="`/albums/${album.id_album}`"
-        class="group bg-slate-900/80 border border-slate-800 hover:border-violet-500/40 rounded-2xl
-               p-5 transition-all duration-200 hover:shadow-lg hover:shadow-violet-600/5"
+        class="group flex flex-col gap-4 animate-slide-up"
+        :style="{ animationDelay: `${index * 30}ms` }"
       >
-        <!-- Cover placeholder -->
-        <div class="w-full aspect-square bg-slate-800 rounded-xl mb-4 flex items-center justify-center
-                    text-4xl group-hover:bg-slate-700/80 transition-colors">
-          &#127925;
+        <!-- Album Art / Placeholder -->
+        <div class="aspect-square glass-card overflow-hidden relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500 flex items-center justify-center">
+          <div class="w-full h-full flex items-center justify-center bg-white/5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="opacity-15 group-hover:opacity-30 group-hover:rotate-12 transition-all duration-500"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
+          </div>
+          
+          <!-- Hover indicator -->
+          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 scale-90 group-hover:scale-100 transition-transform duration-500">
+               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>
         </div>
-        <h3 class="font-semibold text-lg mb-1 group-hover:text-violet-400 transition-colors truncate">
-          {{ album.title }}
-        </h3>
-        <p class="text-sm text-slate-400 truncate">
-          {{ album.artists?.map(a => a.name).join(', ') || 'Artista sconosciuto' }}
-        </p>
-        <div class="flex items-center gap-2 mt-2 text-xs text-slate-500">
-          <span v-if="album.releaseYear">{{ album.releaseYear }}</span>
-          <span v-if="album.releaseYear && album.genre">&middot;</span>
-          <span v-if="album.genre">{{ album.genre }}</span>
+
+        <!-- Info -->
+        <div class="space-y-1 px-1">
+          <h3 class="font-bold text-base leading-tight line-clamp-1 group-hover:text-brand-secondary transition-colors">
+            {{ album.title }}
+          </h3>
+          <p class="text-white/40 text-sm font-semibold tracking-tight truncate">
+            {{ album.artists?.map(a => a.name).join(', ') || 'Artista sconosciuto' }}
+          </p>
+          <div class="flex items-center gap-2 mt-1 text-[10px] font-bold text-white/20 uppercase tracking-wider">
+            <span v-if="album.releaseYear">{{ album.releaseYear }}</span>
+            <span v-if="album.releaseYear && album.genre">&middot;</span>
+            <span v-if="album.genre" class="truncate">{{ album.genre }}</span>
+          </div>
         </div>
       </RouterLink>
     </div>
 
     <!-- Empty state -->
-    <div v-else class="text-center py-16">
-      <div class="text-5xl mb-4">&#127925;</div>
-      <p class="text-slate-400">
-        {{ search ? 'Nessun album trovato per la ricerca.' : 'Il catalogo e\' ancora vuoto.' }}
-      </p>
+    <div v-else class="py-20 flex flex-col items-center justify-center gap-6 glass-panel rounded-apple-2xl border-dashed border-white/10 text-center px-10">
+      <div class="bg-white/5 p-6 rounded-full">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-20"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
+      </div>
+      <div class="space-y-1">
+        <p class="text-xl font-bold">Nessun album trovato</p>
+        <p class="text-white/40 text-sm">
+          {{ search ? 'Modifica il filtro per cercare altri album.' : 'Il catalogo globale è ancora vuoto.' }}
+        </p>
+      </div>
     </div>
   </div>
 </template>
