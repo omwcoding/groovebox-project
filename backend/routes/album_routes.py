@@ -52,7 +52,10 @@ def _enrich_album_with_artists(conn, album_dict):
 def get_albums():
     conn = get_db()
     albums = conn.execute(
-        "SELECT * FROM ALBUM ORDER BY title"
+        "SELECT al.*, us.username AS creator_username "
+        "FROM ALBUM al "
+        "LEFT JOIN USER us ON al.id_user = us.id_user "
+        "ORDER BY al.title"
     ).fetchall()
 
     result = []
@@ -74,7 +77,10 @@ def get_albums():
 def get_album(album_id):
     conn = get_db()
     album = conn.execute(
-        "SELECT * FROM ALBUM WHERE id_album = ?", (album_id,)
+        "SELECT al.*, us.username AS creator_username "
+        "FROM ALBUM al "
+        "LEFT JOIN USER us ON al.id_user = us.id_user "
+        "WHERE al.id_album = ?", (album_id,)
     ).fetchone()
 
     if not album:
@@ -148,7 +154,10 @@ def create_album():
 
     # Recupera l'album completo per la risposta
     album = conn.execute(
-        "SELECT * FROM ALBUM WHERE id_album = ?", (album_id,)
+        "SELECT al.*, us.username AS creator_username "
+        "FROM ALBUM al "
+        "LEFT JOIN USER us ON al.id_user = us.id_user "
+        "WHERE al.id_album = ?", (album_id,)
     ).fetchone()
     result = _enrich_album_with_artists(conn, dict(album))
     conn.close()
@@ -238,7 +247,10 @@ def update_album(album_id):
 
     # Recupera album aggiornato
     album = conn.execute(
-        "SELECT * FROM ALBUM WHERE id_album = ?", (album_id,)
+        "SELECT al.*, us.username AS creator_username "
+        "FROM ALBUM al "
+        "LEFT JOIN USER us ON al.id_user = us.id_user "
+        "WHERE al.id_album = ?", (album_id,)
     ).fetchone()
     result = _enrich_album_with_artists(conn, dict(album))
     conn.close()

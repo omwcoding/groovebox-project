@@ -124,7 +124,7 @@ async function handleDelete() {
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-6 border-t border-white/5">
               <div class="space-y-1">
                 <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Anno di uscita</p>
                 <p class="font-semibold text-white/80">{{ album.releaseYear || '—' }}</p>
@@ -132,6 +132,12 @@ async function handleDelete() {
               <div class="space-y-1">
                 <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Genere</p>
                 <p class="font-semibold text-white/80">{{ album.genre || '—' }}</p>
+              </div>
+              <div v-if="authStore.isAdmin" class="space-y-1 col-span-2 sm:col-span-1">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Inserito da</p>
+                <RouterLink :to="`/users/${album.id_user}`" class="font-semibold text-brand-secondary hover:underline">
+                  @{{ album.creator_username || 'Sistema' }}
+                </RouterLink>
               </div>
             </div>
           </div>
@@ -150,11 +156,11 @@ async function handleDelete() {
             <div v-if="authStore.isAdmin" class="flex flex-col sm:flex-row gap-3">
               <button @click="startEdit"
                 class="apple-button apple-button-primary w-full sm:flex-1">
-                Modifica Scheda
+                Modifica album
               </button>
               <button @click="handleDelete"
                 class="apple-button apple-button-secondary w-full sm:flex-1 !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
-                Rimuovi Catalogo
+                Rimuovi dal catalogo
               </button>
             </div>
           </div>

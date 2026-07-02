@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { api } from '@/stores/api'
+import { RouterLink } from 'vue-router'
 
 const users = ref([])
 const loading = ref(true)
@@ -16,16 +17,6 @@ onMounted(async () => {
     loading.value = false
   }
 })
-
-async function handleDeleteUser(user) {
-  if (!confirm(`Eliminare l'utente "${user.username}" e tutti i suoi dati?`)) return
-  try {
-    await api.delete(`/users/${user.id_user}`)
-    users.value = users.value.filter(u => u.id_user !== user.id_user)
-  } catch (err) {
-    error.value = err.message || 'Errore durante l\'eliminazione'
-  }
-}
 </script>
 
 <template>
@@ -54,22 +45,22 @@ async function handleDeleteUser(user) {
               <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30">Profilo</th>
               <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30 hidden sm:table-cell">Indirizzo Email</th>
               <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30 hidden md:table-cell">Ruolo</th>
-              <th class="text-right px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30">Moderazione</th>
+              <th class="text-right px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30">Dettagli</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="user in users" :key="user.id_user"
                 class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
               <td class="px-6 py-4">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-brand-secondary/20 flex items-center justify-center text-xs font-bold text-brand-secondary shrink-0">
+                <RouterLink :to="`/users/${user.id_user}`" class="flex items-center gap-3 group">
+                  <div class="w-10 h-10 rounded-full bg-brand-secondary/20 flex items-center justify-center text-xs font-bold text-brand-secondary shrink-0 group-hover:scale-105 transition-transform">
                     {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
                   </div>
                   <div>
-                    <p class="font-bold text-white/95">{{ user.name }} {{ user.surname }}</p>
+                    <p class="font-bold text-white/95 group-hover:text-brand-secondary transition-colors">{{ user.name }} {{ user.surname }}</p>
                     <p class="text-xs text-white/30 font-medium">@{{ user.username }}</p>
                   </div>
-                </div>
+                </RouterLink>
               </td>
               <td class="px-6 py-4 text-white/60 font-medium hidden sm:table-cell">{{ user.email }}</td>
               <td class="px-6 py-4 hidden md:table-cell">
@@ -78,10 +69,10 @@ async function handleDeleteUser(user) {
                 </span>
               </td>
               <td class="px-6 py-4 text-right">
-                <button @click="handleDeleteUser(user)"
-                  class="px-4 py-2 text-xs font-bold uppercase tracking-widest text-brand-accent bg-brand-accent/5 border border-brand-accent/20 hover:bg-brand-accent/15 rounded-full transition-all">
-                  Rimuovi
-                </button>
+                <RouterLink :to="`/users/${user.id_user}`"
+                  class="inline-flex px-4 py-2 text-xs font-bold uppercase tracking-widest text-brand-secondary bg-brand-secondary/5 border border-brand-secondary/20 hover:bg-brand-secondary/15 rounded-full transition-all">
+                  Vedi
+                </RouterLink>
               </td>
             </tr>
           </tbody>

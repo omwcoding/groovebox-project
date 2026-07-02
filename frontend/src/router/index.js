@@ -20,6 +20,7 @@ import ArtistDetail from '@/views/ArtistDetail.vue'
 import CollectionView from '@/views/CollectionView.vue'
 import CopyDetail from '@/views/CopyDetail.vue'
 import UserList from '@/views/UserList.vue'
+import UserDetail from '@/views/UserDetail.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import StatsView from '@/views/StatsView.vue'
 
@@ -101,11 +102,17 @@ const routes = [
     meta: { requiresAuth: true, role: 'collector' }
   },
 
-  // Gestione Utenti — solo Admin (VE)
+  // Gestione Utenti — solo Admin (VE + VD)
   {
     path: '/users',
     name: 'users',
     component: UserList,
+    meta: { requiresAuth: true, role: 'administrator' }
+  },
+  {
+    path: '/users/:id',
+    name: 'user-detail',
+    component: UserDetail,
     meta: { requiresAuth: true, role: 'administrator' }
   },
 
