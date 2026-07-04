@@ -34,10 +34,19 @@ async function request(endpoint, options = {}) {
     return
   }
 
-  const data = await response.json()
+  // Gestione del parsing JSON sicuro
+  let data = {}
+  const contentType = response.headers.get('Content-Type')
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json()
+    } catch (_) {
+      // Ignora l'errore se il JSON è malformato
+    }
+  }
 
   if (!response.ok) {
-    const error = new Error(data.message || 'Errore di rete')
+    const error = new Error(data.message || `Errore del server (${response.status})`)
     error.status = response.status
     error.data = data
     throw error

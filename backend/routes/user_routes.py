@@ -11,7 +11,12 @@ Matrice di visibilita' (doc 3.4):
 from flask import Blueprint, request, jsonify, g
 from werkzeug.security import generate_password_hash
 from auth import token_required
-from database import get_db
+from dal.user_dal import (
+    get_user_by_id,
+    get_all_collectors,
+    update_user_profile,
+    delete_user_and_transfer_albums
+)
 
 bp = Blueprint("users", __name__, url_prefix="/api/users")
 
@@ -71,15 +76,9 @@ def update_my_profile():
             "message": "Nessun campo valido da aggiornare"
         }), 400
 
-    values.append(g.current_user["id_user"])
-    query = f"UPDATE USER SET {', '.join(fields)} WHERE id_user = ?"
-
-    conn = get_db()
     try:
-        conn.execute(query, values)
-        conn.commit()
+        updated_user = update_user_profile(g.current_user["id_user"], fields, values)
     except Exception as e:
-        conn.close()
         if "unique" in str(e).lower():
             return jsonify({
                 "status": "error",
@@ -90,18 +89,10 @@ def update_my_profile():
             "message": "Errore durante l'aggiornamento"
         }), 500
 
-    # Recupera il profilo aggiornato
-    user = conn.execute(
-        "SELECT id_user, username, name, surname, email, role "
-        "FROM USER WHERE id_user = ?",
-        (g.current_user["id_user"],)
-    ).fetchone()
-    conn.close()
-
     return jsonify({
         "status": "success",
         "message": "Profilo aggiornato con successo",
-        "data": dict(user)
+        "data": dict(updated_user)
     })
 
 
@@ -119,13 +110,13 @@ def delete_my_account():
         }), 403
 
     user_id = g.current_user["id_user"]
-    conn = get_db()
-
-    # Elimina prima le copie fisiche (FK) poi l'utente
-    conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_user = ?", (user_id,))
-    conn.execute("DELETE FROM USER WHERE id_user = ?", (user_id,))
-    conn.commit()
-    conn.close()
+    try:
+        delete_user_and_transfer_albums(user_id)
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Errore durante l'eliminazione dell'account"
+        }), 500
 
     return jsonify({
         "status": "success",
@@ -146,12 +137,13 @@ def get_all_users():
             "message": "Accesso riservato agli amministratori"
         }), 403
 
-    conn = get_db()
-    users = conn.execute(
-        "SELECT id_user, username, name, surname, email, role "
-        "FROM USER WHERE role = 'collector' ORDER BY username"
-    ).fetchall()
-    conn.close()
+    try:
+        users = get_all_collectors()
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Errore nel caricamento degli utenti"
+        }), 500
 
     return jsonify({
         "status": "success",
@@ -172,15 +164,15 @@ def get_user(user_id):
             "message": "Accesso riservato agli amministratori"
         }), 403
 
-    conn = get_db()
-    user = conn.execute(
-        "SELECT id_user, username, name, surname, email, role "
-        "FROM USER WHERE id_user = ? AND role = 'collector'",
-        (user_id,)
-    ).fetchone()
-    conn.close()
+    try:
+        user = get_user_by_id(user_id)
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Errore nel caricamento del profilo utente"
+        }), 500
 
-    if not user:
+    if not user or user["role"] != "collector":
         return jsonify({
             "status": "error",
             "message": "Utente non trovato"
@@ -195,7 +187,7 @@ def get_user(user_id):
 # --------------------------------------------------------------------------
 # DELETE /api/users/<id>
 # Rimuove un Collector dalla piattaforma (solo Admin).
-# Elimina anche le copie fisiche del Collector.
+# Elimina anche le copie fisiche del Collector (via ON DELETE CASCADE).
 # --------------------------------------------------------------------------
 @bp.route("/<int:user_id>", methods=["DELETE"])
 @token_required
@@ -206,31 +198,33 @@ def delete_user(user_id):
             "message": "Accesso riservato agli amministratori"
         }), 403
 
-    conn = get_db()
-    user = conn.execute(
-        "SELECT id_user, role FROM USER WHERE id_user = ?",
-        (user_id,)
-    ).fetchone()
+    try:
+        user = get_user_by_id(user_id)
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Errore interno durante il recupero dell'utente"
+        }), 500
 
     if not user:
-        conn.close()
         return jsonify({
             "status": "error",
             "message": "Utente non trovato"
         }), 404
 
     if user["role"] == "administrator":
-        conn.close()
         return jsonify({
             "status": "error",
             "message": "Non e' possibile eliminare un amministratore"
         }), 403
 
-    # Elimina prima le copie fisiche (FK) poi l'utente
-    conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_user = ?", (user_id,))
-    conn.execute("DELETE FROM USER WHERE id_user = ?", (user_id,))
-    conn.commit()
-    conn.close()
+    try:
+        delete_user_and_transfer_albums(user_id)
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Errore durante l'eliminazione dell'utente"
+        }), 500
 
     return jsonify({
         "status": "success",

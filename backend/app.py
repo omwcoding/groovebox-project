@@ -6,7 +6,7 @@ il database al primo avvio.
 """
 
 import os
-from flask import Flask
+from flask import Flask, g
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -51,6 +51,13 @@ def create_app():
     @app.route("/api/health", methods=["GET"])
     def health_check():
         return {"status": "success", "message": "GrooveBox backend is running!"}
+
+    # ---- Teardown delle connessioni al database ----
+    @app.teardown_appcontext
+    def close_db(error):
+        db = g.pop('db', None)
+        if db is not None:
+            db.close()
 
     return app
 

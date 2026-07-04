@@ -14,6 +14,7 @@ Uso standalone (crea / ricrea il database):
 import sqlite3
 import os
 from werkzeug.security import generate_password_hash
+from flask import g, has_app_context
 
 # ---------------------------------------------------------------------------
 # Configurazione
@@ -27,11 +28,19 @@ DATABASE_PATH = os.path.join(BASE_DIR, "groovebox.db")
 
 def get_db():
     """Restituisce una connessione SQLite con foreign keys abilitate e
-    row_factory impostata su sqlite3.Row per accesso alle colonne per nome."""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
+    row_factory impostata su sqlite3.Row. Se all'interno del contesto Flask,
+    la connessione viene salvata in g per essere chiusa automaticamente al teardown."""
+    if has_app_context():
+        if 'db' not in g:
+            g.db = sqlite3.connect(DATABASE_PATH)
+            g.db.row_factory = sqlite3.Row
+            g.db.execute("PRAGMA foreign_keys = ON;")
+        return g.db
+    else:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+        return conn
 
 # ---------------------------------------------------------------------------
 # Schema DDL – esattamente aderente al modello relazionale (doc §3.2)
@@ -88,8 +97,8 @@ CREATE TABLE IF NOT EXISTS ALBUM_ARTIST (
     id_artist       INTEGER     NOT NULL,
 
     PRIMARY KEY (id_album, id_artist),
-    FOREIGN KEY (id_album)  REFERENCES ALBUM(id_album),
-    FOREIGN KEY (id_artist) REFERENCES ARTIST(id_artist)
+    FOREIGN KEY (id_album)  REFERENCES ALBUM(id_album) ON DELETE CASCADE,
+    FOREIGN KEY (id_artist) REFERENCES ARTIST(id_artist) ON DELETE CASCADE
 );
 
 -- =========================================================================
@@ -107,8 +116,8 @@ CREATE TABLE IF NOT EXISTS PHYSICAL_COPY (
     id_user         INTEGER         NOT NULL,
     id_album        INTEGER         NOT NULL,
 
-    FOREIGN KEY (id_user)  REFERENCES USER(id_user),
-    FOREIGN KEY (id_album) REFERENCES ALBUM(id_album)
+    FOREIGN KEY (id_user)  REFERENCES USER(id_user) ON DELETE CASCADE,
+    FOREIGN KEY (id_album) REFERENCES ALBUM(id_album) ON DELETE CASCADE
 );
 """
 

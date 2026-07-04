@@ -12,26 +12,17 @@ Matrice di visibilita' (doc 3.4):
 
 from flask import Blueprint, request, jsonify, g
 from auth import token_required
-from database import get_db
-import datetime
+from dal.copy_dal import (
+    get_user_copies,
+    find_copy_by_id_and_user,
+    insert_copy,
+    create_copy_cascade,
+    update_copy_data,
+    delete_copy_by_id
+)
+from dal.album_dal import find_album_by_id
 
 bp = Blueprint("copies", __name__, url_prefix="/api/copies")
-
-
-# --------------------------------------------------------------------------
-# Helper: arricchisce un dizionario copia con la lista degli artisti dell'album
-# --------------------------------------------------------------------------
-def _enrich_copy_with_artists(conn, copy_dict):
-    artists = conn.execute(
-        """SELECT ar.id_artist, ar.name
-           FROM ARTIST ar
-           JOIN ALBUM_ARTIST aa ON ar.id_artist = aa.id_artist
-           WHERE aa.id_album = ?
-           ORDER BY ar.name""",
-        (copy_dict["id_album"],)
-    ).fetchall()
-    copy_dict["artists"] = [dict(a) for a in artists]
-    return copy_dict
 
 
 # --------------------------------------------------------------------------
@@ -47,27 +38,14 @@ def get_my_copies():
             "message": "Accesso riservato ai Collector"
         }), 403
 
-    conn = get_db()
-    copies = conn.execute(
-        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
-           FROM PHYSICAL_COPY pc
-           JOIN ALBUM al ON pc.id_album = al.id_album
-           WHERE pc.id_user = ?
-           ORDER BY pc.addedDate DESC""",
-        (g.current_user["id_user"],)
-    ).fetchall()
-    
-    result = []
-    for c in copies:
-        cd = dict(c)
-        _enrich_copy_with_artists(conn, cd)
-        result.append(cd)
-        
-    conn.close()
-    return jsonify({
-        "status": "success",
-        "data": result
-    })
+    try:
+        copies = get_user_copies(g.current_user["id_user"])
+        return jsonify({
+            "status": "success",
+            "data": copies
+        })
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore nel caricamento della collezione"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -83,25 +61,16 @@ def get_copy(copy_id):
             "message": "Accesso riservato ai Collector"
         }), 403
 
-    conn = get_db()
-    copy = conn.execute(
-        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
-           FROM PHYSICAL_COPY pc
-           JOIN ALBUM al ON pc.id_album = al.id_album
-           WHERE pc.id_copy = ? AND pc.id_user = ?""",
-        (copy_id, g.current_user["id_user"])
-    ).fetchone()
-
-    if not copy:
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "Copia fisica non trovata"
-        }), 404
-
-    result = _enrich_copy_with_artists(conn, dict(copy))
-    conn.close()
-    return jsonify({"status": "success", "data": result})
+    try:
+        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+        if not copy:
+            return jsonify({
+                "status": "error",
+                "message": "Copia fisica non trovata"
+            }), 404
+        return jsonify({"status": "success", "data": copy})
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore nel caricamento della copia"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -139,59 +108,107 @@ def create_copy():
             "message": "Il campo 'condition' e' obbligatorio"
         }), 400
 
-    # Verifica che l'album esista
-    conn = get_db()
-    album = conn.execute(
-        "SELECT id_album FROM ALBUM WHERE id_album = ?",
-        (data["id_album"],)
-    ).fetchone()
+    try:
+        # Verifica che l'album esista
+        album = find_album_by_id(data["id_album"])
+        if not album:
+            return jsonify({
+                "status": "error",
+                "message": "Album di riferimento non trovato"
+            }), 404
 
-    if not album:
-        conn.close()
+        personal_notes = data.get("personalNotes")
+        if isinstance(personal_notes, str):
+            personal_notes = personal_notes.strip() or None
+        else:
+            personal_notes = None
+
+        copy_id = insert_copy(
+            id_album=data["id_album"],
+            format_val=data["format"],
+            condition=data["condition"],
+            personal_notes=personal_notes,
+            user_id=g.current_user["id_user"]
+        )
+
+        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+        return jsonify({
+            "status": "success",
+            "message": "Copia fisica aggiunta alla collezione",
+            "data": copy
+        }), 201
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante la creazione della copia"}), 500
+
+
+# --------------------------------------------------------------------------
+# POST /api/copies/cascade
+# Registrazione copia a cascata (crea artista e album se non esistono).
+# Body JSON: { title, artist_name, releaseYear?, genre?, format, condition, personalNotes? }
+# --------------------------------------------------------------------------
+@bp.route("/cascade", methods=["POST"])
+@token_required
+def create_copy_cascade_route():
+    if g.current_user["role"] != "collector":
         return jsonify({
             "status": "error",
-            "message": "Album di riferimento non trovato"
-        }), 404
+            "message": "Accesso riservato ai Collector"
+        }), 403
 
-    added_date = datetime.date.today().isoformat()
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "Nessun dato fornito"}), 400
+
+    title = data.get("title", "").strip()
+    artist_name = data.get("artist_name", "").strip()
+    format_val = data.get("format", "").strip()
+    condition = data.get("condition", "").strip()
+
+    if not title or not artist_name or not format_val or not condition:
+        return jsonify({
+            "status": "error",
+            "message": "I campi titolo, artista, formato e condizione sono obbligatori"
+        }), 400
+
+    release_year = data.get("releaseYear")
+    if release_year:
+        try:
+            release_year = int(release_year)
+        except ValueError:
+            release_year = None
+    else:
+        release_year = None
+
+    genre = data.get("genre", "").strip() or None
     personal_notes = data.get("personalNotes")
     if isinstance(personal_notes, str):
         personal_notes = personal_notes.strip() or None
     else:
         personal_notes = None
 
-    cursor = conn.execute(
-        """INSERT INTO PHYSICAL_COPY
-           (format, condition, addedDate, personalNotes, id_user, id_album)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (
-            data["format"].strip(),
-            data["condition"].strip(),
-            added_date,
-            personal_notes,
-            g.current_user["id_user"],
-            data["id_album"]
+    try:
+        copy_id = create_copy_cascade(
+            title=title,
+            artist_name=artist_name,
+            release_year=release_year,
+            genre=genre,
+            format_val=format_val,
+            condition=condition,
+            personal_notes=personal_notes,
+            user_id=g.current_user["id_user"]
         )
-    )
-    copy_id = cursor.lastrowid
-    conn.commit()
-
-    # Recupera la copia completa
-    copy = conn.execute(
-        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
-           FROM PHYSICAL_COPY pc
-           JOIN ALBUM al ON pc.id_album = al.id_album
-           WHERE pc.id_copy = ?""",
-        (copy_id,)
-    ).fetchone()
-    result = _enrich_copy_with_artists(conn, dict(copy))
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Copia fisica aggiunta alla collezione",
-        "data": result
-    }), 201
+        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+        
+        return jsonify({
+            "status": "success",
+            "message": "Copia fisica aggiunta alla collezione con successo (creazione a cascata)",
+            "data": copy
+        }), 201
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Errore durante l'inserimento a cascata: {str(e)}"
+        }), 500
 
 
 # --------------------------------------------------------------------------
@@ -208,65 +225,42 @@ def update_copy(copy_id):
             "message": "Accesso riservato ai Collector"
         }), 403
 
-    conn = get_db()
-    copy = conn.execute(
-        "SELECT * FROM PHYSICAL_COPY WHERE id_copy = ? AND id_user = ?",
-        (copy_id, g.current_user["id_user"])
-    ).fetchone()
+    try:
+        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+        if not copy:
+            return jsonify({
+                "status": "error",
+                "message": "Copia fisica non trovata"
+            }), 404
 
-    if not copy:
-        conn.close()
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "Nessun dato fornito"}), 400
+
+        fields = []
+        values = []
+        for col in ["format", "condition", "personalNotes"]:
+            if col in data:
+                fields.append(f"{col} = ?")
+                val = data[col]
+                values.append(val.strip() if isinstance(val, str) and val else val)
+
+        if not fields:
+            return jsonify({
+                "status": "error",
+                "message": "Nessun campo valido da aggiornare"
+            }), 400
+
+        update_copy_data(copy_id, fields, values)
+        updated_copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+        
         return jsonify({
-            "status": "error",
-            "message": "Copia fisica non trovata"
-        }), 404
-
-    data = request.get_json()
-    if not data:
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "Nessun dato fornito"
-        }), 400
-
-    fields = []
-    values = []
-    for col in ["format", "condition", "personalNotes"]:
-        if col in data:
-            fields.append(f"{col} = ?")
-            val = data[col]
-            values.append(val.strip() if isinstance(val, str) and val else val)
-
-    if not fields:
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "Nessun campo valido da aggiornare"
-        }), 400
-
-    values.append(copy_id)
-    conn.execute(
-        f"UPDATE PHYSICAL_COPY SET {', '.join(fields)} WHERE id_copy = ?",
-        values
-    )
-    conn.commit()
-
-    # Recupera la copia aggiornata
-    copy = conn.execute(
-        """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
-           FROM PHYSICAL_COPY pc
-           JOIN ALBUM al ON pc.id_album = al.id_album
-           WHERE pc.id_copy = ?""",
-        (copy_id,)
-    ).fetchone()
-    result = _enrich_copy_with_artists(conn, dict(copy))
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Copia fisica aggiornata con successo",
-        "data": result
-    })
+            "status": "success",
+            "message": "Copia fisica aggiornata con successo",
+            "data": updated_copy
+        })
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante l'aggiornamento della copia"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -282,26 +276,18 @@ def delete_copy(copy_id):
             "message": "Accesso riservato ai Collector"
         }), 403
 
-    conn = get_db()
-    copy = conn.execute(
-        "SELECT id_copy FROM PHYSICAL_COPY WHERE id_copy = ? AND id_user = ?",
-        (copy_id, g.current_user["id_user"])
-    ).fetchone()
+    try:
+        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+        if not copy:
+            return jsonify({
+                "status": "error",
+                "message": "Copia fisica non trovata"
+            }), 404
 
-    if not copy:
-        conn.close()
+        delete_copy_by_id(copy_id)
         return jsonify({
-            "status": "error",
-            "message": "Copia fisica non trovata"
-        }), 404
-
-    conn.execute(
-        "DELETE FROM PHYSICAL_COPY WHERE id_copy = ?", (copy_id,)
-    )
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Copia fisica eliminata dalla collezione"
-    })
+            "status": "success",
+            "message": "Copia fisica eliminata dalla collezione"
+        })
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante l'eliminazione della copia"}), 500

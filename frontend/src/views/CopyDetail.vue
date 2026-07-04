@@ -6,6 +6,7 @@ import BackButton from '@/components/BackButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import DetailField from '@/components/DetailField.vue'
+import { FORMAT_OPTIONS as formatOptions, CONDITION_OPTIONS as conditionOptions } from '@/constants/music'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,9 +15,6 @@ const copy = ref(null)
 const loading = ref(true)
 const editing = ref(false)
 const error = ref('')
-
-const formatOptions = ['Vinile', 'CD', 'Cassetta', 'Musicassetta', 'Mini Disc', 'Altro']
-const conditionOptions = ['Mint', 'Near Mint', 'Very Good Plus', 'Very Good', 'Good Plus', 'Good', 'Fair', 'Poor']
 
 const form = ref({ format: '', condition: '', personalNotes: '' })
 

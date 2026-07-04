@@ -5,6 +5,7 @@ import { api } from '@/stores/api'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import AlbumCard from '@/components/AlbumCard.vue'
+import { FORMAT_OPTIONS as formatOptions, CONDITION_OPTIONS as conditionOptions } from '@/constants/music'
 
 const route = useRoute()
 
@@ -22,7 +23,7 @@ const tab = ref('existing') // 'existing' | 'new'
 const form = ref({
   id_album: '',
   format: 'Vinile',
-  condition: 'Mint',
+  condition: 'Nuovo',
   personalNotes: ''
 })
 
@@ -32,12 +33,9 @@ const formNew = ref({
   releaseYear: '',
   genre: '',
   format: 'Vinile',
-  condition: 'Mint',
+  condition: 'Nuovo',
   personalNotes: ''
 })
-
-const formatOptions = ['Vinile', 'CD', 'Cassetta', 'Musicassetta', 'Mini Disc', 'Altro']
-const conditionOptions = ['Mint', 'Near Mint', 'Very Good Plus', 'Very Good', 'Good Plus', 'Good', 'Fair', 'Poor']
 
 const filteredCopies = computed(() => {
   return copies.value.filter(c => {
@@ -76,8 +74,8 @@ onMounted(async () => {
 })
 
 function resetForm() {
-  form.value = { id_album: '', format: 'Vinile', condition: 'Mint', personalNotes: '' }
-  formNew.value = { title: '', artist_name: '', releaseYear: '', genre: '', format: 'Vinile', condition: 'Mint', personalNotes: '' }
+  form.value = { id_album: '', format: 'Vinile', condition: 'Nuovo', personalNotes: '' }
+  formNew.value = { title: '', artist_name: '', releaseYear: '', genre: '', format: 'Vinile', condition: 'Nuovo', personalNotes: '' }
   formError.value = ''
   showForm.value = false
 }
@@ -103,7 +101,7 @@ async function handleCreate() {
       copies.value.unshift(res.data)
       resetForm()
     } else {
-      // TAB 'new' - Creazione a cascata
+      // TAB 'new' - Creazione a cascata tramite singola API transazionale
       const title = formNew.value.title.trim()
       const artistName = formNew.value.artist_name.trim()
       const format = formNew.value.format
@@ -115,49 +113,26 @@ async function handleCreate() {
         return
       }
       
-      // 1. Cerca o crea Artista
-      let artistId = null
-      const existingArtist = artists.value.find(
-        a => a.name.toLowerCase() === artistName.toLowerCase()
-      )
-      
-      if (existingArtist) {
-        artistId = existingArtist.id_artist
-      } else {
-        const newArtistRes = await api.post('/artists', { name: artistName })
-        artists.value.unshift(newArtistRes.data)
-        artistId = newArtistRes.data.id_artist
-      }
-      
-      // 2. Cerca o crea Album
-      let albumId = null
-      const existingAlbum = albums.value.find(
-        a => a.title.toLowerCase() === title.toLowerCase() && 
-             a.artists?.some(art => art.id_artist === artistId)
-      )
-      
-      if (existingAlbum) {
-        albumId = existingAlbum.id_album
-      } else {
-        const newAlbumRes = await api.post('/albums', {
-          title: title,
-          releaseYear: formNew.value.releaseYear ? parseInt(formNew.value.releaseYear) : null,
-          genre: formNew.value.genre || null,
-          artist_ids: [artistId]
-        })
-        albums.value.unshift(newAlbumRes.data)
-        albumId = newAlbumRes.data.id_album
-      }
-      
-      // 3. Aggiungi Copia Fisica
-      const copyRes = await api.post('/copies', {
-        id_album: albumId,
+      const res = await api.post('/copies/cascade', {
+        title: title,
+        artist_name: artistName,
+        releaseYear: formNew.value.releaseYear ? parseInt(formNew.value.releaseYear) : null,
+        genre: formNew.value.genre || null,
         format: format,
         condition: condition,
         personalNotes: formNew.value.personalNotes || null
       })
       
-      copies.value.unshift(copyRes.data)
+      copies.value.unshift(res.data)
+      
+      // Sincronizza lo stato degli album e artisti per consentire selezioni successive dal catalogo
+      const [albumsRes, artistsRes] = await Promise.all([
+        api.get('/albums'),
+        api.get('/artists')
+      ])
+      albums.value = albumsRes.data
+      artists.value = artistsRes.data
+      
       resetForm()
     }
   } catch (err) {

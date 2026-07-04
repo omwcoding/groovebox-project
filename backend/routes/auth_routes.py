@@ -9,7 +9,7 @@ from flask import Blueprint, request, jsonify, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import datetime
-from database import get_db
+from dal.user_dal import insert_collector, get_user_by_username
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -40,19 +40,9 @@ def register():
     # Hash della password
     password_hash = generate_password_hash(password)
 
-    conn = get_db()
     try:
-        conn.execute(
-            """INSERT INTO USER (username, name, surname, email, passwordHash, role)
-               VALUES (?, ?, ?, ?, ?, 'collector')""",
-            (username, name, surname, email, password_hash)
-        )
-        conn.commit()
-        user_id = conn.execute(
-            "SELECT last_insert_rowid()"
-        ).fetchone()[0]
+        user_id = insert_collector(username, name, surname, email, password_hash)
     except Exception as e:
-        conn.close()
         error_msg = str(e).lower()
         if "unique" in error_msg and "username" in error_msg:
             return jsonify({
@@ -68,8 +58,6 @@ def register():
             "status": "error",
             "message": "Errore durante la registrazione"
         }), 500
-    finally:
-        conn.close()
 
     return jsonify({
         "status": "success",
@@ -95,12 +83,13 @@ def login():
             "message": "Username e password sono obbligatori"
         }), 400
 
-    conn = get_db()
-    user = conn.execute(
-        "SELECT * FROM USER WHERE username = ?",
-        (data["username"].strip(),)
-    ).fetchone()
-    conn.close()
+    try:
+        user = get_user_by_username(data["username"])
+    except Exception:
+        return jsonify({
+            "status": "error",
+            "message": "Errore interno durante il login"
+        }), 500
 
     if not user or not check_password_hash(user["passwordHash"], data["password"]):
         return jsonify({

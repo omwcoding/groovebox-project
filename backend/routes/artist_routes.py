@@ -10,7 +10,14 @@ Matrice di visibilita' (doc 3.4):
 
 from flask import Blueprint, request, jsonify, g
 from auth import token_required
-from database import get_db
+from dal.artist_dal import (
+    get_all_artists,
+    find_artist_by_id,
+    get_artist_albums,
+    insert_artist,
+    update_artist_name,
+    delete_artist_by_id
+)
 
 bp = Blueprint("artists", __name__, url_prefix="/api/artists")
 
@@ -22,16 +29,14 @@ bp = Blueprint("artists", __name__, url_prefix="/api/artists")
 @bp.route("", methods=["GET"])
 @token_required
 def get_artists():
-    conn = get_db()
-    artists = conn.execute(
-        "SELECT * FROM ARTIST ORDER BY name"
-    ).fetchall()
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "data": [dict(a) for a in artists]
-    })
+    try:
+        artists = get_all_artists()
+        return jsonify({
+            "status": "success",
+            "data": [dict(a) for a in artists]
+        })
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore nel caricamento degli artisti"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -41,34 +46,21 @@ def get_artists():
 @bp.route("/<int:artist_id>", methods=["GET"])
 @token_required
 def get_artist(artist_id):
-    conn = get_db()
-    artist = conn.execute(
-        "SELECT * FROM ARTIST WHERE id_artist = ?", (artist_id,)
-    ).fetchone()
+    try:
+        artist = find_artist_by_id(artist_id)
+        if not artist:
+            return jsonify({
+                "status": "error",
+                "message": "Artista non trovato"
+            }), 404
 
-    if not artist:
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "Artista non trovato"
-        }), 404
+        result = dict(artist)
+        albums = get_artist_albums(artist_id)
+        result["albums"] = [dict(al) for al in albums]
 
-    result = dict(artist)
-
-    # Includi gli album associati
-    albums = conn.execute(
-        """SELECT al.id_album, al.title, al.releaseYear, al.genre
-           FROM ALBUM al
-           JOIN ALBUM_ARTIST aa ON al.id_album = aa.id_album
-           WHERE aa.id_artist = ?
-           ORDER BY al.releaseYear""",
-        (artist_id,)
-    ).fetchall()
-    conn.close()
-
-    result["albums"] = [dict(al) for al in albums]
-
-    return jsonify({"status": "success", "data": result})
+        return jsonify({"status": "success", "data": result})
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore nel caricamento dell'artista"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -89,22 +81,18 @@ def create_artist():
 
     name = data["name"].strip()
 
-    conn = get_db()
-    cursor = conn.execute(
-        "INSERT INTO ARTIST (name) VALUES (?)", (name,)
-    )
-    artist_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Artista creato con successo",
-        "data": {
-            "id_artist": artist_id,
-            "name": name
-        }
-    }), 201
+    try:
+        artist_id = insert_artist(name)
+        return jsonify({
+            "status": "success",
+            "message": "Artista creato con successo",
+            "data": {
+                "id_artist": artist_id,
+                "name": name
+            }
+        }), 201
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante la creazione dell'artista"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -121,47 +109,35 @@ def update_artist(artist_id):
             "message": "Solo gli amministratori possono modificare gli artisti"
         }), 403
 
-    conn = get_db()
-    artist = conn.execute(
-        "SELECT * FROM ARTIST WHERE id_artist = ?", (artist_id,)
-    ).fetchone()
+    try:
+        artist = find_artist_by_id(artist_id)
+        if not artist:
+            return jsonify({
+                "status": "error",
+                "message": "Artista non trovato"
+            }), 404
 
-    if not artist:
-        conn.close()
+        data = request.get_json()
+        if not data or not data.get("name", "").strip():
+            return jsonify({
+                "status": "error",
+                "message": "Il campo 'name' e' obbligatorio"
+            }), 400
+
+        updated_artist = update_artist_name(artist_id, data["name"])
         return jsonify({
-            "status": "error",
-            "message": "Artista non trovato"
-        }), 404
-
-    data = request.get_json()
-    if not data or not data.get("name", "").strip():
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "Il campo 'name' e' obbligatorio"
-        }), 400
-
-    conn.execute(
-        "UPDATE ARTIST SET name = ? WHERE id_artist = ?",
-        (data["name"].strip(), artist_id)
-    )
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Artista aggiornato con successo",
-        "data": {
-            "id_artist": artist_id,
-            "name": data["name"].strip()
-        }
-    })
+            "status": "success",
+            "message": "Artista aggiornato con successo",
+            "data": updated_artist
+        })
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante l'aggiornamento dell'artista"}), 500
 
 
 # --------------------------------------------------------------------------
 # DELETE /api/artists/<id>
 # Elimina un artista (solo Admin).
-# Rimuove anche le associazioni ALBUM_ARTIST collegate.
+# Rimuove anche le associazioni ALBUM_ARTIST collegate (via ON DELETE CASCADE).
 # --------------------------------------------------------------------------
 @bp.route("/<int:artist_id>", methods=["DELETE"])
 @token_required
@@ -172,25 +148,18 @@ def delete_artist(artist_id):
             "message": "Solo gli amministratori possono eliminare gli artisti"
         }), 403
 
-    conn = get_db()
-    artist = conn.execute(
-        "SELECT id_artist FROM ARTIST WHERE id_artist = ?", (artist_id,)
-    ).fetchone()
+    try:
+        artist = find_artist_by_id(artist_id)
+        if not artist:
+            return jsonify({
+                "status": "error",
+                "message": "Artista non trovato"
+            }), 404
 
-    if not artist:
-        conn.close()
+        delete_artist_by_id(artist_id)
         return jsonify({
-            "status": "error",
-            "message": "Artista non trovato"
-        }), 404
-
-    # Eliminazione a cascata manuale
-    conn.execute("DELETE FROM ALBUM_ARTIST WHERE id_artist = ?", (artist_id,))
-    conn.execute("DELETE FROM ARTIST WHERE id_artist = ?", (artist_id,))
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Artista eliminato con successo"
-    })
+            "status": "success",
+            "message": "Artista eliminato con successo"
+        })
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante l'eliminazione dell'artista"}), 500

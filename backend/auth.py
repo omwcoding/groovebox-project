@@ -52,13 +52,14 @@ def token_required(f):
             }), 401
 
         # Verifica che l'utente esista ancora nel database
-        conn = get_db()
-        user = conn.execute(
-            "SELECT id_user, username, name, surname, email, role "
-            "FROM USER WHERE id_user = ?",
-            (payload["id_user"],)
-        ).fetchone()
-        conn.close()
+        from dal.user_dal import get_user_by_id
+        try:
+            user = get_user_by_id(payload["id_user"])
+        except Exception:
+            return jsonify({
+                "status": "error",
+                "message": "Errore interno del server"
+            }), 500
 
         if not user:
             return jsonify({

@@ -7,16 +7,22 @@ Matrice di visibilita' (doc 3.4):
   Collector     -> ALBUM: ALL scope, CR__  (crea e consulta)
   Administrator -> ALBUM: ALL scope, CRUD  (gestione completa catalogo)
 
-Gestisce anche la relazione PUBLISHES (ALBUM_ARTIST) in modo trasparente:
-  - In lettura: ogni album include la lista dei suoi artisti.
-  - In scrittura: accetta un array artist_ids per creare le associazioni.
+Gestisce anche la relazione PUBLISHES (ALBUM_ARTIST) in modo trasparente.
 """
 
 from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
 from auth import token_required
-from database import get_db
-import os, uuid
-from werkzeug.utils import secure_filename
+from dal.album_dal import (
+    get_all_albums,
+    find_album_by_id,
+    insert_album,
+    update_album_data,
+    delete_album_by_id,
+    update_album_cover
+)
+from dal.artist_dal import find_artist_by_id
+import os
+import uuid
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
@@ -27,45 +33,17 @@ bp = Blueprint("albums", __name__, url_prefix="/api/albums")
 
 
 # --------------------------------------------------------------------------
-# Helper: arricchisce un dizionario album con la lista dei suoi artisti
-# --------------------------------------------------------------------------
-def _enrich_album_with_artists(conn, album_dict):
-    """Aggiunge la chiave 'artists' (lista) al dizionario dell'album."""
-    artists = conn.execute(
-        """SELECT ar.id_artist, ar.name
-           FROM ARTIST ar
-           JOIN ALBUM_ARTIST aa ON ar.id_artist = aa.id_artist
-           WHERE aa.id_album = ?
-           ORDER BY ar.name""",
-        (album_dict["id_album"],)
-    ).fetchall()
-    album_dict["artists"] = [dict(a) for a in artists]
-    return album_dict
-
-
-# --------------------------------------------------------------------------
 # GET /api/albums
 # Restituisce tutti gli album del catalogo (Collector + Admin).
 # --------------------------------------------------------------------------
 @bp.route("", methods=["GET"])
 @token_required
 def get_albums():
-    conn = get_db()
-    albums = conn.execute(
-        "SELECT al.*, us.username AS creator_username "
-        "FROM ALBUM al "
-        "LEFT JOIN USER us ON al.id_user = us.id_user "
-        "ORDER BY al.title"
-    ).fetchall()
-
-    result = []
-    for album in albums:
-        a = dict(album)
-        _enrich_album_with_artists(conn, a)
-        result.append(a)
-
-    conn.close()
-    return jsonify({"status": "success", "data": result})
+    try:
+        albums = get_all_albums()
+        return jsonify({"status": "success", "data": albums})
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore nel caricamento degli album"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -75,24 +53,13 @@ def get_albums():
 @bp.route("/<int:album_id>", methods=["GET"])
 @token_required
 def get_album(album_id):
-    conn = get_db()
-    album = conn.execute(
-        "SELECT al.*, us.username AS creator_username "
-        "FROM ALBUM al "
-        "LEFT JOIN USER us ON al.id_user = us.id_user "
-        "WHERE al.id_album = ?", (album_id,)
-    ).fetchone()
-
-    if not album:
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "Album non trovato"
-        }), 404
-
-    result = _enrich_album_with_artists(conn, dict(album))
-    conn.close()
-    return jsonify({"status": "success", "data": result})
+    try:
+        album = find_album_by_id(album_id)
+        if not album:
+            return jsonify({"status": "error", "message": "Album non trovato"}), 404
+        return jsonify({"status": "success", "data": album})
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore nel caricamento dell'album"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -121,52 +88,26 @@ def create_album():
     genre = data.get("genre", "").strip() or None
     artist_ids = data.get("artist_ids", [])
 
-    conn = get_db()
+    try:
+        # Verifica che gli artist_ids esistano
+        for aid in artist_ids:
+            artist = find_artist_by_id(aid)
+            if not artist:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Artista con id {aid} non trovato"
+                }), 404
 
-    # Verifica che gli artist_ids esistano
-    for aid in artist_ids:
-        artist = conn.execute(
-            "SELECT id_artist FROM ARTIST WHERE id_artist = ?", (aid,)
-        ).fetchone()
-        if not artist:
-            conn.close()
-            return jsonify({
-                "status": "error",
-                "message": f"Artista con id {aid} non trovato"
-            }), 404
-
-    # Inserimento album
-    cursor = conn.execute(
-        """INSERT INTO ALBUM (title, releaseYear, genre, coverPath, id_user)
-           VALUES (?, ?, ?, NULL, ?)""",
-        (title, release_year, genre, g.current_user["id_user"])
-    )
-    album_id = cursor.lastrowid
-
-    # Creazione associazioni ALBUM_ARTIST
-    for aid in artist_ids:
-        conn.execute(
-            "INSERT INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)",
-            (album_id, aid)
-        )
-
-    conn.commit()
-
-    # Recupera l'album completo per la risposta
-    album = conn.execute(
-        "SELECT al.*, us.username AS creator_username "
-        "FROM ALBUM al "
-        "LEFT JOIN USER us ON al.id_user = us.id_user "
-        "WHERE al.id_album = ?", (album_id,)
-    ).fetchone()
-    result = _enrich_album_with_artists(conn, dict(album))
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Album inserito nel catalogo con successo",
-        "data": result
-    }), 201
+        album_id = insert_album(title, release_year, genre, artist_ids, g.current_user["id_user"])
+        album = find_album_by_id(album_id)
+        
+        return jsonify({
+            "status": "success",
+            "message": "Album inserito nel catalogo con successo",
+            "data": album
+        }), 201
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante la creazione dell'album"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -183,89 +124,50 @@ def update_album(album_id):
             "message": "Solo gli amministratori possono modificare gli album"
         }), 403
 
-    conn = get_db()
-    album = conn.execute(
-        "SELECT * FROM ALBUM WHERE id_album = ?", (album_id,)
-    ).fetchone()
+    try:
+        album = find_album_by_id(album_id)
+        if not album:
+            return jsonify({"status": "error", "message": "Album non trovato"}), 404
 
-    if not album:
-        conn.close()
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "Nessun dato fornito"}), 400
+
+        # Aggiornamento campi
+        fields = []
+        values = []
+        for col in ["title", "releaseYear", "genre"]:
+            if col in data:
+                fields.append(f"{col} = ?")
+                val = data[col]
+                values.append(val.strip() if isinstance(val, str) else val)
+
+        artist_ids = None
+        if "artist_ids" in data:
+            artist_ids = data["artist_ids"]
+            # Verifica esistenza artisti
+            for aid in artist_ids:
+                a = find_artist_by_id(aid)
+                if not a:
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Artista con id {aid} non trovato"
+                    }), 404
+
+        updated_album = update_album_data(album_id, fields, values, artist_ids)
         return jsonify({
-            "status": "error",
-            "message": "Album non trovato"
-        }), 404
-
-    data = request.get_json()
-    if not data:
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "Nessun dato fornito"
-        }), 400
-
-    # Aggiornamento campi
-    fields = []
-    values = []
-    for col in ["title", "releaseYear", "genre"]:
-        if col in data:
-            fields.append(f"{col} = ?")
-            val = data[col]
-            values.append(val.strip() if isinstance(val, str) else val)
-
-    if fields:
-        values.append(album_id)
-        conn.execute(
-            f"UPDATE ALBUM SET {', '.join(fields)} WHERE id_album = ?",
-            values
-        )
-
-    # Aggiornamento associazioni artisti (se forniti)
-    if "artist_ids" in data:
-        # Verifica esistenza artisti
-        for aid in data["artist_ids"]:
-            a = conn.execute(
-                "SELECT id_artist FROM ARTIST WHERE id_artist = ?", (aid,)
-            ).fetchone()
-            if not a:
-                conn.close()
-                return jsonify({
-                    "status": "error",
-                    "message": f"Artista con id {aid} non trovato"
-                }), 404
-
-        # Ricrea le associazioni
-        conn.execute(
-            "DELETE FROM ALBUM_ARTIST WHERE id_album = ?", (album_id,)
-        )
-        for aid in data["artist_ids"]:
-            conn.execute(
-                "INSERT INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)",
-                (album_id, aid)
-            )
-
-    conn.commit()
-
-    # Recupera album aggiornato
-    album = conn.execute(
-        "SELECT al.*, us.username AS creator_username "
-        "FROM ALBUM al "
-        "LEFT JOIN USER us ON al.id_user = us.id_user "
-        "WHERE al.id_album = ?", (album_id,)
-    ).fetchone()
-    result = _enrich_album_with_artists(conn, dict(album))
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Album aggiornato con successo",
-        "data": result
-    })
+            "status": "success",
+            "message": "Album aggiornato con successo",
+            "data": updated_album
+        })
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante la modifica dell'album"}), 500
 
 
 # --------------------------------------------------------------------------
 # DELETE /api/albums/<id>
 # Elimina un album dal catalogo (solo Admin).
-# Rimuove anche le associazioni ALBUM_ARTIST e le PHYSICAL_COPY collegate.
+# Rimuove anche le associazioni ALBUM_ARTIST e le PHYSICAL_COPY collegate (via ON DELETE CASCADE).
 # --------------------------------------------------------------------------
 @bp.route("/<int:album_id>", methods=["DELETE"])
 @token_required
@@ -276,29 +178,19 @@ def delete_album(album_id):
             "message": "Solo gli amministratori possono eliminare gli album"
         }), 403
 
-    conn = get_db()
-    album = conn.execute(
-        "SELECT id_album FROM ALBUM WHERE id_album = ?", (album_id,)
-    ).fetchone()
+    try:
+        album = find_album_by_id(album_id)
+        if not album:
+            return jsonify({"status": "error", "message": "Album non trovato"}), 404
 
-    if not album:
-        conn.close()
+        delete_album_by_id(album_id)
         return jsonify({
-            "status": "error",
-            "message": "Album non trovato"
-        }), 404
+            "status": "success",
+            "message": "Album eliminato dal catalogo con successo"
+        })
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante l'eliminazione dell'album"}), 500
 
-    # Eliminazione a cascata manuale (FK senza ON DELETE CASCADE)
-    conn.execute("DELETE FROM ALBUM_ARTIST WHERE id_album = ?", (album_id,))
-    conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_album = ?", (album_id,))
-    conn.execute("DELETE FROM ALBUM WHERE id_album = ?", (album_id,))
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Album eliminato dal catalogo con successo"
-    })
 
 # --------------------------------------------------------------------------
 # POST /api/albums/<id>/cover
@@ -308,48 +200,42 @@ def delete_album(album_id):
 @bp.route("/<int:album_id>/cover", methods=["POST"])
 @token_required
 def upload_cover(album_id):
-    conn = get_db()
-    album = conn.execute("SELECT * FROM ALBUM WHERE id_album = ?", (album_id,)).fetchone()
-    if not album:
-        conn.close()
-        return jsonify({"status": "error", "message": "Album non trovato"}), 404
+    try:
+        album = find_album_by_id(album_id)
+        if not album:
+            return jsonify({"status": "error", "message": "Album non trovato"}), 404
 
-    role = g.current_user["role"]
-    if role == "collector" and album["id_user"] != g.current_user["id_user"]:
-        conn.close()
-        return jsonify({"status": "error", "message": "Non autorizzato"}), 403
-    if role not in ("collector", "administrator"):
-        conn.close()
-        return jsonify({"status": "error", "message": "Non autorizzato"}), 403
+        role = g.current_user["role"]
+        if role == "collector" and album["id_user"] != g.current_user["id_user"]:
+            return jsonify({"status": "error", "message": "Non autorizzato"}), 403
+        if role not in ("collector", "administrator"):
+            return jsonify({"status": "error", "message": "Non autorizzato"}), 403
 
-    if "file" not in request.files:
-        conn.close()
-        return jsonify({"status": "error", "message": "Nessun file fornito"}), 400
+        if "file" not in request.files:
+            return jsonify({"status": "error", "message": "Nessun file fornito"}), 400
 
-    file = request.files["file"]
-    if file.filename == "" or not _allowed(file.filename):
-        conn.close()
-        return jsonify({"status": "error", "message": "Formato non supportato (jpg, png, webp)"}), 400
+        file = request.files["file"]
+        if file.filename == "" or not _allowed(file.filename):
+            return jsonify({"status": "error", "message": "Formato non supportato (jpg, png, webp)"}), 400
 
-    upload_dir = os.path.join(current_app.root_path, "uploads", "covers")
-    os.makedirs(upload_dir, exist_ok=True)
+        upload_dir = os.path.join(current_app.root_path, "uploads", "covers")
+        os.makedirs(upload_dir, exist_ok=True)
 
-    ext = file.filename.rsplit(".", 1)[1].lower()
-    filename = f"album_{album_id}_{uuid.uuid4().hex[:8]}.{ext}"
-    file.save(os.path.join(upload_dir, filename))
+        ext = file.filename.rsplit(".", 1)[1].lower()
+        filename = f"album_{album_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        file.save(os.path.join(upload_dir, filename))
 
-    # Rimuove copertina precedente se diversa
-    old = album["coverPath"]
-    if old and old != filename:
-        old_path = os.path.join(upload_dir, old)
-        if os.path.exists(old_path):
-            os.remove(old_path)
+        # Rimuove copertina precedente se diversa
+        old = album.get("coverPath")
+        if old and old != filename:
+            old_path = os.path.join(upload_dir, old)
+            if os.path.exists(old_path):
+                os.remove(old_path)
 
-    conn.execute("UPDATE ALBUM SET coverPath = ? WHERE id_album = ?", (filename, album_id))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"status": "success", "coverPath": filename}), 200
+        update_album_cover(album_id, filename)
+        return jsonify({"status": "success", "coverPath": filename}), 200
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante il caricamento della copertina"}), 500
 
 
 # --------------------------------------------------------------------------
@@ -358,10 +244,11 @@ def upload_cover(album_id):
 # --------------------------------------------------------------------------
 @bp.route("/<int:album_id>/cover", methods=["GET"])
 def get_cover(album_id):
-    conn = get_db()
-    row = conn.execute("SELECT coverPath FROM ALBUM WHERE id_album = ?", (album_id,)).fetchone()
-    conn.close()
-    if not row or not row["coverPath"]:
-        return jsonify({"status": "error", "message": "Nessuna copertina"}), 404
-    upload_dir = os.path.join(current_app.root_path, "uploads", "covers")
-    return send_from_directory(upload_dir, row["coverPath"])
+    try:
+        album = find_album_by_id(album_id)
+        if not album or not album.get("coverPath"):
+            return jsonify({"status": "error", "message": "Nessuna copertina"}), 404
+        upload_dir = os.path.join(current_app.root_path, "uploads", "covers")
+        return send_from_directory(upload_dir, album["coverPath"])
+    except Exception:
+        return jsonify({"status": "error", "message": "Errore durante il caricamento dell'immagine"}), 500
