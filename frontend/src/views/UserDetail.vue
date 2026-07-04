@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/stores/api'
+import BackButton from '@/components/BackButton.vue'
+import DetailField from '@/components/DetailField.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,13 +37,7 @@ async function handleDelete() {
 <template>
   <div class="space-y-6 animate-fade-in max-w-3xl mx-auto">
     <!-- Back button -->
-    <button 
-      @click="router.back()" 
-      class="inline-flex items-center gap-2 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      Indietro
-    </button>
+    <BackButton />
 
     <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
       <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
@@ -50,7 +46,7 @@ async function handleDelete() {
     
     <div v-else-if="error && !user" class="py-20 text-center text-rose-400 font-semibold">{{ error }}</div>
 
-    <div v-else-if="user" class="glass-panel p-8 rounded-apple-2xl shadow-2xl border border-white/10 relative">
+    <div v-if="user" class="glass-panel p-8 rounded-apple-2xl shadow-2xl border border-white/10 relative">
       <div v-if="error" class="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
         {{ error }}
       </div>
@@ -73,23 +69,19 @@ async function handleDelete() {
 
       <!-- Informazioni dettagliate -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6 border-b border-white/5 text-sm">
-        <div class="space-y-1">
-          <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Indirizzo Email</p>
-          <p class="font-semibold text-white/80">{{ user.email }}</p>
-        </div>
-        <div class="space-y-1">
-          <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Ruolo Account</p>
-          <span class="inline-flex px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold rounded-full mt-0.5">
+        <DetailField label="Indirizzo Email" :value="user.email" />
+        <DetailField label="Ruolo Account">
+          <span class="inline-flex px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold rounded-full">
             {{ user.role }}
           </span>
-        </div>
+        </DetailField>
       </div>
 
       <!-- Azioni Moderazione Admin -->
       <div class="flex gap-3 pt-6">
         <button @click="handleDelete"
           class="apple-button apple-button-secondary py-2.5 text-sm !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
-          Elimina {{ user.username }} definitamente
+          Elimina definitamente
         </button>
       </div>
     </div>

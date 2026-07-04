@@ -3,6 +3,10 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/stores/api'
+import BackButton from '@/components/BackButton.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import ErrorMessage from '@/components/ErrorMessage.vue'
+import DetailField from '@/components/DetailField.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,23 +81,15 @@ async function handleDelete() {
 <template>
   <div class="space-y-6 animate-fade-in max-w-4xl mx-auto">
     <!-- Back link -->
-    <RouterLink to="/albums" class="inline-flex items-center gap-2 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      Torna al catalogo
-    </RouterLink>
+    <BackButton to="/albums" label="Torna al catalogo" />
 
-    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
-      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
-    </div>
+    <LoadingSpinner v-if="loading" />
     
     <div v-else-if="error && !album" class="py-20 text-center text-rose-400 font-semibold">{{ error }}</div>
 
     <div v-else-if="album" class="glass-panel rounded-apple-2xl overflow-hidden shadow-2xl border border-white/10 relative">
       <!-- Errore inline -->
-      <div v-if="error" class="m-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
-        {{ error }}
-      </div>
+      <ErrorMessage v-if="error" :message="error" />
 
       <!-- Vista lettura -->
       <div v-if="!editing" class="flex flex-col md:flex-row">
@@ -125,20 +121,13 @@ async function handleDelete() {
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-6 border-t border-white/5">
-              <div class="space-y-1">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Anno di uscita</p>
-                <p class="font-semibold text-white/80">{{ album.releaseYear || '—' }}</p>
-              </div>
-              <div class="space-y-1">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Genere</p>
-                <p class="font-semibold text-white/80">{{ album.genre || '—' }}</p>
-              </div>
-              <div v-if="authStore.isAdmin" class="space-y-1 col-span-2 sm:col-span-1">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Inserito da</p>
+              <DetailField label="Anno di uscita" :value="album.releaseYear" />
+              <DetailField label="Genere" :value="album.genre" />
+              <DetailField v-if="authStore.isAdmin" label="Inserito da" class="col-span-2 sm:col-span-1">
                 <RouterLink :to="`/users/${album.id_user}`" class="font-semibold text-brand-secondary hover:underline">
                   @{{ album.creator_username || 'Sistema' }}
                 </RouterLink>
-              </div>
+              </DetailField>
             </div>
           </div>
 

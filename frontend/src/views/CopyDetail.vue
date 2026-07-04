@@ -2,6 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { api } from '@/stores/api'
+import BackButton from '@/components/BackButton.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import ErrorMessage from '@/components/ErrorMessage.vue'
+import DetailField from '@/components/DetailField.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -63,22 +67,15 @@ async function handleDelete() {
 
 <template>
   <div class="space-y-6 animate-fade-in max-w-4xl mx-auto">
-    <RouterLink to="/collection" class="inline-flex items-center gap-2 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      Torna alla collezione
-    </RouterLink>
+    <!-- Back button -->
+    <BackButton to="/collection" label="Torna alla collezione" />
 
-    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
-      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
-    </div>
+    <LoadingSpinner v-if="loading" />
     
     <div v-else-if="error && !copy" class="py-20 text-center text-rose-400 font-semibold">{{ error }}</div>
 
     <div v-else-if="copy" class="glass-panel rounded-apple-2xl overflow-hidden shadow-2xl border border-white/10 relative">
-      <div v-if="error" class="m-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
-        {{ error }}
-      </div>
+      <ErrorMessage v-if="error" :message="error" />
 
       <!-- Vista lettura -->
       <div v-if="!editing" class="flex flex-col md:flex-row">
@@ -122,21 +119,16 @@ async function handleDelete() {
             </div>
 
             <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/5 text-sm">
-              <div class="space-y-1">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Genere</p>
-                <p class="font-semibold text-white/80">{{ copy.genre || '—' }}</p>
-              </div>
-              <div class="space-y-1">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Aggiunto il</p>
-                <p class="font-semibold text-white/80">{{ copy.addedDate }}</p>
-              </div>
+              <DetailField label="Genere" :value="copy.genre" />
+              <DetailField label="Acquisito il" :value="copy.addedDate" />
             </div>
 
             <div v-if="copy.personalNotes" class="pt-6 border-t border-white/5 space-y-2">
-              <p class="text-[10px] font-bold uppercase tracking-widest text-white/30">Note personali</p>
-              <p class="text-sm text-white/60 leading-relaxed italic bg-white/5 border border-white/5 rounded-2xl p-4">
-                "{{ copy.personalNotes }}"
-              </p>
+              <DetailField label="Note personali">
+                <p class="text-sm text-white/60 leading-relaxed italic bg-white/5 border border-white/5 rounded-2xl p-4">
+                  "{{ copy.personalNotes }}"
+                </p>
+              </DetailField>
             </div>
           </div>
 

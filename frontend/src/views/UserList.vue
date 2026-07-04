@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { api } from '@/stores/api'
 import { RouterLink } from 'vue-router'
+import PageHeader from '@/components/PageHeader.vue'
 
 const users = ref([])
 const loading = ref(true)
 const error = ref('')
+
 
 onMounted(async () => {
   try {
@@ -21,21 +23,11 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-8 animate-fade-in">
-    <div class="space-y-1">
-      <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
-        Gestione Utenti
-      </h1>
-      <p class="text-white/40 text-lg font-medium">{{ users.length }} collezionisti registrati in piattaforma.</p>
-    </div>
+    <PageHeader title="Gestione Utenti" :subtitle="`${users.length} collezionisti registrati in piattaforma.`" />
 
-    <div v-if="error" class="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
-      {{ error }}
-    </div>
+    <ErrorMessage v-if="error" :message="error" />
 
-    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
-      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
-    </div>
+    <LoadingSpinner v-if="loading" />
 
     <div v-else-if="users.length > 0" class="glass-panel rounded-apple-2xl overflow-hidden shadow-2xl">
       <div class="overflow-x-auto">

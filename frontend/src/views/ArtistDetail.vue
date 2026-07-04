@@ -3,6 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/stores/api'
+import BackButton from '@/components/BackButton.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import ErrorMessage from '@/components/ErrorMessage.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,25 +56,14 @@ async function handleDelete() {
 
 <template>
   <div class="space-y-6 animate-fade-in max-w-3xl mx-auto">
-    <button 
-      @click="router.back()" 
-      class="inline-flex items-center gap-2 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity cursor-pointer"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      Indietro
-    </button>
+    <BackButton />
 
-    <div v-if="loading" class="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
-      <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-      <p class="text-sm font-semibold tracking-widest uppercase">Caricamento</p>
-    </div>
+    <LoadingSpinner v-if="loading" />
     
     <div v-else-if="error && !artist" class="py-20 text-center text-rose-400 font-semibold">{{ error }}</div>
 
     <div v-else-if="artist" class="glass-panel p-8 rounded-apple-2xl shadow-2xl border border-white/10 relative">
-      <div v-if="error" class="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
-        {{ error }}
-      </div>
+      <ErrorMessage v-if="error" :message="error" />
 
       <!-- Header artista -->
       <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-white/5">
