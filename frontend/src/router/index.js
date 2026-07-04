@@ -8,21 +8,22 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-// --- Views ---
+// --- Views (Lazy Loaded for optimization) ---
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
-import RegisterView from '@/views/RegisterView.vue'
-import DashboardView from '@/views/DashboardView.vue'
-import AlbumCatalog from '@/views/AlbumCatalog.vue'
-import AlbumDetail from '@/views/AlbumDetail.vue'
-import ArtistCatalog from '@/views/ArtistCatalog.vue'
-import ArtistDetail from '@/views/ArtistDetail.vue'
-import CollectionView from '@/views/CollectionView.vue'
-import CopyDetail from '@/views/CopyDetail.vue'
-import UserList from '@/views/UserList.vue'
-import UserDetail from '@/views/UserDetail.vue'
-import ProfileView from '@/views/ProfileView.vue'
-import StatsView from '@/views/StatsView.vue'
+
+const RegisterView = () => import('@/views/RegisterView.vue')
+const DashboardView = () => import('@/views/DashboardView.vue')
+const AlbumCatalog = () => import('@/views/AlbumCatalog.vue')
+const AlbumDetail = () => import('@/views/AlbumDetail.vue')
+const ArtistCatalog = () => import('@/views/ArtistCatalog.vue')
+const ArtistDetail = () => import('@/views/ArtistDetail.vue')
+const CollectionView = () => import('@/views/CollectionView.vue')
+const CopyDetail = () => import('@/views/CopyDetail.vue')
+const UserList = () => import('@/views/UserList.vue')
+const UserDetail = () => import('@/views/UserDetail.vue')
+const ProfileView = () => import('@/views/ProfileView.vue')
+const StatsView = () => import('@/views/StatsView.vue')
 
 // --- Definizione rotte ---
 const routes = [

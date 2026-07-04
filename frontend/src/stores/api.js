@@ -25,6 +25,15 @@ async function request(endpoint, options = {}) {
     headers
   })
 
+  // Se il server risponde 401, il token JWT è scaduto o non valido.
+  // Forza la pulizia del token e reindirizza alla pagina di login.
+  if (response.status === 401) {
+    localStorage.removeItem('groovebox_token')
+    // Usiamo location.href per rinfrescare lo stato complessivo dell'applicazione
+    window.location.href = '/login'
+    return
+  }
+
   const data = await response.json()
 
   if (!response.ok) {
