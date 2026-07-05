@@ -41,7 +41,8 @@ const filteredCopies = computed(() => {
   return copies.value.filter(c => {
     const matchesSearch = !search.value.trim() || 
       c.album_title?.toLowerCase().includes(search.value.toLowerCase()) ||
-      c.genre?.toLowerCase().includes(search.value.toLowerCase())
+      c.genre?.toLowerCase().includes(search.value.toLowerCase()) ||
+      c.artists?.some(ar => ar.name.toLowerCase().includes(search.value.toLowerCase()))
     
     const matchesFormat = !filterFormat.value || c.format === filterFormat.value
     

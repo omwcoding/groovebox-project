@@ -61,6 +61,9 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('groovebox_user', JSON.stringify(user.value))
   }
 
+  // Ripristina la sessione immediatamente alla creazione dello store
+  loadFromStorage()
+
   return {
     user,
     token,

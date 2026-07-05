@@ -28,7 +28,15 @@ async function request(endpoint, options = {}) {
   // Se il server risponde 401, il token JWT è scaduto o non valido.
   // Forza la pulizia del token e reindirizza alla pagina di login.
   if (response.status === 401) {
-    localStorage.removeItem('groovebox_token')
+    try {
+      // Importazione dinamica per evitare dipendenze circolari in Pinia
+      const { useAuthStore } = await import('@/stores/auth')
+      const authStore = useAuthStore()
+      authStore.logout()
+    } catch (_) {
+      localStorage.removeItem('groovebox_token')
+      localStorage.removeItem('groovebox_user')
+    }
     // Usiamo location.href per rinfrescare lo stato complessivo dell'applicazione
     window.location.href = '/login'
     return
