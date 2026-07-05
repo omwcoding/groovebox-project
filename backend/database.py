@@ -16,11 +16,7 @@ import os
 from werkzeug.security import generate_password_hash
 from flask import g, has_app_context
 
-# ---------------------------------------------------------------------------
-# Configurazione
-# ---------------------------------------------------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.path.join(BASE_DIR, "groovebox.db")
+from config import Config
 
 # ---------------------------------------------------------------------------
 # Helper: connessione al database
@@ -32,12 +28,12 @@ def get_db():
     la connessione viene salvata in g per essere chiusa automaticamente al teardown."""
     if has_app_context():
         if 'db' not in g:
-            g.db = sqlite3.connect(DATABASE_PATH)
+            g.db = sqlite3.connect(Config.DATABASE_PATH)
             g.db.row_factory = sqlite3.Row
             g.db.execute("PRAGMA foreign_keys = ON;")
         return g.db
     else:
-        conn = sqlite3.connect(DATABASE_PATH)
+        conn = sqlite3.connect(Config.DATABASE_PATH)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
         return conn
@@ -131,7 +127,7 @@ def init_db():
     conn.executescript(SCHEMA_SQL)
     conn.commit()
     conn.close()
-    print(f"[OK] Database creato con successo: {DATABASE_PATH}")
+    print(f"[OK] Database creato con successo: {Config.DATABASE_PATH}")
 
 
 # ---------------------------------------------------------------------------

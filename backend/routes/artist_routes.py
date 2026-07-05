@@ -18,6 +18,8 @@ from dal.artist_dal import (
     update_artist_name,
     delete_artist_by_id
 )
+from utils.validators import validate_json_payload
+from errors import ForbiddenError, NotFoundError
 
 bp = Blueprint("artists", __name__, url_prefix="/api/artists")
 
@@ -29,14 +31,11 @@ bp = Blueprint("artists", __name__, url_prefix="/api/artists")
 @bp.route("", methods=["GET"])
 @token_required
 def get_artists():
-    try:
-        artists = get_all_artists()
-        return jsonify({
-            "status": "success",
-            "data": [dict(a) for a in artists]
-        })
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore nel caricamento degli artisti"}), 500
+    artists = get_all_artists()
+    return jsonify({
+        "status": "success",
+        "data": [dict(a) for a in artists]
+    })
 
 
 # --------------------------------------------------------------------------
@@ -46,21 +45,15 @@ def get_artists():
 @bp.route("/<int:artist_id>", methods=["GET"])
 @token_required
 def get_artist(artist_id):
-    try:
-        artist = find_artist_by_id(artist_id)
-        if not artist:
-            return jsonify({
-                "status": "error",
-                "message": "Artista non trovato"
-            }), 404
+    artist = find_artist_by_id(artist_id)
+    if not artist:
+        raise NotFoundError("Artista non trovato")
 
-        result = dict(artist)
-        albums = get_artist_albums(artist_id)
-        result["albums"] = [dict(al) for al in albums]
+    result = dict(artist)
+    albums = get_artist_albums(artist_id)
+    result["albums"] = [dict(al) for al in albums]
 
-        return jsonify({"status": "success", "data": result})
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore nel caricamento dell'artista"}), 500
+    return jsonify({"status": "success", "data": result})
 
 
 # --------------------------------------------------------------------------
@@ -72,27 +65,19 @@ def get_artist(artist_id):
 @token_required
 def create_artist():
     data = request.get_json()
-
-    if not data or not data.get("name", "").strip():
-        return jsonify({
-            "status": "error",
-            "message": "Il campo 'name' e' obbligatorio"
-        }), 400
+    validate_json_payload(data, ["name"])
 
     name = data["name"].strip()
-
-    try:
-        artist_id = insert_artist(name)
-        return jsonify({
-            "status": "success",
-            "message": "Artista creato con successo",
-            "data": {
-                "id_artist": artist_id,
-                "name": name
-            }
-        }), 201
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante la creazione dell'artista"}), 500
+    artist_id = insert_artist(name)
+    
+    return jsonify({
+        "status": "success",
+        "message": "Artista creato con successo",
+        "data": {
+            "id_artist": artist_id,
+            "name": name
+        }
+    }), 201
 
 
 # --------------------------------------------------------------------------
@@ -104,34 +89,21 @@ def create_artist():
 @token_required
 def update_artist(artist_id):
     if g.current_user["role"] != "administrator":
-        return jsonify({
-            "status": "error",
-            "message": "Solo gli amministratori possono modificare gli artisti"
-        }), 403
+        raise ForbiddenError("Solo gli amministratori possono modificare gli artisti")
 
-    try:
-        artist = find_artist_by_id(artist_id)
-        if not artist:
-            return jsonify({
-                "status": "error",
-                "message": "Artista non trovato"
-            }), 404
+    artist = find_artist_by_id(artist_id)
+    if not artist:
+        raise NotFoundError("Artista non trovato")
 
-        data = request.get_json()
-        if not data or not data.get("name", "").strip():
-            return jsonify({
-                "status": "error",
-                "message": "Il campo 'name' e' obbligatorio"
-            }), 400
+    data = request.get_json()
+    validate_json_payload(data, ["name"])
 
-        updated_artist = update_artist_name(artist_id, data["name"])
-        return jsonify({
-            "status": "success",
-            "message": "Artista aggiornato con successo",
-            "data": updated_artist
-        })
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante l'aggiornamento dell'artista"}), 500
+    updated_artist = update_artist_name(artist_id, data["name"])
+    return jsonify({
+        "status": "success",
+        "message": "Artista aggiornato con successo",
+        "data": updated_artist
+    })
 
 
 # --------------------------------------------------------------------------
@@ -143,23 +115,14 @@ def update_artist(artist_id):
 @token_required
 def delete_artist(artist_id):
     if g.current_user["role"] != "administrator":
-        return jsonify({
-            "status": "error",
-            "message": "Solo gli amministratori possono eliminare gli artisti"
-        }), 403
+        raise ForbiddenError("Solo gli amministratori possono eliminare gli artisti")
 
-    try:
-        artist = find_artist_by_id(artist_id)
-        if not artist:
-            return jsonify({
-                "status": "error",
-                "message": "Artista non trovato"
-            }), 404
+    artist = find_artist_by_id(artist_id)
+    if not artist:
+        raise NotFoundError("Artista non trovato")
 
-        delete_artist_by_id(artist_id)
-        return jsonify({
-            "status": "success",
-            "message": "Artista eliminato con successo"
-        })
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante l'eliminazione dell'artista"}), 500
+    delete_artist_by_id(artist_id)
+    return jsonify({
+        "status": "success",
+        "message": "Artista eliminato con successo"
+    })

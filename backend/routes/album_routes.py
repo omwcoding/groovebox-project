@@ -21,15 +21,17 @@ from dal.album_dal import (
     update_album_cover
 )
 from dal.artist_dal import find_artist_by_id
+from utils.validators import validate_json_payload
+from errors import BadRequestError, ForbiddenError, NotFoundError
 import os
 import uuid
 
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+bp = Blueprint("albums", __name__, url_prefix="/api/albums")
+
 
 def _allowed(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-bp = Blueprint("albums", __name__, url_prefix="/api/albums")
+    allowed_exts = current_app.config["ALLOWED_EXTENSIONS"]
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_exts
 
 
 # --------------------------------------------------------------------------
@@ -39,11 +41,8 @@ bp = Blueprint("albums", __name__, url_prefix="/api/albums")
 @bp.route("", methods=["GET"])
 @token_required
 def get_albums():
-    try:
-        albums = get_all_albums()
-        return jsonify({"status": "success", "data": albums})
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore nel caricamento degli album"}), 500
+    albums = get_all_albums()
+    return jsonify({"status": "success", "data": albums})
 
 
 # --------------------------------------------------------------------------
@@ -53,13 +52,10 @@ def get_albums():
 @bp.route("/<int:album_id>", methods=["GET"])
 @token_required
 def get_album(album_id):
-    try:
-        album = find_album_by_id(album_id)
-        if not album:
-            return jsonify({"status": "error", "message": "Album non trovato"}), 404
-        return jsonify({"status": "success", "data": album})
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore nel caricamento dell'album"}), 500
+    album = find_album_by_id(album_id)
+    if not album:
+        raise NotFoundError("Album non trovato")
+    return jsonify({"status": "success", "data": album})
 
 
 # --------------------------------------------------------------------------
@@ -71,43 +67,30 @@ def get_album(album_id):
 @token_required
 def create_album():
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Solo i Collector possono inserire nuovi album"
-        }), 403
+        raise ForbiddenError("Solo i Collector possono inserire nuovi album")
 
     data = request.get_json()
-    if not data or not data.get("title", "").strip():
-        return jsonify({
-            "status": "error",
-            "message": "Il campo 'title' e' obbligatorio"
-        }), 400
+    validate_json_payload(data, ["title"])
 
     title = data["title"].strip()
     release_year = data.get("releaseYear")
     genre = data.get("genre", "").strip() or None
     artist_ids = data.get("artist_ids", [])
 
-    try:
-        # Verifica che gli artist_ids esistano
-        for aid in artist_ids:
-            artist = find_artist_by_id(aid)
-            if not artist:
-                return jsonify({
-                    "status": "error",
-                    "message": f"Artista con id {aid} non trovato"
-                }), 404
+    # Verifica che gli artist_ids esistano
+    for aid in artist_ids:
+        artist = find_artist_by_id(aid)
+        if not artist:
+            raise NotFoundError(f"Artista con id {aid} non trovato")
 
-        album_id = insert_album(title, release_year, genre, artist_ids, g.current_user["id_user"])
-        album = find_album_by_id(album_id)
-        
-        return jsonify({
-            "status": "success",
-            "message": "Album inserito nel catalogo con successo",
-            "data": album
-        }), 201
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante la creazione dell'album"}), 500
+    album_id = insert_album(title, release_year, genre, artist_ids, g.current_user["id_user"])
+    album = find_album_by_id(album_id)
+    
+    return jsonify({
+        "status": "success",
+        "message": "Album inserito nel catalogo con successo",
+        "data": album
+    }), 201
 
 
 # --------------------------------------------------------------------------
@@ -119,49 +102,40 @@ def create_album():
 @token_required
 def update_album(album_id):
     if g.current_user["role"] != "administrator":
-        return jsonify({
-            "status": "error",
-            "message": "Solo gli amministratori possono modificare gli album"
-        }), 403
+        raise ForbiddenError("Solo gli amministratori possono modificare gli album")
 
-    try:
-        album = find_album_by_id(album_id)
-        if not album:
-            return jsonify({"status": "error", "message": "Album non trovato"}), 404
+    album = find_album_by_id(album_id)
+    if not album:
+        raise NotFoundError("Album non trovato")
 
-        data = request.get_json()
-        if not data:
-            return jsonify({"status": "error", "message": "Nessun dato fornito"}), 400
+    data = request.get_json()
+    if not data:
+        raise BadRequestError("Nessun dato fornito nella richiesta")
 
-        # Aggiornamento campi
-        fields = []
-        values = []
-        for col in ["title", "releaseYear", "genre"]:
-            if col in data:
-                fields.append(f"{col} = ?")
-                val = data[col]
-                values.append(val.strip() if isinstance(val, str) else val)
+    # Aggiornamento campi
+    fields = []
+    values = []
+    for col in ["title", "releaseYear", "genre"]:
+        if col in data:
+            fields.append(f"{col} = ?")
+            val = data[col]
+            values.append(val.strip() if isinstance(val, str) else val)
 
-        artist_ids = None
-        if "artist_ids" in data:
-            artist_ids = data["artist_ids"]
-            # Verifica esistenza artisti
-            for aid in artist_ids:
-                a = find_artist_by_id(aid)
-                if not a:
-                    return jsonify({
-                        "status": "error",
-                        "message": f"Artista con id {aid} non trovato"
-                    }), 404
+    artist_ids = None
+    if "artist_ids" in data:
+        artist_ids = data["artist_ids"]
+        # Verifica esistenza artisti
+        for aid in artist_ids:
+            a = find_artist_by_id(aid)
+            if not a:
+                raise NotFoundError(f"Artista con id {aid} non trovato")
 
-        updated_album = update_album_data(album_id, fields, values, artist_ids)
-        return jsonify({
-            "status": "success",
-            "message": "Album aggiornato con successo",
-            "data": updated_album
-        })
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante la modifica dell'album"}), 500
+    updated_album = update_album_data(album_id, fields, values, artist_ids)
+    return jsonify({
+        "status": "success",
+        "message": "Album aggiornato con successo",
+        "data": updated_album
+    })
 
 
 # --------------------------------------------------------------------------
@@ -173,23 +147,17 @@ def update_album(album_id):
 @token_required
 def delete_album(album_id):
     if g.current_user["role"] != "administrator":
-        return jsonify({
-            "status": "error",
-            "message": "Solo gli amministratori possono eliminare gli album"
-        }), 403
+        raise ForbiddenError("Solo gli amministratori possono eliminare gli album")
 
-    try:
-        album = find_album_by_id(album_id)
-        if not album:
-            return jsonify({"status": "error", "message": "Album non trovato"}), 404
+    album = find_album_by_id(album_id)
+    if not album:
+        raise NotFoundError("Album non trovato")
 
-        delete_album_by_id(album_id)
-        return jsonify({
-            "status": "success",
-            "message": "Album eliminato dal catalogo con successo"
-        })
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante l'eliminazione dell'album"}), 500
+    delete_album_by_id(album_id)
+    return jsonify({
+        "status": "success",
+        "message": "Album eliminato dal catalogo con successo"
+    })
 
 
 # --------------------------------------------------------------------------
@@ -200,42 +168,42 @@ def delete_album(album_id):
 @bp.route("/<int:album_id>/cover", methods=["POST"])
 @token_required
 def upload_cover(album_id):
-    try:
-        album = find_album_by_id(album_id)
-        if not album:
-            return jsonify({"status": "error", "message": "Album non trovato"}), 404
+    album = find_album_by_id(album_id)
+    if not album:
+        raise NotFoundError("Album non trovato")
 
-        role = g.current_user["role"]
-        if role == "collector" and album["id_user"] != g.current_user["id_user"]:
-            return jsonify({"status": "error", "message": "Non autorizzato"}), 403
-        if role not in ("collector", "administrator"):
-            return jsonify({"status": "error", "message": "Non autorizzato"}), 403
+    role = g.current_user["role"]
+    if role == "collector" and album["id_user"] != g.current_user["id_user"]:
+        raise ForbiddenError("Non autorizzato ad aggiornare la copertina di questo album")
+    if role not in ("collector", "administrator"):
+        raise ForbiddenError("Non autorizzato")
 
-        if "file" not in request.files:
-            return jsonify({"status": "error", "message": "Nessun file fornito"}), 400
+    if "file" not in request.files:
+        raise BadRequestError("Nessun file fornito nella richiesta")
 
-        file = request.files["file"]
-        if file.filename == "" or not _allowed(file.filename):
-            return jsonify({"status": "error", "message": "Formato non supportato (jpg, png, webp)"}), 400
+    file = request.files["file"]
+    if file.filename == "" or not _allowed(file.filename):
+        raise BadRequestError("Formato copertina non supportato (ammessi: jpg, png, webp)")
 
-        upload_dir = os.path.join(current_app.root_path, "uploads", "covers")
-        os.makedirs(upload_dir, exist_ok=True)
+    upload_dir = current_app.config["COVERS_FOLDER"]
+    os.makedirs(upload_dir, exist_ok=True)
 
-        ext = file.filename.rsplit(".", 1)[1].lower()
-        filename = f"album_{album_id}_{uuid.uuid4().hex[:8]}.{ext}"
-        file.save(os.path.join(upload_dir, filename))
+    ext = file.filename.rsplit(".", 1)[1].lower()
+    filename = f"album_{album_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    file.save(os.path.join(upload_dir, filename))
 
-        # Rimuove copertina precedente se diversa
-        old = album.get("coverPath")
-        if old and old != filename:
-            old_path = os.path.join(upload_dir, old)
-            if os.path.exists(old_path):
+    # Rimuove copertina precedente se diversa
+    old = album.get("coverPath")
+    if old and old != filename:
+        old_path = os.path.join(upload_dir, old)
+        if os.path.exists(old_path):
+            try:
                 os.remove(old_path)
+            except Exception as e:
+                current_app.logger.warning(f"Impossibile rimuovere la vecchia copertina {old_path}: {e}")
 
-        update_album_cover(album_id, filename)
-        return jsonify({"status": "success", "coverPath": filename}), 200
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante il caricamento della copertina"}), 500
+    update_album_cover(album_id, filename)
+    return jsonify({"status": "success", "coverPath": filename}), 200
 
 
 # --------------------------------------------------------------------------
@@ -244,11 +212,9 @@ def upload_cover(album_id):
 # --------------------------------------------------------------------------
 @bp.route("/<int:album_id>/cover", methods=["GET"])
 def get_cover(album_id):
-    try:
-        album = find_album_by_id(album_id)
-        if not album or not album.get("coverPath"):
-            return jsonify({"status": "error", "message": "Nessuna copertina"}), 404
-        upload_dir = os.path.join(current_app.root_path, "uploads", "covers")
-        return send_from_directory(upload_dir, album["coverPath"])
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante il caricamento dell'immagine"}), 500
+    album = find_album_by_id(album_id)
+    if not album or not album.get("coverPath"):
+        raise NotFoundError("Copertina non trovata")
+        
+    upload_dir = current_app.config["COVERS_FOLDER"]
+    return send_from_directory(upload_dir, album["coverPath"])

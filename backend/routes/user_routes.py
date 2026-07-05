@@ -17,6 +17,7 @@ from dal.user_dal import (
     update_user_profile,
     delete_user_and_transfer_albums
 )
+from errors import BadRequestError, ForbiddenError, NotFoundError, ConflictError
 
 bp = Blueprint("users", __name__, url_prefix="/api/users")
 
@@ -43,17 +44,11 @@ def get_my_profile():
 @token_required
 def update_my_profile():
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Solo i Collector possono modificare il proprio profilo"
-        }), 403
+        raise ForbiddenError("Solo i Collector possono modificare il proprio profilo")
 
     data = request.get_json()
     if not data:
-        return jsonify({
-            "status": "error",
-            "message": "Nessun dato fornito"
-        }), 400
+        raise BadRequestError("Nessun dato fornito nella richiesta")
 
     # Costruisci dinamicamente la query di UPDATE
     fields = []
@@ -71,23 +66,14 @@ def update_my_profile():
         values.append(generate_password_hash(data["password"]))
 
     if not fields:
-        return jsonify({
-            "status": "error",
-            "message": "Nessun campo valido da aggiornare"
-        }), 400
+        raise BadRequestError("Nessun campo valido da aggiornare")
 
     try:
         updated_user = update_user_profile(g.current_user["id_user"], fields, values)
     except Exception as e:
         if "unique" in str(e).lower():
-            return jsonify({
-                "status": "error",
-                "message": "Email gia' in uso"
-            }), 409
-        return jsonify({
-            "status": "error",
-            "message": "Errore durante l'aggiornamento"
-        }), 500
+            raise ConflictError("Email gia' in uso")
+        raise e
 
     return jsonify({
         "status": "success",
@@ -104,19 +90,10 @@ def update_my_profile():
 @token_required
 def delete_my_account():
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Solo i Collector possono eliminare il proprio account"
-        }), 403
+        raise ForbiddenError("Solo i Collector possono eliminare il proprio account")
 
     user_id = g.current_user["id_user"]
-    try:
-        delete_user_and_transfer_albums(user_id)
-    except Exception:
-        return jsonify({
-            "status": "error",
-            "message": "Errore durante l'eliminazione dell'account"
-        }), 500
+    delete_user_and_transfer_albums(user_id)
 
     return jsonify({
         "status": "success",
@@ -132,19 +109,9 @@ def delete_my_account():
 @token_required
 def get_all_users():
     if g.current_user["role"] != "administrator":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato agli amministratori"
-        }), 403
+        raise ForbiddenError("Accesso riservato agli amministratori")
 
-    try:
-        users = get_all_collectors()
-    except Exception:
-        return jsonify({
-            "status": "error",
-            "message": "Errore nel caricamento degli utenti"
-        }), 500
-
+    users = get_all_collectors()
     return jsonify({
         "status": "success",
         "data": [dict(u) for u in users]
@@ -159,24 +126,12 @@ def get_all_users():
 @token_required
 def get_user(user_id):
     if g.current_user["role"] != "administrator":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato agli amministratori"
-        }), 403
+        raise ForbiddenError("Accesso riservato agli amministratori")
 
-    try:
-        user = get_user_by_id(user_id)
-    except Exception:
-        return jsonify({
-            "status": "error",
-            "message": "Errore nel caricamento del profilo utente"
-        }), 500
+    user = get_user_by_id(user_id)
 
     if not user or user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Utente non trovato"
-        }), 404
+        raise NotFoundError("Utente non trovato")
 
     return jsonify({
         "status": "success",
@@ -193,38 +148,17 @@ def get_user(user_id):
 @token_required
 def delete_user(user_id):
     if g.current_user["role"] != "administrator":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato agli amministratori"
-        }), 403
+        raise ForbiddenError("Accesso riservato agli amministratori")
 
-    try:
-        user = get_user_by_id(user_id)
-    except Exception:
-        return jsonify({
-            "status": "error",
-            "message": "Errore interno durante il recupero dell'utente"
-        }), 500
+    user = get_user_by_id(user_id)
 
     if not user:
-        return jsonify({
-            "status": "error",
-            "message": "Utente non trovato"
-        }), 404
+        raise NotFoundError("Utente non trovato")
 
     if user["role"] == "administrator":
-        return jsonify({
-            "status": "error",
-            "message": "Non e' possibile eliminare un amministratore"
-        }), 403
+        raise ForbiddenError("Non e' possibile eliminare un amministratore")
 
-    try:
-        delete_user_and_transfer_albums(user_id)
-    except Exception:
-        return jsonify({
-            "status": "error",
-            "message": "Errore durante l'eliminazione dell'utente"
-        }), 500
+    delete_user_and_transfer_albums(user_id)
 
     return jsonify({
         "status": "success",

@@ -21,6 +21,8 @@ from dal.copy_dal import (
     delete_copy_by_id
 )
 from dal.album_dal import find_album_by_id
+from utils.validators import validate_json_payload
+from errors import ForbiddenError, NotFoundError, BadRequestError
 
 bp = Blueprint("copies", __name__, url_prefix="/api/copies")
 
@@ -33,19 +35,13 @@ bp = Blueprint("copies", __name__, url_prefix="/api/copies")
 @token_required
 def get_my_copies():
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato ai Collector"
-        }), 403
+        raise ForbiddenError("Accesso riservato ai Collector")
 
-    try:
-        copies = get_user_copies(g.current_user["id_user"])
-        return jsonify({
-            "status": "success",
-            "data": copies
-        })
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore nel caricamento della collezione"}), 500
+    copies = get_user_copies(g.current_user["id_user"])
+    return jsonify({
+        "status": "success",
+        "data": copies
+    })
 
 
 # --------------------------------------------------------------------------
@@ -56,21 +52,13 @@ def get_my_copies():
 @token_required
 def get_copy(copy_id):
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato ai Collector"
-        }), 403
+        raise ForbiddenError("Accesso riservato ai Collector")
 
-    try:
-        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
-        if not copy:
-            return jsonify({
-                "status": "error",
-                "message": "Copia fisica non trovata"
-            }), 404
-        return jsonify({"status": "success", "data": copy})
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore nel caricamento della copia"}), 500
+    copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+    if not copy:
+        raise NotFoundError("Copia fisica non trovata")
+        
+    return jsonify({"status": "success", "data": copy})
 
 
 # --------------------------------------------------------------------------
@@ -82,93 +70,56 @@ def get_copy(copy_id):
 @token_required
 def create_copy():
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato ai Collector"
-        }), 403
+        raise ForbiddenError("Accesso riservato ai Collector")
 
     data = request.get_json()
+    validate_json_payload(data, ["id_album", "format", "condition"])
 
-    # Validazione campi obbligatori
-    if not data or not data.get("id_album"):
-        return jsonify({
-            "status": "error",
-            "message": "Il campo 'id_album' e' obbligatorio"
-        }), 400
+    # Verifica che l'album esista
+    album = find_album_by_id(data["id_album"])
+    if not album:
+        raise NotFoundError("Album di riferimento non trovato")
 
-    if not data.get("format", "").strip():
-        return jsonify({
-            "status": "error",
-            "message": "Il campo 'format' e' obbligatorio"
-        }), 400
+    personal_notes = data.get("personalNotes")
+    if isinstance(personal_notes, str):
+        personal_notes = personal_notes.strip() or None
+    else:
+        personal_notes = None
 
-    if not data.get("condition", "").strip():
-        return jsonify({
-            "status": "error",
-            "message": "Il campo 'condition' e' obbligatorio"
-        }), 400
+    copy_id = insert_copy(
+        id_album=data["id_album"],
+        format_val=data["format"],
+        condition=data["condition"],
+        personal_notes=personal_notes,
+        user_id=g.current_user["id_user"]
+    )
 
-    try:
-        # Verifica che l'album esista
-        album = find_album_by_id(data["id_album"])
-        if not album:
-            return jsonify({
-                "status": "error",
-                "message": "Album di riferimento non trovato"
-            }), 404
-
-        personal_notes = data.get("personalNotes")
-        if isinstance(personal_notes, str):
-            personal_notes = personal_notes.strip() or None
-        else:
-            personal_notes = None
-
-        copy_id = insert_copy(
-            id_album=data["id_album"],
-            format_val=data["format"],
-            condition=data["condition"],
-            personal_notes=personal_notes,
-            user_id=g.current_user["id_user"]
-        )
-
-        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
-        return jsonify({
-            "status": "success",
-            "message": "Copia fisica aggiunta alla collezione",
-            "data": copy
-        }), 201
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante la creazione della copia"}), 500
+    copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+    return jsonify({
+        "status": "success",
+        "message": "Copia fisica aggiunta alla collezione",
+        "data": copy
+    }), 201
 
 
 # --------------------------------------------------------------------------
 # POST /api/copies/cascade
 # Registrazione copia a cascata (crea artista e album se non esistono).
-# Body JSON: { title, artist_name, releaseYear?, genre?, format, condition, personalNotes? }
+# Body JSON: { title, artist_name, format, condition, releaseYear?, genre?, personalNotes? }
 # --------------------------------------------------------------------------
 @bp.route("/cascade", methods=["POST"])
 @token_required
 def create_copy_cascade_route():
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato ai Collector"
-        }), 403
+        raise ForbiddenError("Accesso riservato ai Collector")
 
     data = request.get_json()
-    if not data:
-        return jsonify({"status": "error", "message": "Nessun dato fornito"}), 400
+    validate_json_payload(data, ["title", "artist_name", "format", "condition"])
 
-    title = data.get("title", "").strip()
-    artist_name = data.get("artist_name", "").strip()
-    format_val = data.get("format", "").strip()
-    condition = data.get("condition", "").strip()
-
-    if not title or not artist_name or not format_val or not condition:
-        return jsonify({
-            "status": "error",
-            "message": "I campi titolo, artista, formato e condizione sono obbligatori"
-        }), 400
+    title = data["title"].strip()
+    artist_name = data["artist_name"].strip()
+    format_val = data["format"].strip()
+    condition = data["condition"].strip()
 
     release_year = data.get("releaseYear")
     if release_year:
@@ -186,29 +137,23 @@ def create_copy_cascade_route():
     else:
         personal_notes = None
 
-    try:
-        copy_id = create_copy_cascade(
-            title=title,
-            artist_name=artist_name,
-            release_year=release_year,
-            genre=genre,
-            format_val=format_val,
-            condition=condition,
-            personal_notes=personal_notes,
-            user_id=g.current_user["id_user"]
-        )
-        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
-        
-        return jsonify({
-            "status": "success",
-            "message": "Copia fisica aggiunta alla collezione con successo (creazione a cascata)",
-            "data": copy
-        }), 201
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": f"Errore durante l'inserimento a cascata: {str(e)}"
-        }), 500
+    copy_id = create_copy_cascade(
+        title=title,
+        artist_name=artist_name,
+        release_year=release_year,
+        genre=genre,
+        format_val=format_val,
+        condition=condition,
+        personal_notes=personal_notes,
+        user_id=g.current_user["id_user"]
+    )
+    copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+    
+    return jsonify({
+        "status": "success",
+        "message": "Copia fisica aggiunta alla collezione con successo (creazione a cascata)",
+        "data": copy
+    }), 201
 
 
 # --------------------------------------------------------------------------
@@ -220,47 +165,35 @@ def create_copy_cascade_route():
 @token_required
 def update_copy(copy_id):
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato ai Collector"
-        }), 403
+        raise ForbiddenError("Accesso riservato ai Collector")
 
-    try:
-        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
-        if not copy:
-            return jsonify({
-                "status": "error",
-                "message": "Copia fisica non trovata"
-            }), 404
+    copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+    if not copy:
+        raise NotFoundError("Copia fisica non trovata")
 
-        data = request.get_json()
-        if not data:
-            return jsonify({"status": "error", "message": "Nessun dato fornito"}), 400
+    data = request.get_json()
+    if not data:
+        raise BadRequestError("Nessun dato fornito nella richiesta")
 
-        fields = []
-        values = []
-        for col in ["format", "condition", "personalNotes"]:
-            if col in data:
-                fields.append(f"{col} = ?")
-                val = data[col]
-                values.append(val.strip() if isinstance(val, str) and val else val)
+    fields = []
+    values = []
+    for col in ["format", "condition", "personalNotes"]:
+        if col in data:
+            fields.append(f"{col} = ?")
+            val = data[col]
+            values.append(val.strip() if isinstance(val, str) and val else val)
 
-        if not fields:
-            return jsonify({
-                "status": "error",
-                "message": "Nessun campo valido da aggiornare"
-            }), 400
+    if not fields:
+        raise BadRequestError("Nessun campo valido da aggiornare")
 
-        update_copy_data(copy_id, fields, values)
-        updated_copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
-        
-        return jsonify({
-            "status": "success",
-            "message": "Copia fisica aggiornata con successo",
-            "data": updated_copy
-        })
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante l'aggiornamento della copia"}), 500
+    update_copy_data(copy_id, fields, values)
+    updated_copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+    
+    return jsonify({
+        "status": "success",
+        "message": "Copia fisica aggiornata con successo",
+        "data": updated_copy
+    })
 
 
 # --------------------------------------------------------------------------
@@ -271,23 +204,14 @@ def update_copy(copy_id):
 @token_required
 def delete_copy(copy_id):
     if g.current_user["role"] != "collector":
-        return jsonify({
-            "status": "error",
-            "message": "Accesso riservato ai Collector"
-        }), 403
+        raise ForbiddenError("Accesso riservato ai Collector")
 
-    try:
-        copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
-        if not copy:
-            return jsonify({
-                "status": "error",
-                "message": "Copia fisica non trovata"
-            }), 404
+    copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
+    if not copy:
+        raise NotFoundError("Copia fisica non trovata")
 
-        delete_copy_by_id(copy_id)
-        return jsonify({
-            "status": "success",
-            "message": "Copia fisica eliminata dalla collezione"
-        })
-    except Exception:
-        return jsonify({"status": "error", "message": "Errore durante l'eliminazione della copia"}), 500
+    delete_copy_by_id(copy_id)
+    return jsonify({
+        "status": "success",
+        "message": "Copia fisica eliminata dalla collezione"
+    })

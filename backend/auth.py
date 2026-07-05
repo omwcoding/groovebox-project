@@ -7,9 +7,10 @@ disponibile l'utente corrente in flask.g.current_user.
 """
 
 from functools import wraps
-from flask import request, jsonify, g, current_app
+from flask import request, g, current_app
 import jwt
-from database import get_db
+from errors import UnauthorizedError
+from dal.user_dal import get_user_by_id
 
 
 def token_required(f):
@@ -29,10 +30,7 @@ def token_required(f):
             token = auth_header[7:]
 
         if not token:
-            return jsonify({
-                "status": "error",
-                "message": "Token di autenticazione mancante"
-            }), 401
+            raise UnauthorizedError("Token di autenticazione mancante")
 
         try:
             payload = jwt.decode(
@@ -41,31 +39,15 @@ def token_required(f):
                 algorithms=["HS256"]
             )
         except jwt.ExpiredSignatureError:
-            return jsonify({
-                "status": "error",
-                "message": "Token scaduto, effettua nuovamente il login"
-            }), 401
+            raise UnauthorizedError("Token scaduto, effettua nuovamente il login")
         except jwt.InvalidTokenError:
-            return jsonify({
-                "status": "error",
-                "message": "Token non valido"
-            }), 401
+            raise UnauthorizedError("Token non valido")
 
         # Verifica che l'utente esista ancora nel database
-        from dal.user_dal import get_user_by_id
-        try:
-            user = get_user_by_id(payload["id_user"])
-        except Exception:
-            return jsonify({
-                "status": "error",
-                "message": "Errore interno del server"
-            }), 500
+        user = get_user_by_id(payload["id_user"])
 
         if not user:
-            return jsonify({
-                "status": "error",
-                "message": "Utente associato al token non trovato"
-            }), 401
+            raise UnauthorizedError("Utente associato al token non trovato")
 
         g.current_user = dict(user)
         return f(*args, **kwargs)

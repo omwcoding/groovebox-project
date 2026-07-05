@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 
 from database import init_db, seed_db
 
+from config import Config
+
 # Carica variabili d'ambiente da .env (se presente)
 load_dotenv()
 
@@ -21,10 +23,7 @@ def create_app():
     app = Flask(__name__)
 
     # ---- Configurazione ----
-    secret_key = os.environ.get("SECRET_KEY")
-    if not secret_key:
-        raise RuntimeError("La variabile d'ambiente SECRET_KEY non è impostata nel file .env!")
-    app.config["SECRET_KEY"] = secret_key
+    app.config.from_object(Config)
 
     # ---- CORS ----
     CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -59,6 +58,10 @@ def create_app():
         db = g.pop('db', None)
         if db is not None:
             db.close()
+
+    # ---- Gestione Centralizzata Errori ----
+    from errors import register_error_handlers
+    register_error_handlers(app)
 
     return app
 

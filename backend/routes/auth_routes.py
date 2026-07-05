@@ -10,6 +10,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import datetime
 from dal.user_dal import insert_collector, get_user_by_username
+from utils.validators import validate_json_payload
+from errors import ConflictError, UnauthorizedError
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -21,15 +23,7 @@ bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 @bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
-
-    # Validazione campi obbligatori
-    required = ["username", "name", "surname", "email", "password"]
-    for field in required:
-        if not data or not data.get(field, "").strip():
-            return jsonify({
-                "status": "error",
-                "message": f"Il campo '{field}' e' obbligatorio"
-            }), 400
+    validate_json_payload(data, ["username", "name", "surname", "email", "password"])
 
     username = data["username"].strip()
     name = data["name"].strip()
@@ -45,19 +39,10 @@ def register():
     except Exception as e:
         error_msg = str(e).lower()
         if "unique" in error_msg and "username" in error_msg:
-            return jsonify({
-                "status": "error",
-                "message": "Username gia' in uso"
-            }), 409
+            raise ConflictError("Username gia' in uso")
         if "unique" in error_msg and "email" in error_msg:
-            return jsonify({
-                "status": "error",
-                "message": "Email gia' in uso"
-            }), 409
-        return jsonify({
-            "status": "error",
-            "message": "Errore durante la registrazione"
-        }), 500
+            raise ConflictError("Email gia' in uso")
+        raise e
 
     return jsonify({
         "status": "success",
@@ -76,26 +61,12 @@ def register():
 @bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
+    validate_json_payload(data, ["username", "password"])
 
-    if not data or not data.get("username") or not data.get("password"):
-        return jsonify({
-            "status": "error",
-            "message": "Username e password sono obbligatori"
-        }), 400
-
-    try:
-        user = get_user_by_username(data["username"])
-    except Exception:
-        return jsonify({
-            "status": "error",
-            "message": "Errore interno durante il login"
-        }), 500
+    user = get_user_by_username(data["username"])
 
     if not user or not check_password_hash(user["passwordHash"], data["password"]):
-        return jsonify({
-            "status": "error",
-            "message": "Credenziali non valide"
-        }), 401
+        raise UnauthorizedError("Credenziali non valide")
 
     # Genera token JWT con scadenza a 24 ore
     token = jwt.encode(
