@@ -33,15 +33,21 @@ Il progetto segue rigorosamente un'architettura logica a **3 layer**:
      ```bash
      source .venv/bin/activate
      ```
-3. Ripristina il database (con creazione tabelle ed eliminazione a cascata):
+3. Configura le variabili di ambiente:
+   Copia il file `.env.example` in `.env` e personalizza la chiave segreta:
+   ```bash
+   cp .env.example .env
+   ```
+   *(Su Windows PowerShell usa `Copy-Item .env.example .env`)*
+4. Ripristina il database (con creazione tabelle ed eliminazione a cascata):
    ```bash
    python database.py
    ```
-4. (Opzionale) Esegui il seed di grandi dimensioni per avere 50 utenti, 120 album, 60 artisti e 250 copie:
+5. (Opzionale) Esegui il seed di grandi dimensioni per avere 50 utenti, 120 album, 60 artisti e 250 copie:
    ```bash
    python seed_large.py
    ```
-5. Avvia il server Flask:
+6. Avvia il server Flask:
    ```bash
    python app.py
    ```

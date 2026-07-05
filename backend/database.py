@@ -109,8 +109,8 @@ CREATE TABLE IF NOT EXISTS ALBUM_ARTIST (
 -- =========================================================================
 CREATE TABLE IF NOT EXISTS PHYSICAL_COPY (
     id_copy         INTEGER     PRIMARY KEY AUTOINCREMENT,
-    format          VARCHAR(20)     NOT NULL,
-    condition       VARCHAR(50)     NOT NULL,
+    format          VARCHAR(20)     NOT NULL CHECK (format IN ('Vinile', 'CD', 'Cassetta')),
+    condition       VARCHAR(50)     NOT NULL CHECK (condition IN ('Nuovo', 'Come nuovo', 'Buono', 'Discreto', 'Rovinato')),
     addedDate       DATE            NOT NULL,
     personalNotes   TEXT,
     id_user         INTEGER         NOT NULL,

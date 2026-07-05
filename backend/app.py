@@ -21,9 +21,10 @@ def create_app():
     app = Flask(__name__)
 
     # ---- Configurazione ----
-    app.config["SECRET_KEY"] = os.environ.get(
-        "SECRET_KEY", "groovebox-dev-secret-key-change-in-production"
-    )
+    secret_key = os.environ.get("SECRET_KEY")
+    if not secret_key:
+        raise RuntimeError("La variabile d'ambiente SECRET_KEY non è impostata nel file .env!")
+    app.config["SECRET_KEY"] = secret_key
 
     # ---- CORS ----
     CORS(app, resources={r"/api/*": {"origins": "*"}})
