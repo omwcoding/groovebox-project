@@ -56,6 +56,12 @@ body {
   outline-offset: 2px;
 }
 
+/* Stile globale per le opzioni delle tendine select (tema scuro) */
+select option {
+  background-color: #141419;
+  color: #ffffff;
+}
+
 /* ===================================================================
    Utility Classes (Apple Glassmorphism UI)
    =================================================================== */

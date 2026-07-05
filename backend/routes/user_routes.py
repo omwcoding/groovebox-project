@@ -10,14 +10,14 @@ Matrice di visibilita' (doc 3.4):
 
 from flask import Blueprint, request, jsonify, g
 from werkzeug.security import generate_password_hash
-from auth import token_required
+from core.auth import token_required
 from dal.user_dal import (
     get_user_by_id,
     get_all_collectors,
     update_user_profile,
     delete_user_and_transfer_albums
 )
-from errors import BadRequestError, ForbiddenError, NotFoundError, ConflictError
+from core.errors import BadRequestError, ForbiddenError, NotFoundError, ConflictError
 
 bp = Blueprint("users", __name__, url_prefix="/api/users")
 

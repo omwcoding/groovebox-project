@@ -9,9 +9,9 @@ Matrice di visibilita' (doc 2.1 - Goal):
 """
 
 from flask import Blueprint, jsonify, g
-from auth import token_required
+from core.auth import token_required
 from dal.stats_dal import get_platform_stats
-from errors import ForbiddenError
+from core.errors import ForbiddenError
 
 bp = Blueprint("stats", __name__, url_prefix="/api/stats")
 

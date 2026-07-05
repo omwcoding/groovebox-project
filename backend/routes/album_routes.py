@@ -11,7 +11,7 @@ Gestisce anche la relazione PUBLISHES (ALBUM_ARTIST) in modo trasparente.
 """
 
 from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
-from auth import token_required
+from core.auth import token_required
 from dal.album_dal import (
     get_all_albums,
     find_album_by_id,
@@ -22,7 +22,7 @@ from dal.album_dal import (
 )
 from dal.artist_dal import find_artist_by_id
 from utils.validators import validate_json_payload
-from errors import BadRequestError, ForbiddenError, NotFoundError
+from core.errors import BadRequestError, ForbiddenError, NotFoundError
 import os
 import uuid
 

@@ -11,7 +11,7 @@ Matrice di visibilita' (doc 3.4):
 """
 
 from flask import Blueprint, request, jsonify, g, current_app
-from auth import token_required
+from core.auth import token_required
 from dal.copy_dal import (
     get_user_copies,
     find_copy_by_id_and_user,
@@ -22,7 +22,7 @@ from dal.copy_dal import (
 )
 from dal.album_dal import find_album_by_id
 from utils.validators import validate_json_payload
-from errors import ForbiddenError, NotFoundError, BadRequestError
+from core.errors import ForbiddenError, NotFoundError, BadRequestError
 
 bp = Blueprint("copies", __name__, url_prefix="/api/copies")
 

@@ -1,5 +1,5 @@
 import datetime
-from database import get_db
+from core.database import get_db
 from dal.album_dal import get_album_artists
 
 def enrich_copy(copy_row):

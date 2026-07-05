@@ -16,7 +16,10 @@ import os
 from werkzeug.security import generate_password_hash
 from flask import g, has_app_context
 
-from config import Config
+try:
+    from core.config import Config
+except ModuleNotFoundError:
+    from config import Config
 
 # ---------------------------------------------------------------------------
 # Helper: connessione al database

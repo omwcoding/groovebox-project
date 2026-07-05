@@ -9,7 +9,10 @@ disponibile l'utente corrente in flask.g.current_user.
 from functools import wraps
 from flask import request, g, current_app
 import jwt
-from errors import UnauthorizedError
+try:
+    from core.errors import UnauthorizedError
+except ModuleNotFoundError:
+    from errors import UnauthorizedError
 from dal.user_dal import get_user_by_id
 
 

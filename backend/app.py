@@ -10,9 +10,8 @@ from flask import Flask, g
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-from database import init_db, seed_db
-
-from config import Config
+from core.database import init_db, seed_db
+from core.config import Config
 
 # Carica variabili d'ambiente da .env (se presente)
 load_dotenv()
@@ -60,7 +59,7 @@ def create_app():
             db.close()
 
     # ---- Gestione Centralizzata Errori ----
-    from errors import register_error_handlers
+    from core.errors import register_error_handlers
     register_error_handlers(app)
 
     return app

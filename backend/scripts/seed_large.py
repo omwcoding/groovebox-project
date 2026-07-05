@@ -22,9 +22,10 @@ import datetime
 import urllib.request
 from werkzeug.security import generate_password_hash
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.path.join(BASE_DIR, "groovebox.db")
-COVERS_DIR = os.path.join(BASE_DIR, "uploads", "covers")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # backend/scripts/
+BACKEND_DIR = os.path.dirname(BASE_DIR)
+DATABASE_PATH = os.path.join(BACKEND_DIR, "instance", "groovebox.db")
+COVERS_DIR = os.path.join(BACKEND_DIR, "uploads", "covers")
 
 # Liste per la generazione di dati realistici
 FIRST_NAMES = [

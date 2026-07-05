@@ -1,7 +1,12 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Trova la cartella root del backend (parent di core/)
+CORE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.dirname(CORE_DIR)
+
+# Carica il file .env dalla root del backend
+load_dotenv(os.path.join(BACKEND_DIR, ".env"))
 
 class Config:
     # Carica la chiave segreta (solleva un errore all'avvio se manca)
@@ -10,11 +15,10 @@ class Config:
         raise RuntimeError("La variabile d'ambiente SECRET_KEY non è impostata nel file .env!")
 
     # Percorsi di base
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DATABASE_PATH = os.path.join(BASE_DIR, "groovebox.db")
+    DATABASE_PATH = os.path.join(BACKEND_DIR, "instance", "groovebox.db")
     
     # Cartelle per upload dei file
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+    UPLOAD_FOLDER = os.path.join(BACKEND_DIR, "uploads")
     COVERS_FOLDER = os.path.join(UPLOAD_FOLDER, "covers")
     
     # Tipi di file copertine consentiti

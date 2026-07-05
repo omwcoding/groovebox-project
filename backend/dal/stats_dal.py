@@ -1,4 +1,4 @@
-from database import get_db
+from core.database import get_db
 
 def get_platform_stats():
     conn = get_db()

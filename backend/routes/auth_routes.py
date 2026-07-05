@@ -11,7 +11,7 @@ import jwt
 import datetime
 from dal.user_dal import insert_collector, get_user_by_username
 from utils.validators import validate_json_payload
-from errors import ConflictError, UnauthorizedError
+from core.errors import ConflictError, UnauthorizedError
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 

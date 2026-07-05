@@ -9,21 +9,21 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 // --- Views (Lazy Loaded for optimization) ---
-import HomeView from '@/views/HomeView.vue'
-import LoginView from '@/views/LoginView.vue'
+import HomeView from '@/views/dashboard/HomeView.vue'
+import LoginView from '@/views/auth/LoginView.vue'
 
-const RegisterView = () => import('@/views/RegisterView.vue')
-const DashboardView = () => import('@/views/DashboardView.vue')
-const AlbumCatalog = () => import('@/views/AlbumCatalog.vue')
-const AlbumDetail = () => import('@/views/AlbumDetail.vue')
-const ArtistCatalog = () => import('@/views/ArtistCatalog.vue')
-const ArtistDetail = () => import('@/views/ArtistDetail.vue')
-const CollectionView = () => import('@/views/CollectionView.vue')
-const CopyDetail = () => import('@/views/CopyDetail.vue')
-const UserList = () => import('@/views/UserList.vue')
-const UserDetail = () => import('@/views/UserDetail.vue')
-const ProfileView = () => import('@/views/ProfileView.vue')
-const StatsView = () => import('@/views/StatsView.vue')
+const RegisterView = () => import('@/views/auth/RegisterView.vue')
+const DashboardView = () => import('@/views/dashboard/DashboardView.vue')
+const AlbumCatalog = () => import('@/views/catalog/AlbumCatalog.vue')
+const AlbumDetail = () => import('@/views/catalog/AlbumDetail.vue')
+const ArtistCatalog = () => import('@/views/catalog/ArtistCatalog.vue')
+const ArtistDetail = () => import('@/views/catalog/ArtistDetail.vue')
+const CollectionView = () => import('@/views/collection/CollectionView.vue')
+const CopyDetail = () => import('@/views/collection/CopyDetail.vue')
+const UserList = () => import('@/views/admin/UserList.vue')
+const UserDetail = () => import('@/views/admin/UserDetail.vue')
+const ProfileView = () => import('@/views/dashboard/ProfileView.vue')
+const StatsView = () => import('@/views/admin/StatsView.vue')
 
 // --- Definizione rotte ---
 const routes = [

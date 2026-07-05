@@ -9,7 +9,7 @@ Matrice di visibilita' (doc 3.4):
 """
 
 from flask import Blueprint, request, jsonify, g
-from auth import token_required
+from core.auth import token_required
 from dal.artist_dal import (
     get_all_artists,
     find_artist_by_id,
@@ -19,7 +19,7 @@ from dal.artist_dal import (
     delete_artist_by_id
 )
 from utils.validators import validate_json_payload
-from errors import ForbiddenError, NotFoundError
+from core.errors import ForbiddenError, NotFoundError
 
 bp = Blueprint("artists", __name__, url_prefix="/api/artists")
 

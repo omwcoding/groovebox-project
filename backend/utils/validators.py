@@ -1,4 +1,4 @@
-from errors import BadRequestError
+from core.errors import BadRequestError
 
 def validate_json_payload(data, required_fields):
     """
