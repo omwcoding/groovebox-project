@@ -39,7 +39,7 @@ SURNAMES = [
     "Mancini", "Rizzo", "Lombardi", "Moretti", "Barbieri", "Fontana", "Santoro", "Caruso"
 ]
 
-GENRES = ["Rock", "Pop", "Jazz", "Electronic", "Hip Hop", "Blues", "Metal", "Classical", "Reggae", "Funk", "Soul", "Disco"]
+GENRES = ["Rock / Alternative", "Pop", "Hip-Hop / Rap", "Electronic / Dance", "Ambient / Experimental", "Metal / Hard Rock", "Jazz / Blues", "Soul / R&B / Funk", "Reggae / Dub", "Folk / Acoustic", "Classical", "Soundtrack / OST", "World / Altro"]
 
 FORMATS = ["Vinile", "CD", "Cassetta"]
 CONDITIONS = ["Nuovo", "Come nuovo", "Buono", "Discreto", "Rovinato"]

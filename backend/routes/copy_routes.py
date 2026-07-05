@@ -10,7 +10,7 @@ Matrice di visibilita' (doc 3.4):
                    (nessun accesso alle librerie private)
 """
 
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from auth import token_required
 from dal.copy_dal import (
     get_user_copies,
@@ -131,6 +131,9 @@ def create_copy_cascade_route():
         release_year = None
 
     genre = data.get("genre", "").strip() or None
+    if genre and genre not in current_app.config["ALLOWED_GENRES"]:
+        raise BadRequestError(f"Genere musicale '{genre}' non valido o non consentito")
+
     personal_notes = data.get("personalNotes")
     if isinstance(personal_notes, str):
         personal_notes = personal_notes.strip() or None

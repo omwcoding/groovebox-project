@@ -77,6 +77,9 @@ def create_album():
     genre = data.get("genre", "").strip() or None
     artist_ids = data.get("artist_ids", [])
 
+    if genre and genre not in current_app.config["ALLOWED_GENRES"]:
+        raise BadRequestError(f"Genere musicale '{genre}' non valido o non consentito")
+
     # Verifica che gli artist_ids esistano
     for aid in artist_ids:
         artist = find_artist_by_id(aid)
@@ -117,8 +120,12 @@ def update_album(album_id):
     values = []
     for col in ["title", "releaseYear", "genre"]:
         if col in data:
-            fields.append(f"{col} = ?")
             val = data[col]
+            if col == "genre" and val:
+                val = val.strip() or None
+                if val and val not in current_app.config["ALLOWED_GENRES"]:
+                    raise BadRequestError(f"Genere musicale '{val}' non valido o non consentito")
+            fields.append(f"{col} = ?")
             values.append(val.strip() if isinstance(val, str) else val)
 
     artist_ids = None

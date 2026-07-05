@@ -5,7 +5,7 @@ import { api } from '@/stores/api'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import AlbumCard from '@/components/AlbumCard.vue'
-import { FORMAT_OPTIONS as formatOptions, CONDITION_OPTIONS as conditionOptions } from '@/constants/music'
+import { FORMAT_OPTIONS as formatOptions, CONDITION_OPTIONS as conditionOptions, GENRE_OPTIONS as genreOptions } from '@/constants/music'
 
 const route = useRoute()
 
@@ -270,7 +270,10 @@ async function handleDeleteCopy(copy) {
               </div>
               <div class="space-y-2">
                 <label for="new-album-genre" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Genere</label>
-                <input id="new-album-genre" v-model="formNew.genre" type="text" placeholder="Es. Rock" class="apple-input" />
+                <select id="new-album-genre" v-model="formNew.genre" class="apple-input">
+                  <option value="">Nessun genere (seleziona per modificare)</option>
+                  <option v-for="g in genreOptions" :key="g" :value="g">{{ g }}</option>
+                </select>
               </div>
             </div>
 

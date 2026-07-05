@@ -7,6 +7,7 @@ import BackButton from '@/components/BackButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import DetailField from '@/components/DetailField.vue'
+import { GENRE_OPTIONS } from '@/constants/music'
 
 const route = useRoute()
 const router = useRouter()
@@ -171,7 +172,10 @@ async function handleDelete() {
           </div>
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Genere</label>
-            <input v-model="form.genre" type="text" class="apple-input" />
+            <select v-model="form.genre" class="apple-input">
+              <option value="">Nessun genere (seleziona per modificare)</option>
+              <option v-for="g in GENRE_OPTIONS" :key="g" :value="g">{{ g }}</option>
+            </select>
           </div>
         </div>
 

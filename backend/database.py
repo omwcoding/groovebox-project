@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS ALBUM (
     id_album        INTEGER     PRIMARY KEY AUTOINCREMENT,
     title           VARCHAR(100)    NOT NULL,
     releaseYear     INTEGER,
-    genre           VARCHAR(50),
+    genre           VARCHAR(50)     CHECK (genre IS NULL OR genre IN ('Rock / Alternative', 'Pop', 'Hip-Hop / Rap', 'Electronic / Dance', 'Ambient / Experimental', 'Metal / Hard Rock', 'Jazz / Blues', 'Soul / R&B / Funk', 'Reggae / Dub', 'Folk / Acoustic', 'Classical', 'Soundtrack / OST', 'World / Altro')),
     coverPath       VARCHAR(255),
     id_user         INTEGER         NOT NULL,
 
