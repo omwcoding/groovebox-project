@@ -10,8 +10,6 @@ const loading = ref(true)
 const error = ref('')
 
 const activeTab = ref('overview') // 'overview' | 'media' | 'leaderboard'
-const hoveredSlice = ref(null)
-
 // Circonferenza per calcolo SVG Donut Chart (raggio = 50)
 const circumference = 314.159
 
@@ -199,7 +197,7 @@ onMounted(async () => {
               <svg viewBox="0 0 140 140" class="w-full h-full">
                 <!-- Sfondo vuoto del donut -->
                 <circle cx="70" cy="70" r="50" fill="transparent" stroke="rgba(255,255,255,0.03)" stroke-width="12" />
-                <!-- Segmenti dei formati colorati con animazione CSS -->
+                <!-- Segmenti dei formati colorati -->
                 <circle 
                   v-for="slice in donutSlices" 
                   :key="slice.format" 
@@ -212,21 +210,19 @@ onMounted(async () => {
                   :stroke-dasharray="slice.strokeDashArray" 
                   :stroke-dashoffset="slice.strokeDashOffset" 
                   transform="rotate(-90 70 70)"
-                  class="donut-segment cursor-pointer origin-center"
-                  @mouseenter="hoveredSlice = slice"
-                  @mouseleave="hoveredSlice = null"
+                  class="donut-segment cursor-pointer"
                 />
               </svg>
-              <!-- Testo Centrale Dinamico -->
+              <!-- Testo Centrale Statico (non ridondante) -->
               <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
                 <span class="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-                  {{ hoveredSlice ? hoveredSlice.format : 'Totale' }}
+                  Totale
                 </span>
                 <span class="text-4xl font-extrabold text-white mt-0.5">
-                  {{ hoveredSlice ? hoveredSlice.percentage + '%' : stats.totals.physical_copies }}
+                  {{ stats.totals.physical_copies }}
                 </span>
                 <span class="text-[9px] font-semibold text-white/20 mt-0.5">
-                  {{ hoveredSlice ? hoveredSlice.count + ' copie' : 'Copie fisiche' }}
+                  Copie fisiche
                 </span>
               </div>
             </div>
@@ -328,11 +324,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* Classe di transizione e hover per i segmenti del donut SVG */
+/* Classe per i segmenti del donut SVG */
 .donut-segment {
-  transition: stroke-width 0.3s ease, stroke-dashoffset 0.3s ease;
-}
-.donut-segment:hover {
-  stroke-width: 16px;
+  transition: stroke-dashoffset 0.3s ease;
 }
 </style>
