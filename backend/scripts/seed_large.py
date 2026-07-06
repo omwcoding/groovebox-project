@@ -3,13 +3,9 @@ GrooveBox - Script di Popolamento Database Large (Seeding)
 ===========================================================
 Crea:
   - 50 Collector (Utenti)
-  - 60 Artisti
-  - 120 Album (distribuiti tra gli artisti, inseriti da utenti casuali)
-  - 130 Associazioni Album-Artista (alcuni album hanno più artisti)
+  - Catalogo di Album Reali (via iTunes API) completi di copertine ad alta risoluzione
+  - Artisti Reali e relative Associazioni Album-Artista
   - 250 Copie fisiche (collezionate dagli utenti con formati e condizioni del progetto)
-
-Include anche il download opzionale di copertine astratte per rendere
-la visualizzazione nel catalogo esteticamente gradevole.
 
 Esecuzione:
   python seed_large.py
@@ -20,6 +16,9 @@ import os
 import random
 import datetime
 import urllib.request
+import urllib.parse
+import json
+import re
 from werkzeug.security import generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # backend/scripts/
@@ -27,7 +26,7 @@ BACKEND_DIR = os.path.dirname(BASE_DIR)
 DATABASE_PATH = os.path.join(BACKEND_DIR, "instance", "groovebox.db")
 COVERS_DIR = os.path.join(BACKEND_DIR, "uploads", "covers")
 
-# Liste per la generazione di dati realistici
+# Liste per la generazione di dati realistici per utenti e logiche di business
 FIRST_NAMES = [
     "Luca", "Giulia", "Marco", "Sofia", "Francesco", "Alice", "Alessandro", "Emma", 
     "Andrea", "Giorgia", "Matteo", "Chiara", "Davide", "Martina", "Lorenzo", "Sara", 
@@ -43,36 +42,8 @@ SURNAMES = [
 GENRES = ["Rock / Alternative", "Pop", "Hip-Hop / Rap", "Electronic / Dance", "Ambient / Experimental", "Metal / Hard Rock", "Jazz / Blues", "Soul / R&B / Funk", "Reggae / Dub", "Folk / Acoustic", "Classical", "Soundtrack / OST", "World / Altro"]
 
 FORMATS = ["Vinile", "CD", "Cassetta"]
+# Allineato ai vincoli CHECK del database.py ('Nuovo', 'Come nuovo', 'Buono', 'Discreto', 'Rovinato')
 CONDITIONS = ["Nuovo", "Come nuovo", "Buono", "Discreto", "Rovinato"]
-
-ARTIST_NAMES = [
-    # Band & Artisti Reali Popolari
-    "Pink Floyd", "Daft Punk", "The Beatles", "Led Zeppelin", "Queen", "David Bowie", 
-    "Michael Jackson", "Nirvana", "Madonna", "Eminem", "Radiohead", "Taylor Swift", 
-    "Depeche Mode", "Massive Attack", "The Rolling Stones", "AC/DC", "Bob Marley", 
-    "Stevie Wonder", "Miles Davis", "John Coltrane", "Jimi Hendrix", "Coldplay", 
-    "U2", "The Cure", "Metallica", "Iron Maiden", "Fleetwood Mac", "Gorillaz",
-    # Artisti generati realistici
-    "The Sound Wave", "Luna & The Stars", "Midnight Echo", "Electric Dreams", 
-    "The Velvet Grooves", "Acoustic Horizon", "Beat Syndicate", "Neon Nights",
-    "Jungle Beats", "Dusty Records", "Aura Project", "Sub-Zero", "Vocal Theory",
-    "Liquid Jazz Trio", "Symphony of Noise", "The Bassline Collective", "Coastal Breeze",
-    "Future Funk", "Static Sky", "The Analog Club", "Echo Location", "Retro Grade",
-    "Urban Poet", "Silver Strings", "Harmonic Waves", "The Rhythm Section",
-    "Solaris", "Quantum Beats", "Gravity Well", "Frequency Shift", "Vibe Tribe", "Modulation"
-]
-
-ALBUM_NOUNS = [
-    "Road", "Sky", "Mind", "Moon", "Silence", "Darkness", "Dream", "Sun", "Heart", 
-    "Time", "Shadow", "Ocean", "River", "Voice", "Soul", "World", "Machine", "Space", 
-    "Night", "Light", "City", "Forest", "Rain", "Fire", "Gold", "Wind", "Wave"
-]
-
-ALBUM_ADJECTIVES = [
-    "Abbey", "Dark Side", "Electric", "Velvet", "Golden", "Silent", "Infinite", 
-    "Secret", "Lost", "Midnight", "Pacific", "Urban", "Vintage", "Parallel", 
-    "Digital", "Analog", "Cosmic", "Classic", "Wild", "Plastic", "Atomic", "Neon"
-]
 
 NOTES_POOL = [
     "Prima stampa originale", "Edizione limitata in vinile colorato", "Firmato dall'artista",
@@ -81,52 +52,111 @@ NOTES_POOL = [
     "Nessuna nota", None, None, None # per renderle meno frequenti
 ]
 
-def download_placeholder_covers():
-    """Scarica 10 immagini astratte da usare come copertine degli album."""
+# Pool di artisti italiani e internazionali da usare per raggiungere la quota di 60 artisti totali
+EXTRA_ARTISTS_POOL = [
+    "Fabrizio De André", "Francesco Guccini", "Lucio Battisti", "Lucio Dalla",
+    "Vasco Rossi", "Ligabue", "Jovanotti", "Subsonica", "Verdena", "Afterhours",
+    "Mina", "Adriano Celentano", "Claudio Baglioni", "Gianna Nannini", "Franco Battiato",
+    "Caparezza", "Fabri Fibra", "Marracash", "Guè", "Salmo", "Sfera Ebbasta", "Madame",
+    "Rino Gaetano", "Francesco De Gregori", "Antonello Venditti", "Pino Daniele", "Zen Circus",
+    "Brunori Sas", "Calibro 35", "Baustelle", "Lo Stato Sociale", "Maneskin", "Ghemon"
+]
+
+def split_artist_names(artist_string):
+    """
+    Splitta i nomi degli artisti separandoli quando contengono congiunzioni o parole chiave 
+    di collaborazione ('&', 'and', 'feat.', 'featuring'), restituendo una lista di nomi puliti.
+    """
+    if not artist_string:
+        return []
+    # Sostituisce i delimitatori comuni con una barra verticale '|'
+    temp = re.sub(r'\s+&\s+|\s+and\s+|\s+feat\.\s+|\s+featuring\s+', '|', artist_string, flags=re.IGNORECASE)
+    # Splitta per barra e rimuove spazi extra
+    return [name.strip() for name in temp.split('|') if name.strip()]
+
+def fetch_real_albums_and_covers(target_count=120):
+    """
+    Usa l'API pubblica di iTunes per recuperare album reali e scaricare le copertine.
+    Restituisce una lista di dizionari con i dati pronti per il DB.
+    """
     os.makedirs(COVERS_DIR, exist_ok=True)
-    print("-> Download di copertine di esempio in corso...")
+    print("-> Interrogazione API iTunes per recuperare album reali in corso...")
     
-    saved_files = []
-    # Usiamo URL fissi da Picsum Photos per avere immagini stabili
-    urls = [
-        ("https://picsum.photos/id/10/300/300", "cover_1.jpg"),
-        ("https://picsum.photos/id/20/300/300", "cover_2.jpg"),
-        ("https://picsum.photos/id/29/300/300", "cover_3.jpg"),
-        ("https://picsum.photos/id/36/300/300", "cover_4.jpg"),
-        ("https://picsum.photos/id/48/300/300", "cover_5.jpg"),
-        ("https://picsum.photos/id/60/300/300", "cover_6.jpg"),
-        ("https://picsum.photos/id/76/300/300", "cover_7.jpg"),
-        ("https://picsum.photos/id/80/300/300", "cover_8.jpg"),
-        ("https://picsum.photos/id/104/300/300", "cover_9.jpg"),
-        ("https://picsum.photos/id/111/300/300", "cover_10.jpg"),
+    search_artists = [
+        "Pink Floyd", "Daft Punk", "Nirvana", "The Beatles", "Miles Davis", 
+        "Kendrick Lamar", "Taylor Swift", "Metallica", "Bob Marley", "Radiohead",
+        "Michael Jackson", "Queen", "David Bowie", "The Cure", "Fleetwood Mac",
+        "Eminem", "Coldplay", "Gorillaz", "The Rolling Stones", "Led Zeppelin"
     ]
     
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    real_albums = []
+    headers = {"User-Agent": "GrooveBoxUniversityProject/1.0"}
     
-    for url, filename in urls:
-        path = os.path.join(COVERS_DIR, filename)
+    for artist in search_artists:
+        if len(real_albums) >= target_count:
+            break
+            
+        query = urllib.parse.quote(artist)
+        url = f"https://itunes.apple.com/search?term={query}&entity=album&limit=10"
+        
         try:
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=5) as response, open(path, "wb") as out_file:
-                out_file.write(response.read())
-            saved_files.append(filename)
+            with urllib.request.urlopen(req, timeout=5) as response:
+                data = json.loads(response.read())
+                
+                for item in data.get('results', []):
+                    title = item.get('collectionName')
+                    artist_name = item.get('artistName')
+                    release_year = item.get('releaseDate', '2020')[:4]
+                    
+                    genre = random.choice(GENRES) 
+                    
+                    # Copertina in alta risoluzione
+                    artwork_url = item.get('artworkUrl100', '').replace('100x100bb', '600x600bb')
+                    
+                    if not title or not artwork_url:
+                        continue
+                        
+                    safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title)[:30]
+                    filename = f"{safe_title}_{random.randint(1000, 9999)}.jpg"
+                    filepath = os.path.join(COVERS_DIR, filename)
+                    
+                    # Evita di riscaricare la stessa immagine se si riavvia lo script
+                    if not os.path.exists(filepath):
+                        img_req = urllib.request.Request(artwork_url, headers=headers)
+                        with urllib.request.urlopen(img_req, timeout=5) as img_response, open(filepath, "wb") as out_file:
+                            out_file.write(img_response.read())
+                    
+                    real_albums.append({
+                        "title": title,
+                        "artist": artist_name,
+                        "year": int(release_year),
+                        "genre": genre,
+                        "cover": filename
+                    })
+                    
+                    print(f"   [+] Elaborato: {title} - {artist_name}")
+                    
+                    if len(real_albums) >= target_count:
+                        break
+                        
         except Exception as e:
-            print(f"   [!] Impossibile scaricare {filename}: {e} (saltato)")
+            print(f"   [!] Errore fetch artista {artist}: {e}")
             
-    print(f"-> Scaricate con successo {len(saved_files)} copertine.")
-    return saved_files
+    print(f"-> Recuperati {len(real_albums)} album reali completi di copertina.")
+    return real_albums
 
 def main():
     if not os.path.exists(DATABASE_PATH):
-        print(f"[!] Errore: File database '{DATABASE_PATH}' non trovato. Esegui prima 'database.py'.")
+        print(f"[!] Errore: File database '{DATABASE_PATH}' non trovato. Esegui prima la creazione del DB.")
         return
 
     print("====================================================")
-    print("GrooveBox - Popolamento Database (Large Seed)")
+    print("GrooveBox - Popolamento Database (Real Data Seed)")
     print("====================================================")
     
-    # 1. Scarica le copertine
-    cover_files = download_placeholder_covers()
+    # 1. Recupera album reali e scarica le copertine
+    real_albums_data = fetch_real_albums_and_covers(target_count=120)
     
     conn = sqlite3.connect(DATABASE_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -142,21 +172,17 @@ def main():
         cursor.execute("DELETE FROM USER WHERE id_user > 2")
         conn.commit()
         
-        # 2. Genera 50 Utenti Collector (id da 3 a 52)
-        print("-> Generazione di 50 Collector...")
-        password_hash = generate_password_hash("password123") # password comune per testare facilmente
-        user_ids = []
-        
-        # Aggiungiamo mario_rossi (id_user = 2) ai nostri ID attivi
-        user_ids.append(2)
+        # 2. Genera Collector in modo che il totale nel DB sia ESATTAMENTE 50 (compresi admin e mario_rossi)
+        print("-> Generazione di Collector (totale target utenti: 50)...")
+        password_hash = generate_password_hash("password123") 
+        user_ids = [1, 2] # Utenti di default esistenti nel DB
         
         used_usernames = {"admin", "mario_rossi"}
-        while len(user_ids) < 51:  # 50 nuovi collector + mario_rossi
+        while len(user_ids) < 50: 
             name = random.choice(FIRST_NAMES)
             surname = random.choice(SURNAMES)
             username = f"{name.lower()}.{surname.lower()}"
             
-            # Evita duplicati di username
             if username in used_usernames:
                 username = f"{username}{random.randint(10, 99)}"
             
@@ -170,83 +196,134 @@ def main():
             )
             user_ids.append(cursor.lastrowid)
             
-        print(f"   [OK] Creati {len(user_ids) - 1} nuovi collector.")
+        print(f"   [OK] Creati {len(user_ids) - 2} nuovi collector (Totale utenti nel DB: 50).")
 
-        # 3. Genera 60 Artisti
-        print("-> Generazione di 60 Artisti...")
-        artist_ids = []
+        # 3. Estrai e splitta gli Artisti per gestire le collaborazioni separatamente
+        print("-> Registrazione Artisti nel DB (suddividendo le collaborazioni)...")
+        artist_id_map = {}
+        for album_data in real_albums_data:
+            # Splitta il nome dell'artista
+            names = split_artist_names(album_data["artist"])
+            for name in names:
+                if name not in artist_id_map:
+                    cursor.execute("INSERT INTO ARTIST (name) VALUES (?)", (name,))
+                    artist_id_map[name] = cursor.lastrowid
         
-        # Prendi i primi 60 nomi dalla lista (se ce ne sono abbastanza, altrimenti genera proceduralmente)
-        artists_to_insert = ARTIST_NAMES[:60]
-        while len(artists_to_insert) < 60:
-            new_art = f"{random.choice(FIRST_NAMES)} {random.choice(SURNAMES)} Project"
-            if new_art not in artists_to_insert:
-                artists_to_insert.append(new_art)
-                
-        for name in artists_to_insert:
-            cursor.execute("INSERT INTO ARTIST (name) VALUES (?)", (name,))
-            artist_ids.append(cursor.lastrowid)
-            
-        print(f"   [OK] Creati {len(artist_ids)} artisti.")
+        # Assicurati che ci siano esattamente 60 artisti nel DB (riempi con EXTRA_ARTISTS_POOL se necessario)
+        all_artist_ids = list(artist_id_map.values())
+        extra_artists = list(set(EXTRA_ARTISTS_POOL) - set(artist_id_map.keys()))
+        random.shuffle(extra_artists)
+        
+        while len(all_artist_ids) < 60:
+            if extra_artists:
+                extra_name = extra_artists.pop()
+            else:
+                extra_name = f"Artista di Supporto {len(all_artist_ids) + 1}"
+            cursor.execute("INSERT INTO ARTIST (name) VALUES (?)", (extra_name,))
+            artist_id = cursor.lastrowid
+            all_artist_ids.append(artist_id)
+            artist_id_map[extra_name] = artist_id
 
-        # 4. Genera 120 Album
-        print("-> Generazione di 120 Album...")
+        # Se per qualche motivo superiamo 60 (es. iTunes restituisce troppe collab), limitiamo a 60
+        if len(all_artist_ids) > 60:
+            # Per mantenere l'integrità, rimuoviamo quelli di troppo dal DB (non usati)
+            artists_to_remove = all_artist_ids[60:]
+            all_artist_ids = all_artist_ids[:60]
+            for aid in artists_to_remove:
+                cursor.execute("DELETE FROM ARTIST WHERE id_artist = ?", (aid,))
+                # Rimuovi anche dalla mappa
+                for k, v in list(artist_id_map.items()):
+                    if v == aid:
+                        del artist_id_map[k]
+
+        print(f"   [OK] Inseriti {len(all_artist_ids)} Artisti unici nel DB (target esatto: 60).")
+
+        # 4. Genera esattamente 120 Album ed associa le relazioni
+        print("-> Inserimento di 120 Album ed associazione delle relazioni Album-Artista...")
         album_ids = []
-        used_titles = set()
+        album_artist_relations = []
         
-        for i in range(120):
-            # Crea un titolo realistico
-            title = f"{random.choice(ALBUM_ADJECTIVES)} {random.choice(ALBUM_NOUNS)}"
-            if title in used_titles:
-                title = f"{title} Vol. {random.randint(2, 4)}"
-            used_titles.add(title)
-            
-            year = random.randint(1965, 2026)
-            genre = random.choice(GENRES)
-            
-            # Assegna una copertina a caso tra quelle scaricate (opzionale)
-            cover = random.choice(cover_files) if cover_files and random.random() > 0.3 else None
-            
-            # Inserito da un utente casuale
+        for album_data in real_albums_data:
             creator_id = random.choice(user_ids)
-            
             cursor.execute(
                 """INSERT INTO ALBUM (title, releaseYear, genre, coverPath, id_user)
                    VALUES (?, ?, ?, ?, ?)""",
-                (title, year, genre, cover, creator_id)
+                (album_data["title"], album_data["year"], album_data["genre"], album_data["cover"], creator_id)
             )
-            album_ids.append(cursor.lastrowid)
+            album_id = cursor.lastrowid
+            album_ids.append(album_id)
             
-        print(f"   [OK] Creati {len(album_ids)} album.")
-
-        # 5. Genera 130 Associazioni Album-Artista (N:M)
-        print("-> Generazione di 130 Associazioni Album-Artista...")
-        associations = set()
-        
-        # Assicura che ogni album abbia almeno un artista
-        for album_id in album_ids:
-            artist_id = random.choice(artist_ids)
-            cursor.execute(
-                "INSERT INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)",
-                (album_id, artist_id)
-            )
-            associations.add((album_id, artist_id))
+            # Recupera tutti gli artisti splittati associati a questo album
+            names = split_artist_names(album_data["artist"])
+            # Colleghiamo solo gli artisti che fanno parte dei nostri 60 inseriti
+            associated_artist_ids = [artist_id_map[name] for name in names if name in artist_id_map]
             
-        # Aggiungi associazioni extra fino a raggiungere 130 (album con artisti multipli/collaborazioni)
-        while len(associations) < 130:
-            album_id = random.choice(album_ids)
-            artist_id = random.choice(artist_ids)
-            
-            if (album_id, artist_id) not in associations:
+            # Se per qualche motivo l'artista non è nel DB (es. rimosso per limite 60), usa un fallback
+            if not associated_artist_ids:
+                associated_artist_ids = [random.choice(all_artist_ids)]
+                
+            for artist_id in associated_artist_ids:
                 cursor.execute(
                     "INSERT INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)",
                     (album_id, artist_id)
                 )
-                associations.add((album_id, artist_id))
+                album_artist_relations.append((album_id, artist_id))
+            
+        # Adesso sistemiamo le relazioni in ALBUM_ARTIST per arrivare a ESATTAMENTE 130
+        current_relations_count = len(album_artist_relations)
+        
+        if current_relations_count < 130:
+            # Aggiungiamo collaborazioni a caso per raggiungere quota 130
+            needed = 130 - current_relations_count
+            print(f"   [i] Relazioni attuali: {current_relations_count}. Aggiunta di {needed} collaborazioni per raggiungere 130...")
+            
+            # Evitiamo duplicati prendendo album che non hanno già tutte le relazioni
+            candidate_albums = list(album_ids)
+            random.shuffle(candidate_albums)
+            
+            for album_id in candidate_albums:
+                if needed <= 0:
+                    break
+                # Artisti già associati a questo album
+                existing_aids = [r[1] for r in album_artist_relations if r[0] == album_id]
+                # Scegli un artista che non sia già associato
+                available_aids = [aid for aid in all_artist_ids if aid not in existing_aids]
+                if available_aids:
+                    sec_artist_id = random.choice(available_aids)
+                    cursor.execute(
+                        "INSERT INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)",
+                        (album_id, sec_artist_id)
+                    )
+                    album_artist_relations.append((album_id, sec_artist_id))
+                    needed -= 1
+                    
+        elif current_relations_count > 130:
+            # Rimuoviamo relazioni di troppo (mantenendone sempre almeno 1 per album)
+            excess = current_relations_count - 130
+            print(f"   [i] Relazioni attuali: {current_relations_count}. Rimozione di {excess} relazioni extra per rientrare nel target di 130...")
+            
+            # Trova relazioni che possono essere rimosse (l'album deve avere più di 1 artista)
+            album_counts = {}
+            for album_id, _ in album_artist_relations:
+                album_counts[album_id] = album_counts.get(album_id, 0) + 1
                 
-        print(f"   [OK] Create {len(associations)} relazioni album-artista.")
+            for rel in list(album_artist_relations):
+                if excess <= 0:
+                    break
+                album_id, artist_id = rel
+                if album_counts[album_id] > 1:
+                    cursor.execute(
+                        "DELETE FROM ALBUM_ARTIST WHERE id_album = ? AND id_artist = ?",
+                        (album_id, artist_id)
+                    )
+                    album_artist_relations.remove(rel)
+                    album_counts[album_id] -= 1
+                    excess -= 1
 
-        # 6. Genera 250 Copie Fisiche
+        print(f"   [OK] Inseriti {len(album_ids)} Album nel DB.")
+        print(f"   [OK] Create {len(album_artist_relations)} relazioni in ALBUM_ARTIST (target esatto: 130).")
+
+        # 5. Genera esattamente 250 Copie Fisiche
         print("-> Generazione di 250 Copie Fisiche per le collezioni private...")
         today = datetime.date.today()
         
@@ -256,7 +333,6 @@ def main():
             fmt = random.choice(FORMATS)
             cond = random.choice(CONDITIONS)
             
-            # Data di aggiunta casuale negli ultimi 365 giorni
             days_ago = random.randint(0, 365)
             added_date = (today - datetime.timedelta(days=days_ago)).isoformat()
             
@@ -274,10 +350,11 @@ def main():
         print("\n====================================================")
         print("POPOLAMENTO COMPLETATO CON SUCCESSO!")
         print("====================================================")
-        print(f"- Utenti totali: {len(user_ids)} (tutti con password: 'password123')")
-        print(f"- Artisti: {len(artist_ids)}")
-        print(f"- Album nel catalogo globale: {len(album_ids)}")
-        print(f"- Copie fisiche totali distribuite nelle librerie: 250")
+        print(f"- Utenti totali nel DB: {len(user_ids)} (target: 50)")
+        print(f"- Artisti totali nel DB: {len(all_artist_ids)} (target: 60)")
+        print(f"- Album inseriti a catalogo: {len(album_ids)} (target: 120)")
+        print(f"- Relazioni Album-Artista inserite: {len(album_artist_relations)} (target: 130)")
+        print(f"- Copie fisiche totali distribuite: 250 (target: 250)")
         print("====================================================")
         
     except Exception as e:

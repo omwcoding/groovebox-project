@@ -162,23 +162,23 @@ def seed_db():
         )
     )
 
-    # 2. Collector di esempio  (mario_rossi / password123)
+    # 2. Collector di esempio  (test / test)
     conn.execute(
         """INSERT INTO USER (username, name, surname, email, passwordHash, role)
            VALUES (?, ?, ?, ?, ?, ?)""",
         (
-            "mario_rossi",
-            "Mario",
-            "Rossi",
-            "mario.rossi@email.com",
-            generate_password_hash("password123"),
+            "test",
+            "Test",
+            "Test",
+            "test@test.com",
+            generate_password_hash("test"),
             "collector"
         )
     )
 
     conn.commit()
     conn.close()
-    print("[OK] Seed completato: creati utenti admin e mario_rossi")
+    print("[OK] Seed completato: creati utenti admin e test")
 
 
 # ---------------------------------------------------------------------------
