@@ -27,7 +27,8 @@ async function request(endpoint, options = {}) {
 
   // Se il server risponde 401, il token JWT è scaduto o non valido.
   // Forza la pulizia del token e reindirizza alla pagina di login.
-  if (response.status === 401) {
+  // Escludiamo l'endpoint di login per consentire la corretta visualizzazione degli errori di credenziali.
+  if (response.status === 401 && !endpoint.includes('/auth/login')) {
     try {
       // Importazione dinamica per evitare dipendenze circolari in Pinia
       const { useAuthStore } = await import('@/stores/auth')

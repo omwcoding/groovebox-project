@@ -62,6 +62,21 @@ def update_my_profile():
 
     # Gestione cambio password separata
     if "password" in data and data["password"]:
+        if len(data["password"]) < 6:
+            raise BadRequestError("La nuova password deve essere di almeno 6 caratteri")
+            
+        current_password = data.get("current_password")
+        if not current_password:
+            raise BadRequestError("La password attuale è obbligatoria per effettuare la modifica")
+            
+        from core.database import get_db
+        from werkzeug.security import check_password_hash
+        conn = get_db()
+        db_user = conn.execute("SELECT passwordHash FROM USER WHERE id_user = ?", (g.current_user["id_user"],)).fetchone()
+        
+        if not db_user or not check_password_hash(db_user["passwordHash"], current_password):
+            raise BadRequestError("La password attuale inserita non è corretta")
+            
         fields.append("passwordHash = ?")
         values.append(generate_password_hash(data["password"]))
 

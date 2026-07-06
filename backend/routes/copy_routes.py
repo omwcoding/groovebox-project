@@ -18,7 +18,8 @@ from dal.copy_dal import (
     insert_copy,
     create_copy_cascade,
     update_copy_data,
-    delete_copy_by_id
+    delete_copy_by_id,
+    delete_user_copies
 )
 from dal.album_dal import find_album_by_id
 from utils.validators import validate_json_payload
@@ -217,4 +218,21 @@ def delete_copy(copy_id):
     return jsonify({
         "status": "success",
         "message": "Copia fisica eliminata dalla collezione"
+    })
+
+
+# --------------------------------------------------------------------------
+# DELETE /api/copies/clear
+# Elimina tutte le copie fisiche dell'utente (solo Collector).
+# --------------------------------------------------------------------------
+@bp.route("/clear", methods=["DELETE"])
+@token_required
+def clear_copies():
+    if g.current_user["role"] != "collector":
+        raise ForbiddenError("Accesso riservato ai Collector")
+
+    delete_user_copies(g.current_user["id_user"])
+    return jsonify({
+        "status": "success",
+        "message": "Tutta la collezione è stata svuotata con successo"
     })

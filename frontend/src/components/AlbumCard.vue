@@ -43,6 +43,23 @@ defineProps({
     default: 0
   }
 })
+const getConditionClass = (cond) => {
+  if (!cond) return ''
+  switch (cond) {
+    case 'Nuovo':
+      return 'text-emerald-400'
+    case 'Come nuovo':
+      return 'text-sky-400'
+    case 'Buono':
+      return 'text-yellow-300'
+    case 'Discreto':
+      return 'text-orange-500'
+    case 'Rovinato':
+      return 'text-rose-500'
+    default:
+      return 'text-white/40'
+  }
+}
 </script>
 
 <template>
@@ -73,13 +90,6 @@ defineProps({
             {{ format }}
          </span>
       </div>
-
-      <!-- Play Hover indicator (solo se non è una copia fisica con badge) -->
-      <div v-else class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 scale-90 group-hover:scale-100 transition-transform duration-500">
-           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        </div>
-      </div>
     </div>
 
     <!-- Info -->
@@ -97,7 +107,7 @@ defineProps({
           <span v-if="releaseYear && genre">&middot;</span>
           <span v-if="genre" class="truncate">{{ genre }}</span>
         </div>
-        <span v-if="condition" class="text-emerald-400 font-extrabold shrink-0 ml-2">{{ condition }}</span>
+        <span v-if="condition" :class="[getConditionClass(condition), 'font-extrabold shrink-0 ml-2']">{{ condition }}</span>
       </div>
     </div>
   </RouterLink>

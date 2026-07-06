@@ -18,7 +18,7 @@ const authStore = useAuthStore()
     </div>
 
     <!-- Quick Links — Collector -->
-    <div v-if="authStore.isCollector" class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl">
+    <div v-if="authStore.isCollector" class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
       <RouterLink
         to="/collection"
         class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"

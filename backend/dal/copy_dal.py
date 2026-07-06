@@ -103,3 +103,8 @@ def delete_copy_by_id(copy_id):
     conn = get_db()
     with conn:
         conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_copy = ?", (copy_id,))
+
+def delete_user_copies(user_id):
+    conn = get_db()
+    with conn:
+        conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_user = ?", (user_id,))

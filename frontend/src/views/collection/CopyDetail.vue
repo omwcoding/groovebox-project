@@ -61,6 +61,23 @@ async function handleDelete() {
     error.value = err.message || 'Errore durante l\'eliminazione'
   }
 }
+const getConditionBadgeClass = (cond) => {
+  if (!cond) return ''
+  switch (cond) {
+    case 'Nuovo':
+      return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+    case 'Come nuovo':
+      return 'bg-sky-500/10 border-sky-500/20 text-sky-400'
+    case 'Buono':
+      return 'bg-yellow-500/10 border-yellow-500/20 text-yellow-300'
+    case 'Discreto':
+      return 'bg-orange-500/10 border-orange-500/20 text-orange-500'
+    case 'Rovinato':
+      return 'bg-rose-500/10 border-rose-500/20 text-rose-500'
+    default:
+      return 'bg-white/5 border-white/5 text-white/40'
+  }
+}
 </script>
 
 <template>
@@ -110,7 +127,7 @@ async function handleDelete() {
                 <span class="px-3.5 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold uppercase tracking-wider rounded-full">
                   {{ copy.format }}
                 </span>
-                <span class="px-3.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider rounded-full">
+                <span :class="[getConditionBadgeClass(copy.condition), 'px-3.5 py-1 border text-xs font-bold uppercase tracking-wider rounded-full']">
                   {{ copy.condition }}
                 </span>
               </div>

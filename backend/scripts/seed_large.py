@@ -74,10 +74,45 @@ def split_artist_names(artist_string):
     # Splitta per barra e rimuove spazi extra
     return [name.strip() for name in temp.split('|') if name.strip()]
 
+def map_itunes_genre(itunes_genre):
+    """
+    Mappa i generi restituiti dall'API di iTunes ai generi ammessi nel nostro database.
+    """
+    if not itunes_genre:
+        return "World / Altro"
+    g = itunes_genre.lower()
+    
+    if any(x in g for x in ["metal", "hard rock"]):
+        return "Metal / Hard Rock"
+    if any(x in g for x in ["rock", "alternative", "grunge", "punk", "indie"]):
+        return "Rock / Alternative"
+    if "pop" in g:
+        return "Pop"
+    if any(x in g for x in ["hip-hop", "rap", "hip hop"]):
+        return "Hip-Hop / Rap"
+    if any(x in g for x in ["electronic", "dance", "house", "techno", "trance", "synth"]):
+        return "Electronic / Dance"
+    if any(x in g for x in ["ambient", "experimental", "idm"]):
+        return "Ambient / Experimental"
+    if any(x in g for x in ["jazz", "blues"]):
+        return "Jazz / Blues"
+    if any(x in g for x in ["soul", "r&b", "funk", "disco"]):
+        return "Soul / R&B / Funk"
+    if any(x in g for x in ["reggae", "dub"]):
+        return "Reggae / Dub"
+    if any(x in g for x in ["folk", "acoustic", "singer"]):
+        return "Folk / Acoustic"
+    if "classical" in g:
+        return "Classical"
+    if any(x in g for x in ["soundtrack", "ost", "score", "movie"]):
+        return "Soundtrack / OST"
+        
+    return "World / Altro"
+
 def fetch_real_albums_and_covers(target_count=120):
     """
     Usa l'API pubblica di iTunes per recuperare album reali e scaricare le copertine.
-    Restituisce una lista di dizionari con i dati pronti per il DB.
+    Filtra singoli, EP, cover band, e mappa correttamente i generi musicali.
     """
     os.makedirs(COVERS_DIR, exist_ok=True)
     print("-> Interrogazione API iTunes per recuperare album reali in corso...")
@@ -92,12 +127,15 @@ def fetch_real_albums_and_covers(target_count=120):
     real_albums = []
     headers = {"User-Agent": "GrooveBoxUniversityProject/1.0"}
     
+    # Parole chiave da escludere nei titoli degli album per evitare singoli ed EP
+    exclude_keywords = re.compile(r'\b(single|ep|tribute|karaoke|cover|covers|remix|remixes|instrumental|tribute|piano)\b', re.IGNORECASE)
+    
     for artist in search_artists:
         if len(real_albums) >= target_count:
             break
             
         query = urllib.parse.quote(artist)
-        url = f"https://itunes.apple.com/search?term={query}&entity=album&limit=10"
+        url = f"https://itunes.apple.com/search?term={query}&entity=album&limit=25" # Aumentato a 25 per filtrare singoli ed EP
         
         try:
             req = urllib.request.Request(url, headers=headers)
@@ -105,16 +143,35 @@ def fetch_real_albums_and_covers(target_count=120):
                 data = json.loads(response.read())
                 
                 for item in data.get('results', []):
-                    title = item.get('collectionName')
-                    artist_name = item.get('artistName')
+                    title = item.get('collectionName', '')
+                    artist_name = item.get('artistName', '')
                     release_year = item.get('releaseDate', '2020')[:4]
+                    itunes_genre = item.get('primaryGenreName', '')
+                    track_count = item.get('trackCount', 0)
                     
-                    genre = random.choice(GENRES) 
+                    # 1. Filtro: l'artista originale dell'album deve contenere il nome cercato (evita cover band o tribute)
+                    if artist.lower() not in artist_name.lower():
+                        continue
+                        
+                    # 2. Filtro: evita singoli, EP, tribute o cover band basandosi sul titolo
+                    if exclude_keywords.search(title) or exclude_keywords.search(artist_name):
+                        continue
+                        
+                    # 3. Filtro: un album vero e proprio ha solitamente almeno 6 tracce (evita singoli/EP)
+                    if track_count < 6:
+                        continue
+                        
+                    # Mappa il genere iTunes a quelli supportati dal progetto
+                    genre = map_itunes_genre(itunes_genre)
                     
                     # Copertina in alta risoluzione
                     artwork_url = item.get('artworkUrl100', '').replace('100x100bb', '600x600bb')
                     
                     if not title or not artwork_url:
+                        continue
+                        
+                    # Evita duplicati di album con lo stesso titolo
+                    if any(a["title"].lower() == title.lower() for a in real_albums):
                         continue
                         
                     safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title)[:30]
@@ -135,7 +192,7 @@ def fetch_real_albums_and_covers(target_count=120):
                         "cover": filename
                     })
                     
-                    print(f"   [+] Elaborato: {title} - {artist_name}")
+                    print(f"   [+] Elaborato: {title} - {artist_name} ({genre})")
                     
                     if len(real_albums) >= target_count:
                         break
@@ -226,12 +283,10 @@ def main():
 
         # Se per qualche motivo superiamo 60 (es. iTunes restituisce troppe collab), limitiamo a 60
         if len(all_artist_ids) > 60:
-            # Per mantenere l'integrità, rimuoviamo quelli di troppo dal DB (non usati)
             artists_to_remove = all_artist_ids[60:]
             all_artist_ids = all_artist_ids[:60]
             for aid in artists_to_remove:
                 cursor.execute("DELETE FROM ARTIST WHERE id_artist = ?", (aid,))
-                # Rimuovi anche dalla mappa
                 for k, v in list(artist_id_map.items()):
                     if v == aid:
                         del artist_id_map[k]
@@ -255,10 +310,8 @@ def main():
             
             # Recupera tutti gli artisti splittati associati a questo album
             names = split_artist_names(album_data["artist"])
-            # Colleghiamo solo gli artisti che fanno parte dei nostri 60 inseriti
             associated_artist_ids = [artist_id_map[name] for name in names if name in artist_id_map]
             
-            # Se per qualche motivo l'artista non è nel DB (es. rimosso per limite 60), usa un fallback
             if not associated_artist_ids:
                 associated_artist_ids = [random.choice(all_artist_ids)]
                 
@@ -269,24 +322,20 @@ def main():
                 )
                 album_artist_relations.append((album_id, artist_id))
             
-        # Adesso sistemiamo le relazioni in ALBUM_ARTIST per arrivare a ESATTAMENTE 130
+        # Sistemiamo le relazioni in ALBUM_ARTIST per arrivare a ESATTAMENTE 130
         current_relations_count = len(album_artist_relations)
         
         if current_relations_count < 130:
-            # Aggiungiamo collaborazioni a caso per raggiungere quota 130
             needed = 130 - current_relations_count
             print(f"   [i] Relazioni attuali: {current_relations_count}. Aggiunta di {needed} collaborazioni per raggiungere 130...")
             
-            # Evitiamo duplicati prendendo album che non hanno già tutte le relazioni
             candidate_albums = list(album_ids)
             random.shuffle(candidate_albums)
             
             for album_id in candidate_albums:
                 if needed <= 0:
                     break
-                # Artisti già associati a questo album
                 existing_aids = [r[1] for r in album_artist_relations if r[0] == album_id]
-                # Scegli un artista che non sia già associato
                 available_aids = [aid for aid in all_artist_ids if aid not in existing_aids]
                 if available_aids:
                     sec_artist_id = random.choice(available_aids)
@@ -298,11 +347,9 @@ def main():
                     needed -= 1
                     
         elif current_relations_count > 130:
-            # Rimuoviamo relazioni di troppo (mantenendone sempre almeno 1 per album)
             excess = current_relations_count - 130
             print(f"   [i] Relazioni attuali: {current_relations_count}. Rimozione di {excess} relazioni extra per rientrare nel target di 130...")
             
-            # Trova relazioni che possono essere rimosse (l'album deve avere più di 1 artista)
             album_counts = {}
             for album_id, _ in album_artist_relations:
                 album_counts[album_id] = album_counts.get(album_id, 0) + 1

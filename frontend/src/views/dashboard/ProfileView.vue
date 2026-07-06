@@ -16,6 +16,7 @@ const form = ref({
   name: '',
   surname: '',
   email: '',
+  currentPassword: '',
   password: '',
   confirmPassword: ''
 })
@@ -29,6 +30,7 @@ function resetForm() {
     name: authStore.user?.name || '',
     surname: authStore.user?.surname || '',
     email: authStore.user?.email || '',
+    currentPassword: '',
     password: '',
     confirmPassword: ''
   }
@@ -41,9 +43,19 @@ async function handleSave() {
   error.value = ''
   message.value = ''
 
-  if (form.value.password && form.value.password !== form.value.confirmPassword) {
-    error.value = 'Le password non coincidono'
-    return
+  if (form.value.password) {
+    if (!form.value.currentPassword) {
+      error.value = 'La password attuale è obbligatoria per poter inserire una nuova password'
+      return
+    }
+    if (form.value.password.length < 6) {
+      error.value = 'La nuova password deve contenere almeno 6 caratteri'
+      return
+    }
+    if (form.value.password !== form.value.confirmPassword) {
+      error.value = 'Le password non coincidono'
+      return
+    }
   }
 
   loading.value = true
@@ -55,12 +67,14 @@ async function handleSave() {
     }
     if (form.value.password) {
       payload.password = form.value.password
+      payload.current_password = form.value.currentPassword
     }
 
     const res = await api.put('/users/me', payload)
     authStore.updateUser(res.data)
     message.value = 'Profilo aggiornato con successo'
     editing.value = false
+    form.value.currentPassword = ''
     form.value.password = ''
     form.value.confirmPassword = ''
   } catch (err) {
@@ -80,6 +94,23 @@ async function handleDeleteAccount() {
     router.push('/')
   } catch (err) {
     error.value = err.message || 'Errore durante l\'eliminazione'
+  }
+}
+
+async function handleClearCollection() {
+  if (!confirm('Sei sicuro di voler svuotare interamente la tua collezione? Verranno rimosse tutte le tue copie fisiche. Questa azione è irreversibile.')) {
+    return
+  }
+  loading.value = true
+  message.value = ''
+  error.value = ''
+  try {
+    await api.delete('/copies/clear')
+    message.value = 'La tua collezione è stata svuotata con successo!'
+  } catch (err) {
+    error.value = err.message || 'Errore durante lo svuotamento della collezione'
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -141,6 +172,13 @@ async function handleDeleteAccount() {
             Modifica profilo
           </button>
           <button
+            @click="handleClearCollection"
+            :disabled="loading"
+            class="apple-button apple-button-secondary text-sm !text-amber-500 hover:!bg-amber-500/10 hover:!border-amber-500/20"
+          >
+            Svuota collezione
+          </button>
+          <button
             @click="handleDeleteAccount"
             class="apple-button apple-button-secondary text-sm !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/20"
           >
@@ -171,6 +209,11 @@ async function handleDeleteAccount() {
           <div class="space-y-1">
             <h3 class="text-sm font-bold">Cambio Password</h3>
             <p class="text-xs text-white/30">Lascia vuoti i campi password per non modificarla.</p>
+          </div>
+
+          <div class="space-y-2">
+            <label for="profile-current-password" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Password attuale</label>
+            <input id="profile-current-password" v-model="form.currentPassword" type="password" autocomplete="current-password" placeholder="Inserisci la password attuale" class="apple-input" />
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

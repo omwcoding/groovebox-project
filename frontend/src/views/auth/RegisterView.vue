@@ -20,6 +20,11 @@ const loading = ref(false)
 async function handleRegister() {
   error.value = ''
 
+  if (form.value.password.length < 6) {
+    error.value = 'La password deve contenere almeno 6 caratteri'
+    return
+  }
+
   if (form.value.password !== form.value.confirmPassword) {
     error.value = 'Le password non coincidono'
     return

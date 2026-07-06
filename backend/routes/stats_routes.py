@@ -31,3 +31,26 @@ def get_stats():
         "status": "success",
         "data": stats
     })
+
+
+# --------------------------------------------------------------------------
+# GET /api/stats/export
+# Esporta il dump delle statistiche della piattaforma in JSON (solo Admin).
+# --------------------------------------------------------------------------
+@bp.route("/export", methods=["GET"])
+@token_required
+def export_stats():
+    if g.current_user["role"] != "administrator":
+        raise ForbiddenError("Accesso riservato agli amministratori")
+
+    import json
+    from flask import Response
+
+    stats = get_platform_stats()
+    json_data = json.dumps(stats, indent=4, ensure_ascii=False)
+
+    return Response(
+        json_data,
+        mimetype="application/json",
+        headers={"Content-disposition": "attachment; filename=statistiche_groovebox.json"}
+    )

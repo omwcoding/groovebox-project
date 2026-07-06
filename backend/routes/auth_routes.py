@@ -11,7 +11,7 @@ import jwt
 import datetime
 from dal.user_dal import insert_collector, get_user_by_username
 from utils.validators import validate_json_payload
-from core.errors import ConflictError, UnauthorizedError
+from core.errors import ConflictError, UnauthorizedError, BadRequestError
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -30,6 +30,9 @@ def register():
     surname = data["surname"].strip()
     email = data["email"].strip()
     password = data["password"]
+
+    if len(password) < 6:
+        raise BadRequestError("La password deve essere di almeno 6 caratteri")
 
     # Hash della password
     password_hash = generate_password_hash(password)
@@ -65,8 +68,11 @@ def login():
 
     user = get_user_by_username(data["username"])
 
-    if not user or not check_password_hash(user["passwordHash"], data["password"]):
-        raise UnauthorizedError("Credenziali non valide")
+    if not user:
+        raise UnauthorizedError("Username inesistente")
+
+    if not check_password_hash(user["passwordHash"], data["password"]):
+        raise UnauthorizedError("Password errata")
 
     # Genera token JWT con scadenza a 24 ore
     token = jwt.encode(

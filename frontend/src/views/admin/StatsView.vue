@@ -40,6 +40,32 @@ const donutSlices = computed(() => {
   })
 })
 
+async function handleExportStats() {
+  try {
+    const token = localStorage.getItem('groovebox_token')
+    const headers = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    const res = await fetch('/api/stats/export', { headers })
+    if (!res.ok) {
+      throw new Error("Errore durante l'esportazione dei dati")
+    }
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'statistiche_groovebox.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error(err)
+    alert("Impossibile esportare le statistiche")
+  }
+}
+
 onMounted(async () => {
   try {
     const res = await api.get('/stats')
@@ -58,29 +84,41 @@ onMounted(async () => {
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
       <PageHeader title="Statistiche Piattaforma" subtitle="Monitora l'utilizzo, la distribuzione e la crescita di GrooveBox." />
       
-      <!-- Tab Selector -->
-      <div v-if="stats" class="flex bg-white/5 border border-white/5 p-1 rounded-full text-xs font-bold tracking-wide uppercase shrink-0">
+      <!-- Tab Selector & Export Button -->
+      <div v-if="stats" class="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0">
+        <!-- Pulsante Esporta JSON -->
         <button 
-          @click="activeTab = 'overview'"
-          class="px-4 py-2 rounded-full transition-all duration-300"
-          :class="activeTab === 'overview' ? 'bg-white text-black font-extrabold shadow-sm' : 'text-white/60 hover:text-white'"
+          @click="handleExportStats"
+          class="apple-button apple-button-secondary text-xs py-2 px-4 shadow-md flex items-center gap-2"
         >
-          Panoramica
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Esporta JSON
         </button>
-        <button 
-          @click="activeTab = 'media'"
-          class="px-4 py-2 rounded-full transition-all duration-300"
-          :class="activeTab === 'media' ? 'bg-white text-black font-extrabold shadow-sm' : 'text-white/60 hover:text-white'"
-        >
-          Analisi Supporti
-        </button>
-        <button 
-          @click="activeTab = 'leaderboard'"
-          class="px-4 py-2 rounded-full transition-all duration-300"
-          :class="activeTab === 'leaderboard' ? 'bg-white text-black font-extrabold shadow-sm' : 'text-white/60 hover:text-white'"
-        >
-          Classifica
-        </button>
+
+        <!-- Selettore Tab -->
+        <div class="flex bg-white/5 border border-white/5 p-1 rounded-full text-xs font-bold tracking-wide uppercase">
+          <button 
+            @click="activeTab = 'overview'"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="activeTab === 'overview' ? 'bg-white text-black font-extrabold shadow-sm' : 'text-white/60 hover:text-white'"
+          >
+            Panoramica
+          </button>
+          <button 
+            @click="activeTab = 'media'"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="activeTab === 'media' ? 'bg-white text-black font-extrabold shadow-sm' : 'text-white/60 hover:text-white'"
+          >
+            Analisi Supporti
+          </button>
+          <button 
+            @click="activeTab = 'leaderboard'"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="activeTab === 'leaderboard' ? 'bg-white text-black font-extrabold shadow-sm' : 'text-white/60 hover:text-white'"
+          >
+            Classifica
+          </button>
+        </div>
       </div>
     </div>
 
@@ -134,39 +172,40 @@ onMounted(async () => {
           <div class="glass-panel p-8 rounded-apple-2xl border border-white/5 shadow-xl space-y-6">
             <h2 class="text-xl font-bold tracking-tight">Ultimi Ingressi</h2>
             <div v-if="stats.recent_albums.length > 0" class="space-y-4">
-              <div v-for="album in stats.recent_albums" :key="album.id_album"
-                   class="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-4">
-                <div class="w-10 h-10 bg-brand-secondary/10 border border-brand-secondary/20 text-brand-secondary rounded-xl flex items-center justify-center text-lg shrink-0">
-                  💿
+              <RouterLink v-for="album in stats.recent_albums" :key="album.id_album"
+                   :to="`/albums/${album.id_album}`"
+                   class="group p-4 bg-white/[0.02] border border-white/5 hover:border-brand-secondary/30 rounded-2xl flex items-center gap-4 hover:shadow-lg hover:shadow-brand-secondary/5 transition-all duration-300">
+                <div class="w-10 h-10 rounded-xl overflow-hidden bg-white/5 border border-white/5 flex items-center justify-center shrink-0">
+                  <img 
+                    v-if="album.coverPath" 
+                    :src="`/api/albums/${album.id_album}/cover`" 
+                    :alt="album.title" 
+                    class="w-full h-full object-cover" 
+                  />
+                  <span v-else class="text-lg">💿</span>
                 </div>
-                <div class="min-w-0">
-                  <p class="font-bold text-white/90 truncate leading-tight">{{ album.title }}</p>
+                <div class="min-w-0 flex-grow">
+                  <p class="font-bold text-white/90 group-hover:text-brand-secondary transition-colors truncate leading-tight">{{ album.title }}</p>
                   <p class="text-[10px] font-bold text-white/30 uppercase tracking-wide mt-1 truncate">
                     {{ album.genre }} <span v-if="album.releaseYear">&middot; {{ album.releaseYear }}</span>
                   </p>
                 </div>
-              </div>
+              </RouterLink>
             </div>
             <p v-else class="text-sm font-semibold text-white/30 italic text-center">Nessun album nel catalogo.</p>
           </div>
         </div>
 
-        <!-- Distribuzione Generi Musicali (Spostata qui in Panoramica) -->
-        <div class="glass-panel p-8 rounded-apple-2xl border border-white/5 shadow-xl space-y-6">
-          <h2 class="text-xl font-bold tracking-tight">I 5 Generi Musicali più Diffusi nel Catalogo</h2>
-          <div v-if="stats.genres_distribution && stats.genres_distribution.length > 0" class="grid grid-cols-1 md:grid-cols-5 gap-6">
-            <div v-for="(genre, index) in stats.genres_distribution" :key="genre.genre"
-                 class="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col justify-between space-y-4 hover:border-white/10 transition-all">
-              <div class="space-y-1">
-                <span class="text-[10px] font-extrabold text-brand-secondary bg-brand-secondary/15 border border-brand-secondary/20 px-2 py-0.5 rounded-full">
-                  Rank #{{ index + 1 }}
-                </span>
-                <p class="font-bold text-white/90 text-base pt-1.5 truncate">{{ genre.genre }}</p>
-              </div>
-              <div class="space-y-1">
-                <div class="flex justify-between text-xs font-semibold text-white/40">
-                  <span>Album</span>
-                  <span class="text-white">{{ genre.count }}</span>
+        <!-- Generi & Artisti Più Attivi -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Distribuzione Generi Musicali -->
+          <div class="glass-panel p-8 rounded-apple-2xl border border-white/5 shadow-xl space-y-6">
+            <h2 class="text-xl font-bold tracking-tight">I 5 Generi Musicali più Diffusi nel Catalogo</h2>
+            <div v-if="stats.genres_distribution && stats.genres_distribution.length > 0" class="space-y-4">
+              <div v-for="(genre, index) in stats.genres_distribution" :key="genre.genre" class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-white/80">
+                  <span>{{ index + 1 }}. {{ genre.genre }}</span>
+                  <span>{{ genre.count }} album</span>
                 </div>
                 <div class="bg-white/5 rounded-full h-1.5 overflow-hidden">
                   <div 
@@ -176,8 +215,28 @@ onMounted(async () => {
                 </div>
               </div>
             </div>
+            <p v-else class="text-sm font-semibold text-white/30 italic text-center">Nessun genere registrato.</p>
           </div>
-          <p v-else class="text-sm font-semibold text-white/30 italic text-center">Nessun genere registrato.</p>
+
+          <!-- Artisti con più Album -->
+          <div class="glass-panel p-8 rounded-apple-2xl border border-white/5 shadow-xl space-y-6">
+            <h2 class="text-xl font-bold tracking-tight">I 5 Artisti più Attivi nel Catalogo</h2>
+            <div v-if="stats.top_artists && stats.top_artists.length > 0" class="space-y-4">
+              <div v-for="(artist, index) in stats.top_artists" :key="artist.id_artist" class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-white/80">
+                  <span>{{ index + 1 }}. {{ artist.name }}</span>
+                  <span>{{ artist.albums_count }} album</span>
+                </div>
+                <div class="bg-white/5 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    class="bg-brand-secondary h-full rounded-full" 
+                    :style="{ width: `${(artist.albums_count / stats.totals.albums * 100)}%` }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <p v-else class="text-sm font-semibold text-white/30 italic text-center">Nessun artista registrato.</p>
+          </div>
         </div>
       </div>
 

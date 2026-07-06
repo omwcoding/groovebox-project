@@ -40,7 +40,7 @@ def get_platform_stats():
 
     # Ultimi album aggiunti al catalogo
     recent_albums = conn.execute(
-        """SELECT id_album, title, genre, releaseYear
+        """SELECT id_album, title, genre, releaseYear, coverPath
            FROM ALBUM
            ORDER BY id_album DESC
            LIMIT 5"""
@@ -66,6 +66,16 @@ def get_platform_stats():
            LIMIT 5"""
     ).fetchall()
 
+    # Artisti con piu' album registrati nel sistema
+    top_artists = conn.execute(
+        """SELECT ar.id_artist, ar.name, COUNT(DISTINCT aa.id_album) as albums_count
+           FROM ARTIST ar
+           JOIN ALBUM_ARTIST aa ON ar.id_artist = aa.id_artist
+           GROUP BY ar.id_artist
+           ORDER BY albums_count DESC
+           LIMIT 5"""
+    ).fetchall()
+
     return {
         "totals": {
             "users": total_users,
@@ -77,5 +87,6 @@ def get_platform_stats():
         "top_collected_albums": [dict(a) for a in top_albums],
         "recent_albums": [dict(a) for a in recent_albums],
         "genres_distribution": [dict(g) for g in genres],
-        "top_collectors": [dict(c) for c in collectors]
+        "top_collectors": [dict(c) for c in collectors],
+        "top_artists": [dict(a) for a in top_artists]
     }
