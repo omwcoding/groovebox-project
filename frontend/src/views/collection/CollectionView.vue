@@ -142,7 +142,6 @@ async function handleCreate() {
     formLoading.value = false
   }
 }
-}
 </script>
 
 <template>
