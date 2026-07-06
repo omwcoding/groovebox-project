@@ -46,6 +46,26 @@ def get_platform_stats():
            LIMIT 5"""
     ).fetchall()
 
+    # Generi piu' diffusi (distribuzione album per genere nel catalogo)
+    genres = conn.execute(
+        """SELECT genre, COUNT(*) as count
+           FROM ALBUM
+           WHERE genre IS NOT NULL AND genre != ''
+           GROUP BY genre
+           ORDER BY count DESC
+           LIMIT 5"""
+    ).fetchall()
+
+    # Classifica migliori collezionisti (utenti con piu' copie fisiche)
+    collectors = conn.execute(
+        """SELECT u.username, u.name, u.surname, COUNT(pc.id_copy) as copies_count
+           FROM USER u
+           JOIN PHYSICAL_COPY pc ON u.id_user = pc.id_user
+           GROUP BY u.id_user
+           ORDER BY copies_count DESC
+           LIMIT 5"""
+    ).fetchall()
+
     return {
         "totals": {
             "users": total_users,
@@ -55,5 +75,7 @@ def get_platform_stats():
         },
         "formats_distribution": [dict(f) for f in formats],
         "top_collected_albums": [dict(a) for a in top_albums],
-        "recent_albums": [dict(a) for a in recent_albums]
+        "recent_albums": [dict(a) for a in recent_albums],
+        "genres_distribution": [dict(g) for g in genres],
+        "top_collectors": [dict(c) for c in collectors]
     }
