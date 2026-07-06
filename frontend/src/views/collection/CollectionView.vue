@@ -142,15 +142,6 @@ async function handleCreate() {
     formLoading.value = false
   }
 }
-
-async function handleDeleteCopy(copy) {
-  if (!confirm(`Rimuovere "${copy.album_title}" dalla collezione?`)) return
-  try {
-    await api.delete(`/copies/${copy.id_copy}`)
-    copies.value = copies.value.filter(c => c.id_copy !== copy.id_copy)
-  } catch (err) {
-    console.error(err)
-  }
 }
 </script>
 
