@@ -26,8 +26,14 @@ export const useAuthStore = defineStore('auth', () => {
     const savedToken = localStorage.getItem('groovebox_token')
     const savedUser = localStorage.getItem('groovebox_user')
     if (savedToken && savedUser) {
-      token.value = savedToken
-      user.value = JSON.parse(savedUser)
+      try {
+        token.value = savedToken
+        user.value = JSON.parse(savedUser)
+      } catch (_) {
+        // Dati corrotti in localStorage: pulizia e reset sessione
+        localStorage.removeItem('groovebox_token')
+        localStorage.removeItem('groovebox_user')
+      }
     }
   }
 

@@ -97,7 +97,7 @@ async function handleRegister() {
         </div>
 
         <!-- Nome e Cognome -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="space-y-1.5">
             <label for="reg-name" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">
               Nome

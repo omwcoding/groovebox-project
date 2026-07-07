@@ -10,6 +10,7 @@ const loading = ref(true)
 const error = ref('')
 
 const activeTab = ref('overview') // 'overview' | 'media' | 'leaderboard'
+const hoveredSlice = ref(null)
 // Circonferenza per calcolo SVG Donut Chart (raggio = 50)
 const circumference = 314.159
 
@@ -48,6 +49,14 @@ async function handleExportStats() {
       headers['Authorization'] = `Bearer ${token}`
     }
     const res = await fetch('/api/stats/export', { headers })
+    if (res.status === 401) {
+      // Token scaduto: replica il comportamento del layer api.js
+      const { useAuthStore } = await import('@/stores/auth')
+      const authStore = useAuthStore()
+      authStore.logout()
+      window.location.href = '/login'
+      return
+    }
     if (!res.ok) {
       throw new Error("Errore durante l'esportazione dei dati")
     }
@@ -353,29 +362,30 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Classifica Completa Tabellare -->
         <div class="glass-panel rounded-apple-2xl border border-white/5 shadow-xl overflow-hidden">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-white/5 bg-white/[0.01] text-xs font-bold uppercase tracking-widest text-white/30">
-                <th class="px-6 py-4 w-16 text-center">Pos</th>
-                <th class="px-6 py-4">Nome & Cognome</th>
-                <th class="px-6 py-4">Username</th>
-                <th class="px-6 py-4 text-right">Copie Archiviate</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-white/5 text-sm font-semibold">
-              <tr v-for="(collector, idx) in stats.top_collectors" :key="collector.username" class="hover:bg-white/[0.01] transition-colors">
-                <td class="px-6 py-4 text-center font-extrabold text-white/40">
-                  <span v-if="idx < 3" class="text-lg">{{ idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉' }}</span>
-                  <span v-else>#{{ idx + 1 }}</span>
-                </td>
-                <td class="px-6 py-4 text-white/80">{{ collector.name }} {{ collector.surname }}</td>
-                <td class="px-6 py-4 text-brand-secondary font-mono text-xs">@{{ collector.username }}</td>
-                <td class="px-6 py-4 text-right font-extrabold text-white">{{ collector.copies_count }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-white/5 bg-white/[0.01] text-xs font-bold uppercase tracking-widest text-white/30">
+                  <th class="px-6 py-4 w-16 text-center">Pos</th>
+                  <th class="px-6 py-4">Nome & Cognome</th>
+                  <th class="px-6 py-4">Username</th>
+                  <th class="px-6 py-4 text-right">Copie Archiviate</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5 text-sm font-semibold">
+                <tr v-for="(collector, idx) in stats.top_collectors" :key="collector.username" class="hover:bg-white/[0.01] transition-colors">
+                  <td class="px-6 py-4 text-center font-extrabold text-white/40">
+                    <span v-if="idx < 3" class="text-lg">{{ idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉' }}</span>
+                    <span v-else>#{{ idx + 1 }}</span>
+                  </td>
+                  <td class="px-6 py-4 text-white/80">{{ collector.name }} {{ collector.surname }}</td>
+                  <td class="px-6 py-4 text-brand-secondary font-mono text-xs">@{{ collector.username }}</td>
+                  <td class="px-6 py-4 text-right font-extrabold text-white">{{ collector.copies_count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

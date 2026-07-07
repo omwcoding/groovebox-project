@@ -112,7 +112,6 @@ function toggleArtist(id) {
 
 const artistSearchInput = ref('')
 const isArtistDropdownOpen = ref(false)
-const inlineArtistLoading = ref(false)
 
 const filteredArtistsForSelect = computed(() => {
   const query = artistSearchInput.value.toLowerCase().trim()
@@ -144,7 +143,6 @@ function associateExistingArtist(artist) {
 
 async function createAndAssociateArtist(name) {
   if (!name.trim()) return
-  inlineArtistLoading.value = true
   try {
     const res = await api.post('/artists', { name: name.trim() })
     artists.value.unshift(res.data)
@@ -153,8 +151,6 @@ async function createAndAssociateArtist(name) {
     isArtistDropdownOpen.value = false
   } catch (err) {
     formError.value = err.message || "Errore durante la creazione dell'artista"
-  } finally {
-    inlineArtistLoading.value = false
   }
 }
 

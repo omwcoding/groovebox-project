@@ -46,7 +46,7 @@ async function handleDelete() {
     
     <div v-else-if="error && !user" class="py-20 text-center text-rose-400 font-semibold">{{ error }}</div>
 
-    <div v-if="user" class="glass-panel p-8 rounded-apple-2xl shadow-2xl border border-white/10 relative">
+    <div v-else-if="user" class="glass-panel p-8 rounded-apple-2xl shadow-2xl border border-white/10 relative">
       <div v-if="error" class="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
         {{ error }}
       </div>
