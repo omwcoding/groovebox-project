@@ -194,7 +194,7 @@ function closeArtistDropdown() {
             </div>
             <div class="space-y-2">
               <label for="album-year" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Anno di uscita</label>
-              <input id="album-year" v-model="form.releaseYear" type="number" min="1900" max="2099" placeholder="Es. 1969" class="apple-input" />
+              <input id="album-year" v-model="form.releaseYear" type="number" min="1900" max="2026" placeholder="Es. 1969" class="apple-input" />
             </div>
           </div>
           <div class="space-y-2">

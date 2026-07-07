@@ -177,6 +177,16 @@ onMounted(async () => {
   }
 })
 
+const coverFile = ref(null)
+const coverPreview = ref(null)
+
+function handleCoverPick(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  coverFile.value = file
+  coverPreview.value = URL.createObjectURL(file)
+}
+
 function resetForm() {
   form.value = { id_album: '', format: 'Vinile', condition: 'Nuovo', personalNotes: '' }
   formNew.value = { title: '', artist_ids: [], releaseYear: '', genre: '', format: 'Vinile', condition: 'Nuovo', personalNotes: '' }
@@ -186,6 +196,11 @@ function resetForm() {
   isDropdownOpen.value = false
   artistSearchInput.value = ''
   isArtistDropdownOpen.value = false
+  coverFile.value = null
+  if (coverPreview.value) {
+    URL.revokeObjectURL(coverPreview.value)
+    coverPreview.value = null
+  }
 }
 
 async function handleCreate() {
@@ -231,7 +246,19 @@ async function handleCreate() {
         personalNotes: formNew.value.personalNotes || null
       })
       
-      copies.value.unshift(res.data)
+      const newCopy = res.data
+
+      // Upload copertina se selezionata
+      if (coverFile.value) {
+        const fd = new FormData()
+        fd.append('file', coverFile.value)
+        try {
+          const coverRes = await api.post(`/albums/${newCopy.id_album}/cover`, fd)
+          newCopy.coverPath = coverRes.coverPath
+        } catch (_) { /* cover non bloccante */ }
+      }
+
+      copies.value.unshift(newCopy)
       
       // Sincronizza lo stato degli album e artisti per consentire selezioni successive dal catalogo
       const [albumsRes, artistsRes] = await Promise.all([
@@ -284,7 +311,7 @@ async function handleCreate() {
             :class="tab === 'existing' ? 'bg-white/10 text-white shadow-lg' : 'text-white/40 hover:text-white/60'" 
             class="flex-grow py-2.5 rounded-xl text-xs font-bold transition-all"
           >
-            Dall'Hub
+            Dal catalogo
           </button>
           <button 
             type="button"
@@ -292,7 +319,7 @@ async function handleCreate() {
             :class="tab === 'new' ? 'bg-white/10 text-white shadow-lg' : 'text-white/40 hover:text-white/60'" 
             class="flex-grow py-2.5 rounded-xl text-xs font-bold transition-all"
           >
-            Nuovo Disco
+            Nuovo Album
           </button>
         </div>
 
@@ -448,7 +475,7 @@ async function handleCreate() {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div class="space-y-2">
                 <label for="new-album-year" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Anno di uscita</label>
-                <input id="new-album-year" v-model="formNew.releaseYear" type="number" min="1900" max="2099" placeholder="Es. 1970" class="apple-input" />
+                <input id="new-album-year" v-model="formNew.releaseYear" type="number" min="1900" max="2026" placeholder="Es. 1970" class="apple-input" />
               </div>
               <div class="space-y-2">
                 <label for="new-album-genre" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Genere</label>
@@ -457,6 +484,22 @@ async function handleCreate() {
                   <option v-for="g in genreOptions" :key="g" :value="g">{{ g }}</option>
                 </select>
               </div>
+            </div>
+
+            <!-- Copertina album -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Copertina (opzionale)</label>
+              <label class="flex items-center gap-4 cursor-pointer group">
+                <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0 group-hover:border-white/20 transition-colors">
+                  <img v-if="coverPreview" :src="coverPreview" class="w-full h-full object-cover" />
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" class="opacity-20"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-sm font-semibold text-white/60 group-hover:text-white transition-colors">{{ coverFile ? coverFile.name : 'Scegli un\'immagine' }}</p>
+                  <p class="text-[10px] text-white/30">JPG, PNG o WebP</p>
+                </div>
+                <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleCoverPick" />
+              </label>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-white/5">
