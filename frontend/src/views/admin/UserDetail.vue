@@ -95,7 +95,7 @@ async function handleDelete() {
         <div class="space-y-4 border-t md:border-t-0 md:border-l border-white/5 pt-6 md:pt-0 md:pl-8">
           <h3 class="text-xs font-bold uppercase tracking-wider text-white/40">Attività sulla piattaforma</h3>
           <DetailField label="Copie salvate in collezione" :value="`${user.copies_count ?? 0} ${(user.copies_count ?? 0) === 1 ? 'disco' : 'dischi'}`" />
-          <DetailField label="Album caricati a catalogo" :value="`${user.albums_count ?? 0} ${(user.albums_count ?? 0) === 1 ? 'album' : 'album'}`" />
+          <DetailField label="Album caricati a catalogo" :value="`${user.albums_count ?? 0} album`" />
         </div>
       </div>
 
