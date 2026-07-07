@@ -69,78 +69,55 @@ Il progetto segue rigorosamente un'architettura logica a **3 layer**:
    ```
    L'applicazione frontend sarà disponibile su `http://localhost:5173/`.
 
+# ⚙️ Scelte Implementative & Funzionalità Chiave
+
+Questo progetto adotta scelte ingegneristiche mirate a garantire prestazioni ottimali, sicurezza e un'esperienza utente moderna e fluida:
+
+### 1. Separazione Layer (DAL / Controller)
+Tutte le query SQL crude sono isolate nella cartella `backend/dal/` (es. `user_dal.py`, `album_dal.py`, ecc.). I controller dei Blueprint Flask contengono esclusivamente la logica HTTP (validazione dei payload JSON, risposte e status code), migliorando la manutenibilità e la testabilità del codice.
+
+### 2. Prevenzione Connection Leaks (Flask Context Teardown)
+La funzione `get_db()` in `database.py` registra la connessione SQLite sull'oggetto globale di richiesta di Flask (`flask.g`). Tramite il decoratore `@app.teardown_appcontext` in `app.py`, Flask garantisce la chiusura automatica e pulita della connessione al database a fine richiesta HTTP, anche nel caso in cui vengano sollevate eccezioni.
+
+### 3. Autenticazione Stateless JWT e Password Criptate
+* L'autenticazione è totalmente stateless e basata su token **JWT (JSON Web Token)** inseriti nell'header HTTP `Authorization: Bearer <token>` ad ogni chiamata.
+* Le password degli utenti non sono mai salvate in chiaro, ma gestite tramite hash crittografico PBKDF2 (`werkzeug.security`).
+* Per modificare la password del profilo è obbligatorio inserire e verificare preventivamente la **password attuale** dell'utente. Le password hanno una validazione di sicurezza di minimo 8 caratteri.
+
+### 4. Gestione Integrità dei Dati all'Eliminazione Utente (SET NULL)
+Quando un utente collector cancella il proprio account:
+* La sua collezione privata (copie fisiche) viene eliminata a cascata (`ON DELETE CASCADE`).
+* Gli album da lui inseriti nel catalogo globale non vengono rimossi per non impoverire l'archivio della community. La loro paternità viene impostata a `NULL` nel database (`ON DELETE SET NULL`) e il frontend visualizza in sicurezza la dicitura **`Utente eliminato`** priva di collegamenti ipertestuali.
+
+### 5. Combobox con Ricerca Autocompilante e Aggiunta Inline
+I moduli di selezione nativi HTML (ingestibili in caso di cataloghi estesi) sono stati sostituiti da **Combobox personalizzate con overlay di chiusura**:
+* Nella registrazione di una copia fisica, l'utente può cercare l'album scrivendo lettere o parole che filtrano i risultati in tempo reale.
+* Nella creazione di un album, l'utente cerca l'artista digitando il nome e, se non presente, può crearlo ed associarlo all'istante con un singolo click tramite l'opzione dinamica `+ Crea e aggiungi "<Artista>"`.
+
+### 6. Esportazione Dati e Statistiche Globali (Admin)
+L'amministratore ha accesso ad un pannello statistico avanzato munito di grafici a ciambella (Donut Chart) implementati programmaticamente in SVG nativo (senza librerie esterne). Da questa schermata, l'admin può scaricare un report completo in formato **JSON** contenente l'istantanea di tutte le metriche aggregate del sistema.
+
+### 7. Scala Cromatica per le Condizioni Fisiche
+Le card di anteprima delle copie fisiche mostrano badge colorati dinamicamente in base alle condizioni per comunicare visivamente lo stato del supporto:
+* **Nuovo**: Smeraldo (`text-emerald-400` / `bg-emerald-500/10`)
+* **Come nuovo**: Azzurro Cielo (`text-sky-400` / `bg-sky-500/10`)
+* **Buono**: Giallo Limone (`text-yellow-300` / `bg-yellow-500/10`)
+* **Discreto**: Arancione (`text-orange-500` / `bg-orange-500/10`)
+* **Rovinato**: Rosso/Rosa (`text-rose-500` / `bg-rose-500/10`)
+
 ---
----
 
-# 📝 NOTA TEMPORANEA (Da eliminare prima del push finale)
-
-*Questa sezione riassume le scelte implementative, le librerie utilizzate e gli use case da testare prima di procedere con l'affinamento grafico finale.*
-
-## 🧠 Scelte Implementative Chiave
-
-1. **Separazione DAL / Controller (Rotte):**
-   Tutte le query SQL crude sono state isolate nella cartella `backend/dal/` (es. `user_dal.py`, `album_dal.py`, ecc.). I controller dei Blueprint Flask contengono esclusivamente la logica HTTP (validazione, rotte e risposte JSON), migliorando drasticamente la manutenibilità.
-
-2. **Gestione del Ciclo di Vita del Database (Zero Connection Leaks):**
-   La funzione `get_db()` in `database.py` registra la connessione SQLite su `flask.g` (l'oggetto globale di richiesta di Flask). Tramite il decoratore `@app.teardown_appcontext` in `app.py`, Flask garantisce la chiusura automatica della connessione a fine richiesta HTTP, anche nel caso in cui le query sollevino delle eccezioni.
-
-3. **Creazione Atomica a Cascata (Endpoint Transazionale):**
-   Per evitare che il frontend debba coordinare 3 chiamate HTTP sequenziali per creare un "Nuovo Disco" (Artista -> Album -> Copia), abbiamo implementato l'endpoint `/api/copies/cascade`. Questo esegue la ricerca/creazione di artisti e album e l'associazione della copia fisica all'interno di una singola transazione transazionale SQL (`with conn:`). In caso di errore intermedio, viene eseguito il rollback impedendo la creazione di elementi orfani nel catalogo comune.
-
-4. **Integrità dei Dati su Eliminazione Collector:**
-   Quando un utente collector elimina il proprio account:
-   * Le sue copie fisiche private vengono rimosse automaticamente a livello DB tramite le chiavi esterne configurate con `ON DELETE CASCADE`.
-   * Gli album da lui pubblicati (che appartengono al catalogo comunitario) non vengono eliminati, ma la loro paternità viene trasferita nel DAL all'utente amministratore predefinito (`id_user = 1`), preservando l'integrità del catalogo globale.
-
-5. **Centralizzazione Costanti e Formati Condivisi:**
-   Per rispettare il principio DRY, formati e condizioni del disco sono stati centralizzati in `frontend/src/constants/music.js` e limitati ai valori richiesti:
-   * **Formati:** Vinile, CD, Cassetta
-   * **Condizioni:** Nuovo, Come nuovo, Buono, Discreto, Rovinato
-
----
-
-## 📚 Librerie Utilizzate Spiegate
+## 🛠️ Tecnologie Utilizzate
 
 ### Backend (Python)
-* **`Flask`**: Framework web leggero scelto come Business Logic Layer per gestire le richieste REST API.
-* **`Flask-Cors`**: Middleware per abilitare la condivisione delle risorse tra domini diversi (CORS), necessario affinché il frontend (porta 5173) comunichi con il backend (porta 5000).
-* **`python-dotenv`**: Carica le variabili di ambiente dal file `.env` (come la `SECRET_KEY` per JWT).
-* **`PyJWT`**: Libreria per generare e verificare i token JWT per l'autenticazione stateless.
-* **`werkzeug.security`**: Fornisce `generate_password_hash` e `check_password_hash` per salvare in modo sicuro gli hash delle password (algoritmo bcrypt/scrypt di default).
-* **`sqlite3` (Nativo)**: Modulo Python standard per connettersi al database embedded SQLite3.
+* **`Flask`**: Web server per le REST API.
+* **`Flask-Cors`**: Middleware per la gestione delle Cross-Origin Resource Sharing.
+* **`python-dotenv`**: Caricamento delle configurazioni dal file `.env`.
+* **`PyJWT`**: Gestione, firma e validazione dei token JSON Web Token.
+* **`sqlite3` (Nativo)**: Database relazionale embedded.
 
 ### Frontend (JavaScript)
-* **`Vue.js 3`**: Framework per il Presentation Layer (Composition API per un codice modulare).
-* **`Pinia`**: Store per la gestione dello stato globale dell'applicazione (in particolare la sessione utente e il token JWT in `stores/auth.js`).
-* **`Vue Router`**: Gestisce la navigazione SPA e implementa i controlli di accesso (`requiresAuth` e ruoli `collector` o `administrator` via navigation guard).
-* **`Tailwind CSS v4`**: Utilizzato per lo styling responsive.
-
----
-
-## 🧪 Casi d'Uso (Use Case) da Testare Domani
-
-Prima di passare all'affinamento estetico definitivo, testa i seguenti flussi:
-
-### 1. Autenticazione e Sicurezza
-- [ ] **Registrazione Collector:** Registra un nuovo utente con dati validi. Verifica che la password venga memorizzata come hash nel DB.
-- [ ] **Controllo Duplicati:** Tenta di registrare un utente con lo stesso username o email e assicurati che restituisca errore `409 Conflict`.
-- [ ] **Login & Rilascio JWT:** Effettua il login con credenziali corrette (verifica il salvataggio in `localStorage`) ed errate (verifica l'errore `401 Unauthorized`).
-- [ ] **Scadenza Token:** Modifica a mano o elimina il token da `localStorage` e tenta di navigare su pagine protette; verifica il redirect a `/login`.
-
-### 2. Gestione Catalogo (Album e Artisti)
-- [ ] **Aggiunta Album (Collector):** Crea un album inserendo titolo, genere, anno e associandovi uno o più artisti esistenti.
-- [ ] **Creazione Artista Inline:** Dal form di creazione dell'album, aggiungi un artista inline e verifica che compaia immediatamente nella lista degli associati.
-- [ ] **Modifica/Eliminazione Album (Solo Admin):** Accedi come collector e verifica che non ci siano i pulsanti di modifica/rimozione album nella pagina di dettaglio. Accedi come admin, modifica i dati dell'album e poi eliminalo (verifica la rimozione a cascata delle associazioni).
-
-### 3. Gestione Collezione Privata
-- [ ] **Aggiunta Copia da Catalogo:** Dalla pagina di dettaglio di un album del catalogo, clicca su "Aggiungi alla mia collezione" e verifica l'inserimento.
-- [ ] **Aggiunta a Cascata (Nuovo Disco):** Dalla pagina "La tua collezione" -> Tab "Nuovo Disco", inserisci un album e un artista inesistenti. Verifica che vengano inseriti nel catalogo comune e che la copia venga registrata in un unico click.
-- [ ] **Modifica/Rimuovi Copia:** Modifica le note, formato o condizione di una propria copia. Rimuovi la copia e verifica che sia sparita solo dalla tua collezione (mentre l'album rimane a catalogo).
-
-### 4. Gestione Amministrativa (Utenti e Stats)
-- [ ] **Moderazione Utenti (Admin):** Accedi come admin, visita `/users` e visualizza l'elenco dei collector.
-- [ ] **Eliminazione Utente (Transazione DAL):** Elimina un utente collector che possiede sia copie fisiche che album da lui creati a catalogo. Verifica che:
-  * L'utente sia eliminato.
-  * Le sue copie fisiche siano cancellate.
-  * Gli album da lui creati **siano ancora presenti** ma associati a `@admin`.
-- [ ] **Dashboard Statistiche (Admin):** Visita `/stats` e verifica che i contatori totali e i grafici di distribuzione (es. formati più collezionati) siano coerenti con il seed.
+* **`Vue.js 3`**: Presentation Layer basato su Composition API.
+* **`Pinia`**: Gestione centralizzata dello stato di autenticazione e di sessione.
+* **`Vue Router`**: Navigazione Single Page Application (SPA) con guardie di accesso basate su ruoli.
+* **`Tailwind CSS`**: Styling responsive e interazioni grafiche fluide.

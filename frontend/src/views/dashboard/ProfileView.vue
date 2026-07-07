@@ -155,12 +155,16 @@ async function handleClearCollection() {
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
           <div class="space-y-1">
-            <span class="text-[10px] font-bold uppercase tracking-widest text-white/30 block">Indirizzo Email</span>
-            <span class="font-medium text-white/80">{{ authStore.user?.email }}</span>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/30 block">Nome</span>
+            <span class="font-semibold text-white/90 text-base">{{ authStore.user?.name }}</span>
           </div>
           <div class="space-y-1">
-            <span class="text-[10px] font-bold uppercase tracking-widest text-white/30 block">Nome utente</span>
-            <span class="font-medium text-white/80">@{{ authStore.user?.username }}</span>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/30 block">Cognome</span>
+            <span class="font-semibold text-white/90 text-base">{{ authStore.user?.surname }}</span>
+          </div>
+          <div class="space-y-1 sm:col-span-2">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/30 block">Indirizzo Email</span>
+            <span class="font-semibold text-white/90 text-base">{{ authStore.user?.email }}</span>
           </div>
         </div>
 

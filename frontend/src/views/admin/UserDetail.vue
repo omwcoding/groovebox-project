@@ -69,6 +69,8 @@ async function handleDelete() {
 
       <!-- Informazioni dettagliate -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6 border-b border-white/5 text-sm">
+        <DetailField label="Nome" :value="user.name" />
+        <DetailField label="Cognome" :value="user.surname" />
         <DetailField label="Indirizzo Email" :value="user.email" />
         <DetailField label="Ruolo Account">
           <span class="inline-flex px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold rounded-full">
