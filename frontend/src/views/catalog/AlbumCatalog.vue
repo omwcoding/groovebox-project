@@ -64,6 +64,8 @@ function resetForm() {
   coverPreview.value = null
   formError.value = ''
   showForm.value = false
+  artistSearchInput.value = ''
+  isArtistDropdownOpen.value = false
 }
 
 async function handleCreate() {
@@ -108,24 +110,56 @@ function toggleArtist(id) {
   else form.value.artist_ids.push(id)
 }
 
-const showNewArtistInput = ref(false)
-const newArtistName = ref('')
+const artistSearchInput = ref('')
+const isArtistDropdownOpen = ref(false)
 const inlineArtistLoading = ref(false)
 
-async function handleInlineArtistCreate() {
-  if (!newArtistName.value.trim()) return
+const filteredArtistsForSelect = computed(() => {
+  const query = artistSearchInput.value.toLowerCase().trim()
+  if (!query) return []
+  return artists.value.filter(a => 
+    !form.value.artist_ids.includes(a.id_artist) &&
+    a.name.toLowerCase().includes(query)
+  )
+})
+
+const showCreateOption = computed(() => {
+  const query = artistSearchInput.value.trim()
+  if (!query) return false
+  return !artists.value.some(a => a.name.toLowerCase() === query.toLowerCase())
+})
+
+function getArtistNameById(id) {
+  const a = artists.value.find(ar => ar.id_artist === id)
+  return a ? a.name : ''
+}
+
+function associateExistingArtist(artist) {
+  if (!form.value.artist_ids.includes(artist.id_artist)) {
+    form.value.artist_ids.push(artist.id_artist)
+  }
+  artistSearchInput.value = ''
+  isArtistDropdownOpen.value = false
+}
+
+async function createAndAssociateArtist(name) {
+  if (!name.trim()) return
   inlineArtistLoading.value = true
   try {
-    const res = await api.post('/artists', { name: newArtistName.value.trim() })
+    const res = await api.post('/artists', { name: name.trim() })
     artists.value.unshift(res.data)
     form.value.artist_ids.push(res.data.id_artist)
-    newArtistName.value = ''
-    showNewArtistInput.value = false
+    artistSearchInput.value = ''
+    isArtistDropdownOpen.value = false
   } catch (err) {
     formError.value = err.message || "Errore durante la creazione dell'artista"
   } finally {
     inlineArtistLoading.value = false
   }
+}
+
+function closeArtistDropdown() {
+  isArtistDropdownOpen.value = false
 }
 </script>
 
@@ -175,50 +209,67 @@ async function handleInlineArtistCreate() {
             </select>
           </div>
 
-          <!-- Selezione artisti -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Associa Artisti</label>
-              <button 
-                type="button"
-                @click="showNewArtistInput = !showNewArtistInput"
-                class="text-xs font-bold text-brand-secondary hover:underline"
+          <!-- Selezione artisti con ricerca e aggiunta rapida -->
+          <div class="space-y-3 relative z-40">
+            <!-- Overlay invisibile per chiudere la tendina al click fuori -->
+            <div v-if="isArtistDropdownOpen" @click="closeArtistDropdown" class="fixed inset-0 z-30 bg-transparent"></div>
+
+            <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Associa Artisti *</label>
+
+            <!-- Artisti attualmente selezionati -->
+            <div v-if="form.artist_ids.length > 0" class="flex flex-wrap gap-2 p-2 border border-white/5 rounded-2xl bg-white/[0.02]">
+              <div 
+                v-for="id in form.artist_ids" 
+                :key="id"
+                class="flex items-center gap-2 px-3 py-1.5 bg-brand-secondary/20 border border-brand-secondary/30 text-white text-xs font-semibold rounded-full hover:bg-brand-secondary/35 transition-colors"
               >
-                {{ showNewArtistInput ? 'Usa Esistenti' : '+ Nuovo Artista' }}
-              </button>
+                <span>{{ getArtistNameById(id) }}</span>
+                <button 
+                  type="button" 
+                  @click="toggleArtist(id)" 
+                  class="text-white/40 hover:text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] bg-white/5 hover:bg-white/10"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
-            <!-- Input rapido artista inline -->
-            <div v-if="showNewArtistInput" class="flex gap-2 animate-fade-in">
+            <!-- Input di ricerca/aggiunta -->
+            <div class="relative z-40">
               <input 
-                v-model="newArtistName" 
+                v-model="artistSearchInput" 
                 type="text" 
-                placeholder="Nome nuovo artista" 
-                class="apple-input !py-2.5 !rounded-full"
-                @keyup.enter.prevent="handleInlineArtistCreate"
+                @focus="isArtistDropdownOpen = true"
+                placeholder="Cerca un artista o digitalo per aggiungerlo..." 
+                class="apple-input pr-10"
+                @keyup.enter.prevent="showCreateOption && createAndAssociateArtist(artistSearchInput)"
               />
-              <button 
-                type="button" 
-                @click="handleInlineArtistCreate" 
-                :disabled="inlineArtistLoading"
-                class="apple-button apple-button-primary !py-2.5 !px-4 text-xs shrink-0"
-              >
-                Aggiungi
-              </button>
-            </div>
+              <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </div>
 
-            <div v-if="artists.length > 0" class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1 border border-white/5 rounded-2xl bg-white/5">
-              <button
-                v-for="artist in artists" :key="artist.id_artist"
-                type="button"
-                @click="toggleArtist(artist.id_artist)"
-                class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border"
-                :class="form.artist_ids.includes(artist.id_artist)
-                  ? 'bg-brand-secondary border-brand-secondary text-white shadow-md shadow-brand-secondary/20'
-                  : 'bg-white/5 border-white/5 text-white/60 hover:border-white/20 hover:text-white'"
-              >
-                {{ artist.name }}
-              </button>
+              <!-- Menu a tendina per artisti -->
+              <div v-if="isArtistDropdownOpen && (filteredArtistsForSelect.length > 0 || showCreateOption)" class="absolute left-0 right-0 mt-2 max-h-52 overflow-y-auto bg-black/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl z-50 divide-y divide-white/5">
+                <!-- Artisti Esistenti trovati -->
+                <div 
+                  v-for="artist in filteredArtistsForSelect" 
+                  :key="artist.id_artist"
+                  @click="associateExistingArtist(artist)"
+                  class="p-3 text-sm text-white/80 hover:text-white hover:bg-brand-secondary/20 cursor-pointer transition-colors text-left font-semibold"
+                >
+                  {{ artist.name }}
+                </div>
+                
+                <!-- Aggiungi Nuovo Artista (opzione dinamica) -->
+                <div 
+                  v-if="showCreateOption"
+                  @click="createAndAssociateArtist(artistSearchInput)"
+                  class="p-3 text-sm text-brand-secondary hover:bg-brand-secondary/10 cursor-pointer transition-colors text-left font-bold flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                  Crea e aggiungi "{{ artistSearchInput.trim() }}"
+                </div>
+              </div>
             </div>
           </div>
 

@@ -115,10 +115,13 @@ def create_copy_cascade_route():
         raise ForbiddenError("Accesso riservato ai Collector")
 
     data = request.get_json()
-    validate_json_payload(data, ["title", "artist_name", "format", "condition"])
+    validate_json_payload(data, ["title", "artist_ids", "format", "condition"])
 
     title = data["title"].strip()
-    artist_name = data["artist_name"].strip()
+    artist_ids = data["artist_ids"]
+    if not isinstance(artist_ids, list) or not artist_ids:
+        raise BadRequestError("Almeno un artista deve essere associato all'album")
+        
     format_val = data["format"].strip()
     condition = data["condition"].strip()
 
@@ -143,7 +146,7 @@ def create_copy_cascade_route():
 
     copy_id = create_copy_cascade(
         title=title,
-        artist_name=artist_name,
+        artist_ids=artist_ids,
         release_year=release_year,
         genre=genre,
         format_val=format_val,

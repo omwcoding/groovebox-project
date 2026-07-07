@@ -29,13 +29,114 @@ const form = ref({
 
 const formNew = ref({
   title: '',
-  artist_name: '',
+  artist_ids: [],
   releaseYear: '',
   genre: '',
   format: 'Vinile',
   condition: 'Nuovo',
   personalNotes: ''
 })
+const searchInput = ref('')
+const isDropdownOpen = ref(false)
+
+const filteredAlbumsForSelect = computed(() => {
+  const query = searchInput.value.toLowerCase().trim()
+  if (!query) return albums.value
+  return albums.value.filter(album => {
+    const titleMatch = album.title?.toLowerCase().includes(query)
+    const artistMatch = album.artists?.some(a => a.name?.toLowerCase().includes(query))
+    return titleMatch || artistMatch
+  })
+})
+
+function getAlbumLabel(album) {
+  if (!album) return ''
+  const artistsStr = album.artists?.map(a => a.name).join(', ') || 'Artista'
+  const yearStr = album.releaseYear ? ` (${album.releaseYear})` : ''
+  return `${album.title} — ${artistsStr}${yearStr}`
+}
+
+function onSearchFocus() {
+  isDropdownOpen.value = true
+  searchInput.value = ''
+}
+
+function selectAlbumForCopy(album) {
+  form.value.id_album = album.id_album
+  searchInput.value = getAlbumLabel(album)
+  isDropdownOpen.value = false
+}
+
+function closeDropdown() {
+  isDropdownOpen.value = false
+  const selected = albums.value.find(a => a.id_album === form.value.id_album)
+  if (selected) {
+    searchInput.value = getAlbumLabel(selected)
+  } else {
+    searchInput.value = ''
+  }
+}
+
+const artistSearchInput = ref('')
+const isArtistDropdownOpen = ref(false)
+const inlineArtistLoading = ref(false)
+
+const filteredArtistsForSelect = computed(() => {
+  const query = artistSearchInput.value.toLowerCase().trim()
+  if (!query) return []
+  return artists.value.filter(a => 
+    !formNew.value.artist_ids.includes(a.id_artist) &&
+    a.name.toLowerCase().includes(query)
+  )
+})
+
+const showCreateOption = computed(() => {
+  const query = artistSearchInput.value.trim()
+  if (!query) return false
+  return !artists.value.some(a => a.name.toLowerCase() === query.toLowerCase())
+})
+
+function getArtistNameById(id) {
+  const a = artists.value.find(ar => ar.id_artist === id)
+  return a ? a.name : ''
+}
+
+function associateExistingArtist(artist) {
+  if (!formNew.value.artist_ids.includes(artist.id_artist)) {
+    formNew.value.artist_ids.push(artist.id_artist)
+  }
+  artistSearchInput.value = ''
+  isArtistDropdownOpen.value = false
+}
+
+async function createAndAssociateArtist(name) {
+  if (!name.trim()) return
+  inlineArtistLoading.value = true
+  try {
+    const res = await api.post('/artists', { name: name.trim() })
+    artists.value.unshift(res.data)
+    formNew.value.artist_ids.push(res.data.id_artist)
+    artistSearchInput.value = ''
+    isArtistDropdownOpen.value = false
+  } catch (err) {
+    formError.value = err.message || "Errore durante la creazione dell'artista"
+  } finally {
+    inlineArtistLoading.value = false
+  }
+}
+
+function closeArtistDropdown() {
+  isArtistDropdownOpen.value = false
+}
+
+function toggleArtist(id) {
+  const idx = formNew.value.artist_ids.indexOf(id)
+  if (idx >= 0) {
+    formNew.value.artist_ids.splice(idx, 1)
+  } else {
+    formNew.value.artist_ids.push(id)
+  }
+}
 
 const filteredCopies = computed(() => {
   return copies.value.filter(c => {
@@ -63,9 +164,15 @@ onMounted(async () => {
 
     // Auto-apri form se arrivo da pagina album con query param
     if (route.query.addAlbum) {
-      form.value.id_album = parseInt(route.query.addAlbum)
+      const albumId = parseInt(route.query.addAlbum)
+      form.value.id_album = albumId
       showForm.value = true
       tab.value = 'existing'
+      
+      const selected = albums.value.find(a => a.id_album === albumId)
+      if (selected) {
+        searchInput.value = getAlbumLabel(selected)
+      }
     }
   } catch (err) {
     console.error(err)
@@ -76,9 +183,13 @@ onMounted(async () => {
 
 function resetForm() {
   form.value = { id_album: '', format: 'Vinile', condition: 'Nuovo', personalNotes: '' }
-  formNew.value = { title: '', artist_name: '', releaseYear: '', genre: '', format: 'Vinile', condition: 'Nuovo', personalNotes: '' }
+  formNew.value = { title: '', artist_ids: [], releaseYear: '', genre: '', format: 'Vinile', condition: 'Nuovo', personalNotes: '' }
   formError.value = ''
   showForm.value = false
+  searchInput.value = ''
+  isDropdownOpen.value = false
+  artistSearchInput.value = ''
+  isArtistDropdownOpen.value = false
 }
 
 async function handleCreate() {
@@ -88,7 +199,7 @@ async function handleCreate() {
   try {
     if (tab.value === 'existing') {
       if (!form.value.id_album || !form.value.format || !form.value.condition) {
-        formError.value = 'Album, formato e condizione sono obbligatori'
+        formError.value = 'Seleziona un album valido dalla lista, formato e condizione sono obbligatori'
         formLoading.value = false
         return
       }
@@ -104,19 +215,19 @@ async function handleCreate() {
     } else {
       // TAB 'new' - Creazione a cascata tramite singola API transazionale
       const title = formNew.value.title.trim()
-      const artistName = formNew.value.artist_name.trim()
+      const artistIds = formNew.value.artist_ids
       const format = formNew.value.format
       const condition = formNew.value.condition
       
-      if (!title || !artistName || !format || !condition) {
-        formError.value = 'Titolo, Artista, Formato e Condizione sono obbligatori'
+      if (!title || !artistIds || artistIds.length === 0 || !format || !condition) {
+        formError.value = 'Titolo, almeno un Artista, Formato e Condizione sono obbligatori'
         formLoading.value = false
         return
       }
       
       const res = await api.post('/copies/cascade', {
         title: title,
-        artist_name: artistName,
+        artist_ids: artistIds,
         releaseYear: formNew.value.releaseYear ? parseInt(formNew.value.releaseYear) : null,
         genre: formNew.value.genre || null,
         format: format,
@@ -191,18 +302,41 @@ async function handleCreate() {
 
         <form @submit.prevent="handleCreate" class="space-y-6">
           <!-- TAB 1: Existing Album -->
-          <div v-if="tab === 'existing'" class="space-y-6">
-            <div class="space-y-2">
-              <label for="copy-album" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Seleziona Album *</label>
+          <div v-if="tab === 'existing'" class="space-y-6 relative z-50">
+            <!-- Overlay invisibile per chiudere la tendina al click fuori -->
+            <div v-if="isDropdownOpen" @click="closeDropdown" class="fixed inset-0 z-40 bg-transparent"></div>
+
+            <div class="space-y-2 relative z-50">
+              <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Seleziona Album *</label>
               <div class="relative">
-                <select id="copy-album" v-model="form.id_album" required class="apple-input appearance-none cursor-pointer pr-10">
-                  <option value="" disabled>-- Scegli dal catalogo --</option>
-                  <option v-for="album in albums" :key="album.id_album" :value="album.id_album">
-                    {{ album.title }} &mdash; {{ album.artists?.map(a => a.name).join(', ') || 'Artista' }} {{ album.releaseYear ? `(${album.releaseYear})` : '' }}
-                  </option>
-                </select>
+                <input 
+                  type="text"
+                  v-model="searchInput"
+                  @focus="onSearchFocus"
+                  placeholder="Digita per cercare un album..."
+                  class="apple-input pr-10 cursor-pointer"
+                  required
+                />
                 <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
+
+                <!-- Lista a comparsa -->
+                <div v-if="isDropdownOpen" class="absolute left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-black/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl z-50 animate-fade-in divide-y divide-white/5">
+                  <div 
+                    v-for="album in filteredAlbumsForSelect" 
+                    :key="album.id_album"
+                    @click="selectAlbumForCopy(album)"
+                    class="p-3 text-sm text-white/80 hover:text-white hover:bg-brand-secondary/20 cursor-pointer transition-colors text-left"
+                  >
+                    <span class="font-bold block">{{ album.title }}</span>
+                    <span class="text-xs text-white/40 block mt-0.5">
+                      {{ album.artists?.map(a => a.name).join(', ') || 'Artista' }} {{ album.releaseYear ? `(${album.releaseYear})` : '' }}
+                    </span>
+                  </div>
+                  <div v-if="filteredAlbumsForSelect.length === 0" class="p-4 text-center text-xs text-white/30 italic">
+                    Nessun album trovato nel catalogo
+                  </div>
                 </div>
               </div>
             </div>
@@ -243,14 +377,74 @@ async function handleCreate() {
 
           <!-- TAB 2: New Album Creation + Copy -->
           <div v-else class="space-y-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div class="space-y-6 relative z-40">
+              <!-- Overlay invisibile per chiudere la tendina al click fuori -->
+              <div v-if="isArtistDropdownOpen" @click="closeArtistDropdown" class="fixed inset-0 z-30 bg-transparent"></div>
+
               <div class="space-y-2">
                 <label for="new-album-title" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Titolo Album *</label>
                 <input id="new-album-title" v-model="formNew.title" type="text" required placeholder="Es. Let It Be" class="apple-input" />
               </div>
-              <div class="space-y-2">
-                <label for="new-album-artist" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Artista *</label>
-                <input id="new-album-artist" v-model="formNew.artist_name" type="text" required placeholder="Es. The Beatles" class="apple-input" />
+
+              <!-- Selezione artisti con ricerca e aggiunta rapida -->
+              <div class="space-y-3 relative z-40">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Associa Artisti *</label>
+
+                <!-- Artisti attualmente selezionati -->
+                <div v-if="formNew.artist_ids.length > 0" class="flex flex-wrap gap-2 p-2 border border-white/5 rounded-2xl bg-white/[0.02]">
+                  <div 
+                    v-for="id in formNew.artist_ids" 
+                    :key="id"
+                    class="flex items-center gap-2 px-3 py-1.5 bg-brand-secondary/20 border border-brand-secondary/30 text-white text-xs font-semibold rounded-full hover:bg-brand-secondary/35 transition-colors"
+                  >
+                    <span>{{ getArtistNameById(id) }}</span>
+                    <button 
+                      type="button" 
+                      @click="toggleArtist(id)" 
+                      class="text-white/40 hover:text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] bg-white/5 hover:bg-white/10"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Input di ricerca/aggiunta -->
+                <div class="relative z-40">
+                  <input 
+                    v-model="artistSearchInput" 
+                    type="text" 
+                    @focus="isArtistDropdownOpen = true"
+                    placeholder="Cerca un artista o digitalo per aggiungerlo..." 
+                    class="apple-input pr-10"
+                    @keyup.enter.prevent="showCreateOption && createAndAssociateArtist(artistSearchInput)"
+                  />
+                  <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  </div>
+
+                  <!-- Menu a tendina per artisti -->
+                  <div v-if="isArtistDropdownOpen && (filteredArtistsForSelect.length > 0 || showCreateOption)" class="absolute left-0 right-0 mt-2 max-h-52 overflow-y-auto bg-black/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl z-50 divide-y divide-white/5">
+                    <!-- Artisti Esistenti trovati -->
+                    <div 
+                      v-for="artist in filteredArtistsForSelect" 
+                      :key="artist.id_artist"
+                      @click="associateExistingArtist(artist)"
+                      class="p-3 text-sm text-white/80 hover:text-white hover:bg-brand-secondary/20 cursor-pointer transition-colors text-left font-semibold"
+                    >
+                      {{ artist.name }}
+                    </div>
+                    
+                    <!-- Aggiungi Nuovo Artista (opzione dinamica) -->
+                    <div 
+                      v-if="showCreateOption"
+                      @click="createAndAssociateArtist(artistSearchInput)"
+                      class="p-3 text-sm text-brand-secondary hover:bg-brand-secondary/10 cursor-pointer transition-colors text-left font-bold flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                      Crea e aggiungi "{{ artistSearchInput.trim() }}"
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

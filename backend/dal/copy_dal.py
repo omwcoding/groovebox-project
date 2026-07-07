@@ -46,29 +46,23 @@ def insert_copy(id_album, format_val, condition, personal_notes, user_id):
         copy_id = cursor.lastrowid
     return copy_id
 
-def create_copy_cascade(title, artist_name, release_year, genre, format_val, condition, personal_notes, user_id):
+def create_copy_cascade(title, artist_ids, release_year, genre, format_val, condition, personal_notes, user_id):
     conn = get_db()
     added_date = datetime.date.today().isoformat()
     with conn:
-        # 1. Trova o crea Artista
-        artist = conn.execute(
-            "SELECT id_artist FROM ARTIST WHERE LOWER(name) = LOWER(?)", 
-            (artist_name.strip(),)
-        ).fetchone()
-        if artist:
-            artist_id = artist["id_artist"]
-        else:
-            cursor = conn.execute("INSERT INTO ARTIST (name) VALUES (?)", (artist_name.strip(),))
-            artist_id = cursor.lastrowid
+        # 1. Trova o crea Album (usiamo il primo artista come pivot per la ricerca per evitare duplicati semplici)
+        first_artist_id = artist_ids[0] if artist_ids else None
+        
+        album = None
+        if first_artist_id:
+            album = conn.execute(
+                """SELECT al.id_album 
+                   FROM ALBUM al 
+                   JOIN ALBUM_ARTIST aa ON al.id_album = aa.id_album 
+                   WHERE LOWER(al.title) = LOWER(?) AND aa.id_artist = ?""", 
+                (title.strip(), first_artist_id)
+            ).fetchone()
 
-        # 2. Trova o crea Album
-        album = conn.execute(
-            """SELECT al.id_album 
-               FROM ALBUM al 
-               JOIN ALBUM_ARTIST aa ON al.id_album = aa.id_album 
-               WHERE LOWER(al.title) = LOWER(?) AND aa.id_artist = ?""", 
-            (title.strip(), artist_id)
-        ).fetchone()
         if album:
             album_id = album["id_album"]
         else:
@@ -78,12 +72,15 @@ def create_copy_cascade(title, artist_name, release_year, genre, format_val, con
                 (title.strip(), release_year, genre, user_id)
             )
             album_id = cursor.lastrowid
-            conn.execute(
-                "INSERT INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)", 
-                (album_id, artist_id)
-            )
+            
+            # Collega tutti gli artisti all'album
+            for artist_id in artist_ids:
+                conn.execute(
+                    "INSERT OR IGNORE INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)", 
+                    (album_id, artist_id)
+                )
 
-        # 3. Registra la Copia Fisica
+        # 2. Registra la Copia Fisica
         cursor = conn.execute(
             """INSERT INTO PHYSICAL_COPY (format, condition, addedDate, personalNotes, id_user, id_album) 
                VALUES (?, ?, ?, ?, ?, ?)""", 

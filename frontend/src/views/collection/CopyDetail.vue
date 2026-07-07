@@ -135,7 +135,7 @@ const getConditionBadgeClass = (cond) => {
 
             <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/5 text-sm">
               <DetailField label="Genere" :value="copy.genre" />
-              <DetailField label="Acquisito il" :value="copy.addedDate" />
+              <DetailField label="Registrato il" :value="copy.addedDate" />
             </div>
 
             <div v-if="copy.personalNotes" class="pt-6 border-t border-white/5 space-y-2">
