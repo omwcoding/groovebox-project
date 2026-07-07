@@ -52,14 +52,21 @@ NOTES_POOL = [
     "Nessuna nota", None, None, None # per renderle meno frequenti
 ]
 
-# Pool di artisti italiani e internazionali da usare per raggiungere la quota di 60 artisti totali
+# Pool di artisti reali da usare per raggiungere la quota di 60 artisti totali
 EXTRA_ARTISTS_POOL = [
     "Fabrizio De André", "Francesco Guccini", "Lucio Battisti", "Lucio Dalla",
     "Vasco Rossi", "Ligabue", "Jovanotti", "Subsonica", "Verdena", "Afterhours",
     "Mina", "Adriano Celentano", "Claudio Baglioni", "Gianna Nannini", "Franco Battiato",
     "Caparezza", "Fabri Fibra", "Marracash", "Guè", "Salmo", "Sfera Ebbasta", "Madame",
     "Rino Gaetano", "Francesco De Gregori", "Antonello Venditti", "Pino Daniele", "Zen Circus",
-    "Brunori Sas", "Calibro 35", "Baustelle", "Lo Stato Sociale", "Maneskin", "Ghemon"
+    "Brunori Sas", "Calibro 35", "Baustelle", "Lo Stato Sociale", "Maneskin", "Ghemon",
+    "Depeche Mode", "Oasis", "Blur", "The Smiths", "Pearl Jam", "Soundgarden", 
+    "Alice in Chains", "Foo Fighters", "Green Day", "Linkin Park", "Red Hot Chili Peppers", 
+    "System of a Down", "Rage Against the Machine", "Guns N' Roses", "AC/DC", "Black Sabbath", 
+    "Iron Maiden", "Deep Purple", "The Who", "The Doors", "Jimi Hendrix", "Lou Reed", 
+    "Joy Division", "New Order", "The Clash", "Ramones", "U2", "Muse", "Radiohead",
+    "Nirvana", "Pink Floyd", "Daft Punk", "The Beatles", "Miles Davis", "Kendrick Lamar",
+    "Taylor Swift", "Metallica", "Bob Marley", "Michael Jackson", "Queen", "David Bowie"
 ]
 
 def split_artist_names(artist_string):
@@ -220,7 +227,7 @@ def main():
     cursor = conn.cursor()
     
     try:
-        # Pulisci i dati esistenti tranne l'utente admin (id_user=1) e mario_rossi (id_user=2)
+        # Pulisci i dati esistenti tranne l'utente admin (id_user=1) e test (id_user=2)
         print("-> Pulizia delle tabelle (esclusi utenti di default)...")
         cursor.execute("DELETE FROM PHYSICAL_COPY")
         cursor.execute("DELETE FROM ALBUM_ARTIST")
@@ -229,12 +236,12 @@ def main():
         cursor.execute("DELETE FROM USER WHERE id_user > 2")
         conn.commit()
         
-        # 2. Genera Collector in modo che il totale nel DB sia ESATTAMENTE 50 (compresi admin e mario_rossi)
+        # 2. Genera Collector in modo che il totale nel DB sia ESATTAMENTE 50 (compresi admin e test)
         print("-> Generazione di Collector (totale target utenti: 50)...")
         password_hash = generate_password_hash("password123") 
         user_ids = [1, 2] # Utenti di default esistenti nel DB
         
-        used_usernames = {"admin", "mario_rossi"}
+        used_usernames = {"admin", "test"}
         while len(user_ids) < 50: 
             name = random.choice(FIRST_NAMES)
             surname = random.choice(SURNAMES)
