@@ -1,6 +1,14 @@
+"""
+GrooveBox - Data Access Layer per Album
+=======================================
+Gestisce la persistenza e le query SQL per la tabella ALBUM e le relazioni
+ponte associate (ALBUM_ARTIST).
+"""
+
 from core.database import get_db
 
 def get_album_artists(album_id):
+    """Recupera l'elenco degli artisti associati a un determinato album."""
     conn = get_db()
     return conn.execute(
         """SELECT ar.id_artist, ar.name
@@ -12,6 +20,7 @@ def get_album_artists(album_id):
     ).fetchall()
 
 def enrich_album(album_row):
+    """Arricchisce un record di tipo ALBUM con la lista dei relativi artisti associati."""
     if not album_row:
         return None
     album_dict = dict(album_row)
@@ -20,6 +29,7 @@ def enrich_album(album_row):
     return album_dict
 
 def get_all_albums():
+    """Recupera tutti gli album presenti nel catalogo globale, ordinati decrescentemente per ID."""
     conn = get_db()
     albums = conn.execute(
         "SELECT al.*, us.username AS creator_username "
@@ -30,6 +40,7 @@ def get_all_albums():
     return [enrich_album(a) for a in albums]
 
 def find_album_by_id(album_id):
+    """Cerca un singolo album a partire dal suo identificativo univoco."""
     conn = get_db()
     album = conn.execute(
         "SELECT al.*, us.username AS creator_username "
@@ -39,19 +50,9 @@ def find_album_by_id(album_id):
     ).fetchone()
     return enrich_album(album)
 
-def find_album_by_title_and_artist(title, artist_id):
-    conn = get_db()
-    album = conn.execute(
-        """SELECT al.*, us.username AS creator_username
-           FROM ALBUM al
-           LEFT JOIN USER us ON al.id_user = us.id_user
-           JOIN ALBUM_ARTIST aa ON al.id_album = aa.id_album
-           WHERE LOWER(al.title) = LOWER(?) AND aa.id_artist = ?""",
-        (title.strip(), artist_id)
-    ).fetchone()
-    return enrich_album(album)
 
 def insert_album(title, release_year, genre, artist_ids, creator_user_id):
+    """Inserisce un nuovo record album e crea le relative associazioni con gli artisti."""
     conn = get_db()
     with conn:
         cursor = conn.execute(
@@ -70,12 +71,11 @@ def insert_album(title, release_year, genre, artist_ids, creator_user_id):
 
 def update_album_data(album_id, fields, values, artist_ids=None):
     """
-    Aggiorna i dati di un album e, opzionalmente, i suoi artisti associati.
-
-    SICUREZZA: `fields` deve contenere SOLO stringhe colonna hardcoded
-    (es. 'title = ?', 'genre = ?'), MAI valori provenienti dall'input utente.
-    I valori utente vanno sempre e solo in `values`, passati come parametri
-    alla query per sfruttare il prepared statement di sqlite3.
+    Aggiorna i metadati di un album e ne sincronizza le associazioni con gli artisti.
+    
+    Per prevenire vulnerabilità SQL Injection, l'argomento 'fields' deve contenere 
+    esclusivamente identificatori di colonna statici definiti dall'applicazione, 
+    mentre i dati dinamici devono essere passati tramite l'argomento 'values'.
     """
     conn = get_db()
     with conn:
@@ -93,6 +93,10 @@ def update_album_data(album_id, fields, values, artist_ids=None):
     return find_album_by_id(album_id)
 
 def delete_album_by_id(album_id):
+    """
+    Elimina un album dal catalogo per identificativo. 
+    L'eliminazione propaga a cascata sulle copie fisiche e sulla tabella ponte.
+    """
     conn = get_db()
     with conn:
         # Nota: Grazie a ON DELETE CASCADE, eliminiamo solo l'album
@@ -100,6 +104,7 @@ def delete_album_by_id(album_id):
         conn.execute("DELETE FROM ALBUM WHERE id_album = ?", (album_id,))
 
 def update_album_cover(album_id, filename):
+    """Aggiorna il percorso del file immagine associato alla copertina dell'album."""
     conn = get_db()
     with conn:
         conn.execute("UPDATE ALBUM SET coverPath = ? WHERE id_album = ?", (filename, album_id))

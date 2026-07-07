@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Dettaglio Copia Fisica
+=========================================
+Mostra le informazioni di dettaglio e le note personali relative ad una copia fisica 
+posseduta dal collezionista. Permette la modifica dello stato o la rimozione dalla collezione.
+-->
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'

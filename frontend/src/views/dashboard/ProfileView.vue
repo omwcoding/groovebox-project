@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Gestione Profilo
+===================================
+Mostra le informazioni anagrafiche dell'utente registrato. Consente la modifica
+delle credenziali e dei dati personali, nonchè lo svuotamento della collezione e la cancellazione dell'account.
+-->
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'

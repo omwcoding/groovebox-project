@@ -1,8 +1,16 @@
+"""
+GrooveBox - Data Access Layer per Copie Fisiche
+===============================================
+Gestisce il ciclo di vita e la persistenza delle copie fisiche associate agli 
+utenti (PHYSICAL_COPY), comprese le transazioni per l'inserimento a cascata.
+"""
+
 import datetime
 from core.database import get_db
 from dal.album_dal import get_album_artists
 
 def enrich_copy(copy_row):
+    """Associa i metadati relativi agli artisti del disco alla copia fisica specificata."""
     if not copy_row:
         return None
     copy_dict = dict(copy_row)
@@ -11,6 +19,7 @@ def enrich_copy(copy_row):
     return copy_dict
 
 def get_user_copies(user_id):
+    """Recupera la collezione di copie fisiche di un determinato utente, ordinata per data di aggiunta."""
     conn = get_db()
     copies = conn.execute(
         """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
@@ -23,6 +32,7 @@ def get_user_copies(user_id):
     return [enrich_copy(c) for c in copies]
 
 def find_copy_by_id_and_user(copy_id, user_id):
+    """Cerca una specifica copia fisica di proprietà dell'utente indicato."""
     conn = get_db()
     copy = conn.execute(
         """SELECT pc.*, al.title AS album_title, al.releaseYear, al.genre, al.coverPath
@@ -34,6 +44,7 @@ def find_copy_by_id_and_user(copy_id, user_id):
     return enrich_copy(copy)
 
 def insert_copy(id_album, format_val, condition, personal_notes, user_id):
+    """Inserisce una nuova copia fisica nella libreria dell'utente."""
     conn = get_db()
     added_date = datetime.date.today().isoformat()
     with conn:
@@ -47,10 +58,13 @@ def insert_copy(id_album, format_val, condition, personal_notes, user_id):
     return copy_id
 
 def create_copy_cascade(title, artist_ids, release_year, genre, format_val, condition, personal_notes, user_id):
+    """
+    Esegue la registrazione di una copia fisica a cascata: se l'album specificato 
+    non esiste, lo inserisce a catalogo associando gli artisti e creando infine la copia.
+    """
     conn = get_db()
     added_date = datetime.date.today().isoformat()
     with conn:
-        # 1. Trova o crea Album (usiamo il primo artista come pivot per la ricerca per evitare duplicati semplici)
         first_artist_id = artist_ids[0] if artist_ids else None
         
         album = None
@@ -73,14 +87,12 @@ def create_copy_cascade(title, artist_ids, release_year, genre, format_val, cond
             )
             album_id = cursor.lastrowid
             
-            # Collega tutti gli artisti all'album
             for artist_id in artist_ids:
                 conn.execute(
                     "INSERT OR IGNORE INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)", 
                     (album_id, artist_id)
                 )
 
-        # 2. Registra la Copia Fisica
         cursor = conn.execute(
             """INSERT INTO PHYSICAL_COPY (format, condition, addedDate, personalNotes, id_user, id_album) 
                VALUES (?, ?, ?, ?, ?, ?)""", 
@@ -92,12 +104,11 @@ def create_copy_cascade(title, artist_ids, release_year, genre, format_val, cond
 
 def update_copy_data(copy_id, fields, values):
     """
-    Aggiorna i dati di una copia fisica.
-
-    SICUREZZA: `fields` deve contenere SOLO stringhe colonna hardcoded
-    (es. 'format = ?', 'condition = ?'), MAI valori provenienti dall'input utente.
-    I valori utente vanno sempre e solo in `values`, passati come parametri
-    alla query per sfruttare il prepared statement di sqlite3.
+    Aggiorna i dati della copia fisica specificata.
+    
+    Per prevenire vulnerabilità SQL Injection, l'argomento 'fields' deve contenere 
+    esclusivamente identificatori di colonna statici definiti dall'applicazione, 
+    mentre i dati dinamici devono essere passati tramite l'argomento 'values'.
     """
     conn = get_db()
     with conn:
@@ -105,12 +116,14 @@ def update_copy_data(copy_id, fields, values):
         conn.execute(query, values + [copy_id])
 
 def delete_copy_by_id(copy_id):
+    """Elimina una copia fisica a partire dal suo identificativo univoco."""
     conn = get_db()
     with conn:
         conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_copy = ?", (copy_id,))
 
 def delete_all_copies_by_user(user_id):
-    """Svuota l'intera collezione dell'utente eliminando tutte le sue copie fisiche."""
+    """Elimina tutte le copie fisiche appartenenti all'utente specificato."""
     conn = get_db()
     with conn:
         conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_user = ?", (user_id,))
+

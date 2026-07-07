@@ -1,9 +1,20 @@
+"""
+GrooveBox - Data Access Layer per le Statistiche
+================================================
+Raggruppa le query SQL aggregate e analitiche utilizzate per popolare i widget 
+e la dashboard di monitoraggio amministrativo della piattaforma.
+"""
+
 from core.database import get_db
 
 def get_platform_stats():
+    """
+    Esegue query analitiche aggregate sul database e restituisce le metriche di 
+    utilizzo, tra cui totali, distribuzione dei supporti, generi e classifiche utenti.
+    """
     conn = get_db()
     
-    # Contatori generali
+    # Metriche complessive
     total_users = conn.execute(
         "SELECT COUNT(*) FROM USER WHERE role = 'collector'"
     ).fetchone()[0]
@@ -20,7 +31,7 @@ def get_platform_stats():
         "SELECT COUNT(*) FROM PHYSICAL_COPY"
     ).fetchone()[0]
 
-    # Formati piu' diffusi (distribuzione copie fisiche per formato)
+    # Distribuzione percentuale dei supporti fisici per formato
     formats = conn.execute(
         """SELECT format, COUNT(*) as count
            FROM PHYSICAL_COPY
@@ -28,7 +39,7 @@ def get_platform_stats():
            ORDER BY count DESC"""
     ).fetchall()
 
-    # Album piu' collezionati (con piu' copie fisiche associate)
+    # Top 10 degli album più collezionati
     top_albums = conn.execute(
         """SELECT al.id_album, al.title, COUNT(pc.id_copy) as copies_count
            FROM ALBUM al
@@ -38,7 +49,7 @@ def get_platform_stats():
            LIMIT 10"""
     ).fetchall()
 
-    # Ultimi album aggiunti al catalogo
+    # Elenco degli ultimi album inseriti a catalogo
     recent_albums = conn.execute(
         """SELECT id_album, title, genre, releaseYear, coverPath
            FROM ALBUM
@@ -46,7 +57,7 @@ def get_platform_stats():
            LIMIT 5"""
     ).fetchall()
 
-    # Generi piu' diffusi (distribuzione album per genere nel catalogo)
+    # Distribuzione degli album per genere musicale
     genres = conn.execute(
         """SELECT genre, COUNT(*) as count
            FROM ALBUM
@@ -56,7 +67,7 @@ def get_platform_stats():
            LIMIT 5"""
     ).fetchall()
 
-    # Classifica migliori collezionisti (utenti con piu' copie fisiche)
+    # Classifica degli utenti con il maggior numero di copie fisiche registrate
     collectors = conn.execute(
         """SELECT u.username, u.name, u.surname, COUNT(pc.id_copy) as copies_count
            FROM USER u
@@ -66,7 +77,7 @@ def get_platform_stats():
            LIMIT 5"""
     ).fetchall()
 
-    # Artisti con piu' album registrati nel sistema
+    # Classifica degli artisti con il maggior numero di album registrati
     top_artists = conn.execute(
         """SELECT ar.id_artist, ar.name, COUNT(DISTINCT aa.id_album) as albums_count
            FROM ARTIST ar
@@ -90,3 +101,4 @@ def get_platform_stats():
         "top_collectors": [dict(c) for c in collectors],
         "top_artists": [dict(a) for a in top_artists]
     }
+

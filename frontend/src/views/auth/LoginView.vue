@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Login
+========================
+Consente l'accesso alla piattaforma per gli utenti registrati tramite 
+l'inserimento di username e password.
+-->
+
 <script setup>
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
@@ -13,8 +20,17 @@ const loading = ref(false)
 
 async function handleLogin() {
   error.value = ''
-  loading.value = true
+  
+  if (!username.value.trim()) {
+    error.value = 'L\'username è obbligatorio'
+    return
+  }
+  if (!password.value) {
+    error.value = 'La password è obbligatoria'
+    return
+  }
 
+  loading.value = true
   try {
     await authStore.login(username.value, password.value)
     router.push('/dashboard')
@@ -45,6 +61,7 @@ async function handleLogin() {
 
       <!-- Card -->
       <form
+        novalidate
         @submit.prevent="handleLogin"
         class="glass-panel p-8 rounded-apple-2xl space-y-6 shadow-2xl"
       >

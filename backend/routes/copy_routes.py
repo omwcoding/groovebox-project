@@ -1,13 +1,8 @@
 """
-GrooveBox - Rotte Copie Fisiche
-================================
-Blueprint: /api/copies
-
-Matrice di visibilita' (doc 3.4):
-  Collector     -> PHYSICAL_COPY: SS scope (subset), CRUD
-                   (gestisce solo le proprie copie)
-  Administrator -> PHYSICAL_COPY: NONE
-                   (nessun accesso alle librerie private)
+GrooveBox - Route Blueprint per Copie Fisiche
+==============================================
+Fornisce gli endpoint per la gestione della libreria personale di copie fisiche
+dei singoli utenti (aggiunta, modifica, rimozione e svuotamento).
 """
 
 from flask import Blueprint, request, jsonify, g, current_app
@@ -28,13 +23,10 @@ from core.errors import ForbiddenError, NotFoundError, BadRequestError
 bp = Blueprint("copies", __name__, url_prefix="/api/copies")
 
 
-# --------------------------------------------------------------------------
-# GET /api/copies
-# Restituisce tutte le copie fisiche dell'utente autenticato (solo Collector).
-# --------------------------------------------------------------------------
 @bp.route("", methods=["GET"])
 @token_required
 def get_my_copies():
+    """Restituisce l'elenco di tutte le copie fisiche appartenenti all'utente corrente."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Accesso riservato ai Collector")
 
@@ -45,13 +37,10 @@ def get_my_copies():
     })
 
 
-# --------------------------------------------------------------------------
-# GET /api/copies/<id>
-# Dettaglio di una singola copia (solo Collector, solo propria).
-# --------------------------------------------------------------------------
 @bp.route("/<int:copy_id>", methods=["GET"])
 @token_required
 def get_copy(copy_id):
+    """Restituisce il dettaglio di una singola copia fisica di proprietà dell'utente."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Accesso riservato ai Collector")
 
@@ -62,21 +51,16 @@ def get_copy(copy_id):
     return jsonify({"status": "success", "data": copy})
 
 
-# --------------------------------------------------------------------------
-# POST /api/copies
-# Aggiunge una nuova copia fisica alla collezione (solo Collector).
-# Body JSON: { id_album, format, condition, personalNotes? }
-# --------------------------------------------------------------------------
 @bp.route("", methods=["POST"])
 @token_required
 def create_copy():
+    """Aggiunge una nuova copia fisica alla collezione dell'utente."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Accesso riservato ai Collector")
 
     data = request.get_json()
     validate_json_payload(data, ["id_album", "format", "condition"])
 
-    # Verifica che l'album esista
     album = find_album_by_id(data["id_album"])
     if not album:
         raise NotFoundError("Album di riferimento non trovato")
@@ -103,14 +87,10 @@ def create_copy():
     }), 201
 
 
-# --------------------------------------------------------------------------
-# POST /api/copies/cascade
-# Registrazione copia a cascata (crea artista e album se non esistono).
-# Body JSON: { title, artist_name, format, condition, releaseYear?, genre?, personalNotes? }
-# --------------------------------------------------------------------------
 @bp.route("/cascade", methods=["POST"])
 @token_required
 def create_copy_cascade_route():
+    """Registra una copia a cascata, creando l'album e/o l'artista qualora non esistano."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Accesso riservato ai Collector")
 
@@ -163,14 +143,10 @@ def create_copy_cascade_route():
     }), 201
 
 
-# --------------------------------------------------------------------------
-# PUT /api/copies/<id>
-# Modifica una propria copia fisica (solo Collector, solo propria).
-# Body JSON: { format?, condition?, personalNotes? }
-# --------------------------------------------------------------------------
 @bp.route("/<int:copy_id>", methods=["PUT"])
 @token_required
 def update_copy(copy_id):
+    """Aggiorna le informazioni relative a una copia fisica nella libreria."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Accesso riservato ai Collector")
 
@@ -203,13 +179,10 @@ def update_copy(copy_id):
     })
 
 
-# --------------------------------------------------------------------------
-# DELETE /api/copies/<id>
-# Elimina una propria copia fisica (solo Collector, solo propria).
-# --------------------------------------------------------------------------
 @bp.route("/<int:copy_id>", methods=["DELETE"])
 @token_required
 def delete_copy(copy_id):
+    """Rimuove una copia fisica dalla collezione personale dell'utente."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Accesso riservato ai Collector")
 
@@ -224,13 +197,10 @@ def delete_copy(copy_id):
     })
 
 
-# --------------------------------------------------------------------------
-# DELETE /api/copies/clear
-# Elimina tutte le copie fisiche dell'utente (solo Collector).
-# --------------------------------------------------------------------------
 @bp.route("/clear", methods=["DELETE"])
 @token_required
 def clear_copies():
+    """Elimina l'intera collezione di copie fisiche dell'utente loggato."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Accesso riservato ai Collector")
 

@@ -1,8 +1,8 @@
 /**
- * GrooveBox — Helper HTTP centralizzato
- *
- * Tutte le chiamate API passano da qui: gestisce automaticamente
- * l'header Authorization con il token JWT salvato in localStorage.
+ * GrooveBox - Client API Centralizzato
+ * ===================================
+ * Configura le chiamate HTTP verso il backend, iniettando automaticamente il
+ * token JWT di autorizzazione e gestendo centralitamente i fallimenti di sessione (HTTP 401).
  */
 
 const API_BASE = '/api'
@@ -25,12 +25,9 @@ async function request(endpoint, options = {}) {
     headers
   })
 
-  // Se il server risponde 401, il token JWT è scaduto o non valido.
-  // Forza la pulizia del token e reindirizza alla pagina di login.
-  // Escludiamo l'endpoint di login per consentire la corretta visualizzazione degli errori di credenziali.
+  // Gestione centralizzata dei token non validi o scaduti (HTTP 401)
   if (response.status === 401 && !endpoint.includes('/auth/login')) {
     try {
-      // Importazione dinamica per evitare dipendenze circolari in Pinia
       const { useAuthStore } = await import('@/stores/auth')
       const authStore = useAuthStore()
       authStore.logout()
@@ -38,19 +35,17 @@ async function request(endpoint, options = {}) {
       localStorage.removeItem('groovebox_token')
       localStorage.removeItem('groovebox_user')
     }
-    // Usiamo location.href per rinfrescare lo stato complessivo dell'applicazione
     window.location.href = '/login'
     return
   }
 
-  // Gestione del parsing JSON sicuro
   let data = {}
   const contentType = response.headers.get('Content-Type')
   if (contentType && contentType.includes('application/json')) {
     try {
       data = await response.json()
     } catch (_) {
-      // Ignora l'errore se il JSON è malformato
+      // Ignora l'errore in caso di risposta vuota o non formattata JSON
     }
   }
 

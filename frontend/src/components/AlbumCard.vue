@@ -1,3 +1,11 @@
+<!--
+GrooveBox - Componente AlbumCard
+================================
+Rappresentazione visuale sintetica (scheda) di un album, utilizzata sia nel catalogo
+generale che nella collezione dell'utente. Gestisce fallback per immagini assenti
+e classi dinamiche in base alle condizioni del supporto.
+-->
+
 <script setup>
 import { RouterLink } from 'vue-router'
 
@@ -43,6 +51,7 @@ defineProps({
     default: 0
   }
 })
+
 const getConditionClass = (cond) => {
   if (!cond) return ''
   switch (cond) {
@@ -68,7 +77,7 @@ const getConditionClass = (cond) => {
     class="group flex flex-col gap-4 animate-slide-up"
     :style="{ animationDelay: `${index * 30}ms` }"
   >
-    <!-- Album Art / Placeholder -->
+    <!-- Copertina o SVG di fallback -->
     <div class="w-full aspect-square rounded-apple-2xl overflow-hidden bg-white/5 relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500">
       <img v-if="coverPath"
         :src="`/api/albums/${idAlbum}/cover`"
@@ -84,7 +93,7 @@ const getConditionClass = (cond) => {
         </svg>
       </div>
       
-      <!-- Format Badge -->
+      <!-- Indicatore del formato del supporto fisico -->
       <div v-if="format" class="absolute bottom-3 right-3 z-10">
          <span class="inline-flex items-center px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest text-white/90 border border-white/15">
             {{ format }}
@@ -92,7 +101,7 @@ const getConditionClass = (cond) => {
       </div>
     </div>
 
-    <!-- Info -->
+    <!-- Metadati descrittivi dell'album -->
     <div class="space-y-1.5 px-1 flex flex-col justify-between h-20">
       <div>
         <h3 class="font-bold text-base leading-snug line-clamp-1 group-hover:text-brand-secondary transition-colors" :title="title">

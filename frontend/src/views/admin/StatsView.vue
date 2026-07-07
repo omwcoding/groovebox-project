@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Dashboard Statistiche Piattaforma (Amministrazione)
+===============================================================
+Fornisce metriche aggregate sui dati inseriti a sistema, classifiche dei collezionisti
+e grafici per la distribuzione dei supporti fisici. Accessibile solo agli amministratori.
+-->
+
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { api } from '@/stores/api'
@@ -10,7 +17,6 @@ const loading = ref(true)
 const error = ref('')
 
 const activeTab = ref('overview') // 'overview' | 'media' | 'leaderboard'
-const hoveredSlice = ref(null)
 // Circonferenza per calcolo SVG Donut Chart (raggio = 50)
 const circumference = 314.159
 
@@ -70,7 +76,6 @@ async function handleExportStats() {
     document.body.removeChild(a)
     window.URL.revokeObjectURL(url)
   } catch (err) {
-    console.error(err)
     alert("Impossibile esportare le statistiche")
   }
 }
@@ -300,8 +305,6 @@ onMounted(async () => {
               <div 
                 v-for="slice in donutSlices" 
                 :key="slice.format"
-                @mouseenter="hoveredSlice = slice"
-                @mouseleave="hoveredSlice = null"
                 class="p-4 rounded-2xl border bg-white/[0.02] border-white/5 transition-all duration-300 hover:border-white/10"
               >
                 <div class="flex items-center justify-between text-sm font-bold mb-1.5">

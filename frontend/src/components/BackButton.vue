@@ -1,7 +1,14 @@
+<!--
+GrooveBox - Componente BackButton
+=================================
+Pulsante di navigazione a ritroso. Permette di specificare una rotta 
+di destinazione fissa (RouterLink) o di delegare alla cronologia del browser (router.back()).
+-->
+
 <script setup>
 import { useRouter, RouterLink } from 'vue-router'
 
-const props = defineProps({
+defineProps({
   to: {
     type: String,
     default: ''

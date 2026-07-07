@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Home della Dashboard Interna
+===============================================
+Funge da pannello di smistamento per gli utenti autenticati, esponendo collegamenti rapidi 
+differenziati in base al ruolo dell'utente (Collector o Administrator).
+-->
+
 <script setup>
 import { useAuthStore } from '@/stores/auth'
 import { RouterLink } from 'vue-router'

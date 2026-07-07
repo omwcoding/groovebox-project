@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Componente AppNavbar
+================================
+Navbar dell'applicazione con gestione responsive. Adatta le voci di menu
+visibili in base al ruolo dell'utente autenticato (Collector o Administrator).
+-->
+
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -38,9 +45,8 @@ function isActive(path) {
   >
     <div class="glass-panel rounded-3xl md:rounded-full px-6 py-3 flex items-center justify-between shadow-2xl">
       
-      <!-- Brand & Desktop Nav -->
       <div class="flex items-center gap-8">
-        <!-- Logo -->
+        <!-- Logo di Brand -->
         <RouterLink to="/dashboard" class="flex items-center gap-2 font-bold text-lg tracking-tight group">
           <div class="bg-brand-secondary/20 p-1.5 rounded-lg group-hover:rotate-12 transition-transform duration-300 shadow-md">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-brand-secondary"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
@@ -48,7 +54,7 @@ function isActive(path) {
           <span class="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">GrooveBox</span>
         </RouterLink>
 
-        <!-- Links Desktop -->
+        <!-- Menu di navigazione desktop -->
         <nav class="hidden md:flex items-center gap-1.5 text-sm font-medium">
           <RouterLink
             to="/dashboard"
@@ -104,7 +110,7 @@ function isActive(path) {
         </nav>
       </div>
 
-      <!-- Right Side Actions (Desktop) -->
+      <!-- Azioni utente desktop -->
       <div class="hidden md:flex items-center gap-4">
         <RouterLink
           to="/profile"
@@ -123,7 +129,7 @@ function isActive(path) {
         </button>
       </div>
 
-      <!-- Mobile Menu Toggle -->
+      <!-- Toggle menu responsive per dispositivi mobile -->
       <button
         @click="mobileMenuOpen = !mobileMenuOpen"
         class="md:hidden p-1.5 text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-all"
@@ -138,7 +144,7 @@ function isActive(path) {
 
     </div>
 
-    <!-- Mobile Drawer -->
+    <!-- Drawer mobile -->
     <transition name="fade">
       <div 
         v-if="mobileMenuOpen" 

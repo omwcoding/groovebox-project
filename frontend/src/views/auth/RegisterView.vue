@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Registrazione
+================================
+Consente la registrazione sulla piattaforma di un nuovo utente con ruolo 'collector',
+richiedendo i dati anagrafici e le credenziali di accesso.
+-->
+
 <script setup>
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
@@ -19,6 +26,21 @@ const loading = ref(false)
 
 async function handleRegister() {
   error.value = ''
+
+  if (!form.value.username.trim()) {
+    error.value = 'Lo username è obbligatorio'
+    return
+  }
+  if (!form.value.name.trim() || !form.value.surname.trim()) {
+    error.value = 'Nome e cognome sono obbligatori'
+    return
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!form.value.email.trim() || !emailRegex.test(form.value.email)) {
+    error.value = 'Inserisci un indirizzo email valido'
+    return
+  }
 
   if (form.value.password.length < 6) {
     error.value = 'La password deve contenere almeno 6 caratteri'
@@ -70,6 +92,7 @@ async function handleRegister() {
 
       <!-- Card -->
       <form
+        novalidate
         @submit.prevent="handleRegister"
         class="glass-panel p-8 rounded-apple-2xl space-y-5 shadow-2xl"
       >

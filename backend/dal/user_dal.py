@@ -1,6 +1,14 @@
+"""
+GrooveBox - Data Access Layer per Utenti
+=========================================
+Gestisce le operazioni di lettura, scrittura, aggiornamento e rimozione
+delle anagrafiche utente (USER) nel database.
+"""
+
 from core.database import get_db
 
 def get_user_by_id(user_id):
+    """Cerca un utente per identificativo univoco, escludendo l'hash della password."""
     conn = get_db()
     return conn.execute(
         "SELECT id_user, username, name, surname, email, role "
@@ -9,6 +17,7 @@ def get_user_by_id(user_id):
     ).fetchone()
 
 def get_user_by_username(username):
+    """Cerca un utente per username, includendo tutti i campi del record."""
     conn = get_db()
     return conn.execute(
         "SELECT * FROM USER WHERE username = ?",
@@ -16,6 +25,7 @@ def get_user_by_username(username):
     ).fetchone()
 
 def get_all_collectors():
+    """Recupera l'elenco di tutti gli utenti registrati con ruolo 'collector'."""
     conn = get_db()
     return conn.execute(
         "SELECT id_user, username, name, surname, email, role "
@@ -23,6 +33,7 @@ def get_all_collectors():
     ).fetchall()
 
 def insert_collector(username, name, surname, email, password_hash):
+    """Crea un nuovo profilo utente con ruolo predefinito 'collector'."""
     conn = get_db()
     with conn:
         cursor = conn.execute(
@@ -34,12 +45,11 @@ def insert_collector(username, name, surname, email, password_hash):
 
 def update_user_profile(user_id, fields, values):
     """
-    Aggiorna il profilo utente con i campi specificati.
-
-    SICUREZZA: `fields` deve contenere SOLO stringhe colonna hardcoded
-    (es. 'name = ?', 'email = ?'), MAI valori provenienti dall'input utente.
-    I valori utente vanno sempre e solo in `values`, passati come parametri
-    alla query per sfruttare il prepared statement di sqlite3.
+    Aggiorna i dati anagrafici del profilo utente specificato.
+    
+    Per prevenire vulnerabilità SQL Injection, l'argomento 'fields' deve contenere 
+    esclusivamente identificatori di colonna statici definiti dall'applicazione, 
+    mentre i dati dinamici devono essere passati tramite l'argomento 'values'.
     """
     conn = get_db()
     query = f"UPDATE USER SET {', '.join(fields)} WHERE id_user = ?"
@@ -48,9 +58,13 @@ def update_user_profile(user_id, fields, values):
     return get_user_by_id(user_id)
 
 def delete_user_and_keep_albums(user_id):
+    """
+    Elimina un utente dal sistema preservando gli album da lui inseriti 
+    (impostando l'attributo id_user a NULL). Le copie fisiche collegate 
+    all'utente vengono eliminate a cascata.
+    """
     conn = get_db()
     with conn:
-        # Imposta id_user = NULL per mantenere gli album dissociandoli dall'utente eliminato
         conn.execute("UPDATE ALBUM SET id_user = NULL WHERE id_user = ?", (user_id,))
-        # Rimuove l'utente. Le copie associate verranno eliminate a cascata (ON DELETE CASCADE)
         conn.execute("DELETE FROM USER WHERE id_user = ?", (user_id,))
+

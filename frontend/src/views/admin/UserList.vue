@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Elenco Utenti (Amministrazione)
+==================================================
+Mostra la lista dei collezionisti registrati con funzionalità di filtro e ricerca.
+Fornisce l'accesso alle funzioni di moderazione profili. Accessibile solo agli amministratori.
+-->
+
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { api } from '@/stores/api'

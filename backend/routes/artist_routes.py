@@ -1,11 +1,8 @@
 """
-GrooveBox - Rotte Artisti
-==========================
-Blueprint: /api/artists
-
-Matrice di visibilita' (doc 3.4):
-  Collector     -> ARTIST: ALL scope, CR__  (crea e consulta)
-  Administrator -> ARTIST: ALL scope, CRUD  (gestione completa)
+GrooveBox - Route Blueprint per Artisti
+=======================================
+Definisce gli endpoint per le operazioni CRUD sul catalogo degli artisti
+e per la consultazione della relativa discografia.
 """
 
 from flask import Blueprint, request, jsonify, g
@@ -24,13 +21,10 @@ from core.errors import ForbiddenError, NotFoundError
 bp = Blueprint("artists", __name__, url_prefix="/api/artists")
 
 
-# --------------------------------------------------------------------------
-# GET /api/artists
-# Restituisce tutti gli artisti (Collector + Admin).
-# --------------------------------------------------------------------------
 @bp.route("", methods=["GET"])
 @token_required
 def get_artists():
+    """Restituisce l'elenco completo degli artisti presenti nel catalogo."""
     artists = get_all_artists()
     return jsonify({
         "status": "success",
@@ -38,13 +32,10 @@ def get_artists():
     })
 
 
-# --------------------------------------------------------------------------
-# GET /api/artists/<id>
-# Dettaglio di un artista con i suoi album (Collector + Admin).
-# --------------------------------------------------------------------------
 @bp.route("/<int:artist_id>", methods=["GET"])
 @token_required
 def get_artist(artist_id):
+    """Restituisce i dettagli dell'artista specificato e la sua discografia associata."""
     artist = find_artist_by_id(artist_id)
     if not artist:
         raise NotFoundError("Artista non trovato")
@@ -56,14 +47,10 @@ def get_artist(artist_id):
     return jsonify({"status": "success", "data": result})
 
 
-# --------------------------------------------------------------------------
-# POST /api/artists
-# Crea un nuovo artista (Collector + Admin).
-# Body JSON: { name }
-# --------------------------------------------------------------------------
 @bp.route("", methods=["POST"])
 @token_required
 def create_artist():
+    """Registra un nuovo artista nel catalogo globale."""
     data = request.get_json()
     validate_json_payload(data, ["name"])
 
@@ -80,14 +67,10 @@ def create_artist():
     }), 201
 
 
-# --------------------------------------------------------------------------
-# PUT /api/artists/<id>
-# Modifica un artista (solo Admin).
-# Body JSON: { name }
-# --------------------------------------------------------------------------
 @bp.route("/<int:artist_id>", methods=["PUT"])
 @token_required
 def update_artist(artist_id):
+    """Aggiorna il nome di un artista (autorizzato solo per ruolo 'administrator')."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Solo gli amministratori possono modificare gli artisti")
 
@@ -106,14 +89,10 @@ def update_artist(artist_id):
     })
 
 
-# --------------------------------------------------------------------------
-# DELETE /api/artists/<id>
-# Elimina un artista (solo Admin).
-# Rimuove anche le associazioni ALBUM_ARTIST collegate (via ON DELETE CASCADE).
-# --------------------------------------------------------------------------
 @bp.route("/<int:artist_id>", methods=["DELETE"])
 @token_required
 def delete_artist(artist_id):
+    """Elimina un artista dal catalogo globale (autorizzato solo per ruolo 'administrator')."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Solo gli amministratori possono eliminare gli artisti")
 

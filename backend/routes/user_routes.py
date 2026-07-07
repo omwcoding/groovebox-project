@@ -1,11 +1,8 @@
 """
-GrooveBox - Rotte Utenti
-=========================
-Blueprint: /api/users
-
-Matrice di visibilita' (doc 3.4):
-  Collector     -> USER: ONE scope, CRUD  (solo il proprio profilo)
-  Administrator -> USER: ALL scope, _R_D  (legge e rimuove i Collector)
+GrooveBox - Route Blueprint per Utenti
+======================================
+Definisce le rotte per la consultazione e modifica del proprio profilo (Collector)
+e per le operazioni di moderazione sui Collector da parte degli amministratori.
 """
 
 from flask import Blueprint, request, jsonify, g
@@ -23,27 +20,20 @@ from core.errors import BadRequestError, ForbiddenError, NotFoundError, Conflict
 bp = Blueprint("users", __name__, url_prefix="/api/users")
 
 
-# --------------------------------------------------------------------------
-# GET /api/users/me
-# Restituisce il profilo dell'utente autenticato (Collector + Admin).
-# --------------------------------------------------------------------------
 @bp.route("/me", methods=["GET"])
 @token_required
 def get_my_profile():
+    """Restituisce il profilo dell'utente correntemente autenticato."""
     return jsonify({
         "status": "success",
         "data": g.current_user
     })
 
 
-# --------------------------------------------------------------------------
-# PUT /api/users/me
-# Modifica il profilo dell'utente autenticato (Collector).
-# Campi aggiornabili: name, surname, email, password.
-# --------------------------------------------------------------------------
 @bp.route("/me", methods=["PUT"])
 @token_required
 def update_my_profile():
+    """Consente all'utente (solo Collector) di aggiornare i propri dati anagrafici o la password."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Solo i Collector possono modificare il proprio profilo")
 
@@ -51,7 +41,6 @@ def update_my_profile():
     if not data:
         raise BadRequestError("Nessun dato fornito nella richiesta")
 
-    # Costruisci dinamicamente la query di UPDATE
     fields = []
     values = []
     updatable = ["name", "surname", "email"]
@@ -61,7 +50,6 @@ def update_my_profile():
             fields.append(f"{field} = ?")
             values.append(data[field].strip())
 
-    # Gestione cambio password separata
     if "password" in data and data["password"]:
         if len(data["password"]) < 6:
             raise BadRequestError("La nuova password deve essere di almeno 6 caratteri")
@@ -96,13 +84,10 @@ def update_my_profile():
     })
 
 
-# --------------------------------------------------------------------------
-# DELETE /api/users/me
-# Il Collector elimina il proprio account (+ copie fisiche collegate).
-# --------------------------------------------------------------------------
 @bp.route("/me", methods=["DELETE"])
 @token_required
 def delete_my_account():
+    """Consente ad un Collector di eliminare permanentemente il proprio account."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Solo i Collector possono eliminare il proprio account")
 
@@ -115,13 +100,10 @@ def delete_my_account():
     })
 
 
-# --------------------------------------------------------------------------
-# GET /api/users
-# Lista tutti i Collector registrati (solo Admin).
-# --------------------------------------------------------------------------
 @bp.route("", methods=["GET"])
 @token_required
 def get_all_users():
+    """Restituisce l'elenco completo di tutti i Collector registrati (solo Admin)."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Accesso riservato agli amministratori")
 
@@ -132,13 +114,10 @@ def get_all_users():
     })
 
 
-# --------------------------------------------------------------------------
-# GET /api/users/<id>
-# Dettaglio di un singolo Collector (solo Admin).
-# --------------------------------------------------------------------------
 @bp.route("/<int:user_id>", methods=["GET"])
 @token_required
 def get_user(user_id):
+    """Restituisce i dettagli anagrafici e le metriche di un singolo Collector (solo Admin)."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Accesso riservato agli amministratori")
 
@@ -147,20 +126,24 @@ def get_user(user_id):
     if not user or user["role"] != "collector":
         raise NotFoundError("Utente non trovato")
 
+    conn = get_db()
+    copies_count = conn.execute("SELECT COUNT(*) FROM PHYSICAL_COPY WHERE id_user = ?", (user_id,)).fetchone()[0]
+    albums_count = conn.execute("SELECT COUNT(*) FROM ALBUM WHERE id_user = ?", (user_id,)).fetchone()[0]
+
+    user_dict = dict(user)
+    user_dict["copies_count"] = copies_count
+    user_dict["albums_count"] = albums_count
+
     return jsonify({
         "status": "success",
-        "data": dict(user)
+        "data": user_dict
     })
 
 
-# --------------------------------------------------------------------------
-# DELETE /api/users/<id>
-# Rimuove un Collector dalla piattaforma (solo Admin).
-# Elimina anche le copie fisiche del Collector (via ON DELETE CASCADE).
-# --------------------------------------------------------------------------
 @bp.route("/<int:user_id>", methods=["DELETE"])
 @token_required
 def delete_user(user_id):
+    """Elimina definitivamente un Collector dalla piattaforma (solo Admin)."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Accesso riservato agli amministratori")
 

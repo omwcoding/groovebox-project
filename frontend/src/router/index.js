@@ -1,17 +1,16 @@
 /**
- * GrooveBox — Vue Router
- *
- * Rotte derivate dall'albero di navigazione (doc 4.2).
- * Navigation guard per protezione rotte e controllo ruoli.
+ * GrooveBox - Vue Router Configurazione
+ * =====================================
+ * Definisce le rotte applicative del frontend con caricamento lazy dei componenti
+ * e implementa la guard di navigazione globale per il controllo degli accessi
+ * basato sullo stato di autenticazione e sul ruolo dell'utente.
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-// --- Views (Lazy Loaded for optimization) ---
-import HomeView from '@/views/dashboard/HomeView.vue'
-import LoginView from '@/views/auth/LoginView.vue'
-
+const HomeView = () => import('@/views/dashboard/HomeView.vue')
+const LoginView = () => import('@/views/auth/LoginView.vue')
 const RegisterView = () => import('@/views/auth/RegisterView.vue')
 const DashboardView = () => import('@/views/dashboard/DashboardView.vue')
 const AlbumCatalog = () => import('@/views/catalog/AlbumCatalog.vue')
@@ -25,9 +24,7 @@ const UserDetail = () => import('@/views/admin/UserDetail.vue')
 const ProfileView = () => import('@/views/dashboard/ProfileView.vue')
 const StatsView = () => import('@/views/admin/StatsView.vue')
 
-// --- Definizione rotte ---
 const routes = [
-  // Pagine pubbliche (guest)
   {
     path: '/',
     name: 'home',
@@ -46,8 +43,6 @@ const routes = [
     component: RegisterView,
     meta: { guest: true }
   },
-
-  // Pagine autenticate (comuni)
   {
     path: '/dashboard',
     name: 'dashboard',
@@ -60,8 +55,6 @@ const routes = [
     component: ProfileView,
     meta: { requiresAuth: true }
   },
-
-  // Catalogo Album (VE + VD)
   {
     path: '/albums',
     name: 'albums',
@@ -74,8 +67,6 @@ const routes = [
     component: AlbumDetail,
     meta: { requiresAuth: true }
   },
-
-  // Catalogo Artisti (VE + VD)
   {
     path: '/artists',
     name: 'artists',
@@ -88,8 +79,6 @@ const routes = [
     component: ArtistDetail,
     meta: { requiresAuth: true }
   },
-
-  // La Tua Collezione — solo Collector (VE + VD)
   {
     path: '/collection',
     name: 'collection',
@@ -102,8 +91,6 @@ const routes = [
     component: CopyDetail,
     meta: { requiresAuth: true, role: 'collector' }
   },
-
-  // Gestione Utenti — solo Admin (VE + VD)
   {
     path: '/users',
     name: 'users',
@@ -116,16 +103,12 @@ const routes = [
     component: UserDetail,
     meta: { requiresAuth: true, role: 'administrator' }
   },
-
-  // Statistiche e Report — solo Admin (VE)
   {
     path: '/stats',
     name: 'stats',
     component: StatsView,
     meta: { requiresAuth: true, role: 'administrator' }
   },
-
-  // Catch-all: redirige alla home
   {
     path: '/:pathMatch(.*)*',
     redirect: '/'
@@ -137,21 +120,20 @@ const router = createRouter({
   routes
 })
 
-// --- Navigation Guard globale ---
 router.beforeEach((to) => {
   const authStore = useAuthStore()
 
-  // Se la rotta richiede autenticazione e l'utente non e' loggato
+  // Controllo per rotte protette che richiedono autenticazione
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login' }
   }
 
-  // Se la rotta richiede un ruolo specifico
+  // Controllo autorizzativo basato sul ruolo dell'utente
   if (to.meta.role && authStore.user?.role !== to.meta.role) {
     return { name: 'dashboard' }
   }
 
-  // Se l'utente e' gia' loggato e visita pagine guest (login/register/home)
+  // Reindirizzamento degli utenti autenticati che tentano di accedere a pagine guest
   if (to.meta.guest && authStore.isAuthenticated) {
     return { name: 'dashboard' }
   }

@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Dettaglio Utente (Amministrazione)
+=====================================================
+Presenta i dettagli anagrafici e le metriche di attività di un singolo collezionista.
+Consente l'eliminazione definitiva dell'account per motivi di moderazione. Accessibile solo agli amministratori.
+-->
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -67,24 +74,40 @@ async function handleDelete() {
         </div>
       </div>
 
-      <!-- Informazioni dettagliate -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6 border-b border-white/5 text-sm">
-        <DetailField label="Nome" :value="user.name" />
-        <DetailField label="Cognome" :value="user.surname" />
-        <DetailField label="Indirizzo Email" :value="user.email" />
-        <DetailField label="Ruolo Account">
-          <span class="inline-flex px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold rounded-full">
-            {{ user.role }}
-          </span>
-        </DetailField>
+      <!-- Dati Contatto & Attività -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 border-b border-white/5 text-sm">
+        <!-- Colonna Dati di Contatto -->
+        <div class="space-y-4">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-white/40">Dati di contatto</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <DetailField label="Nome" :value="user.name" />
+            <DetailField label="Cognome" :value="user.surname" />
+          </div>
+          <DetailField label="Indirizzo Email" :value="user.email" />
+          <DetailField label="Ruolo Account">
+            <span class="inline-flex px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold rounded-full">
+              {{ user.role }}
+            </span>
+          </DetailField>
+        </div>
+
+        <!-- Colonna Attività sulla piattaforma -->
+        <div class="space-y-4 border-t md:border-t-0 md:border-l border-white/5 pt-6 md:pt-0 md:pl-8">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-white/40">Attività sulla piattaforma</h3>
+          <DetailField label="Copie salvate in collezione" :value="`${user.copies_count ?? 0} ${(user.copies_count ?? 0) === 1 ? 'disco' : 'dischi'}`" />
+          <DetailField label="Album caricati a catalogo" :value="`${user.albums_count ?? 0} ${(user.albums_count ?? 0) === 1 ? 'album' : 'album'}`" />
+        </div>
       </div>
 
       <!-- Azioni Moderazione Admin -->
-      <div class="flex gap-3 pt-6">
-        <button @click="handleDelete"
-          class="apple-button apple-button-secondary py-2.5 text-sm !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
-          Elimina definitamente
-        </button>
+      <div class="pt-6 space-y-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-white/40">Moderazione Utente</h3>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <button @click="handleDelete"
+            class="apple-button apple-button-secondary py-2.5 text-sm !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25 w-full sm:w-auto shrink-0">
+            Elimina account definitivamente
+          </button>
+        </div>
       </div>
     </div>
   </div>

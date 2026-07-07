@@ -1,8 +1,8 @@
 """
-GrooveBox - Rotte di Autenticazione
-====================================
-Blueprint: /api/auth
-Gestisce registrazione (solo Collector) e login con rilascio token JWT.
+GrooveBox - Route Blueprint per Autenticazione
+==============================================
+Fornisce gli endpoint per la registrazione dei collezionisti (Collectors)
+e per il rilascio di token di sessione JWT (autenticazione).
 """
 
 from flask import Blueprint, request, jsonify, current_app
@@ -16,12 +16,9 @@ from core.errors import ConflictError, UnauthorizedError, BadRequestError
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
-# --------------------------------------------------------------------------
-# POST /api/auth/register
-# Registra un nuovo utente con ruolo 'collector'.
-# --------------------------------------------------------------------------
 @bp.route("/register", methods=["POST"])
 def register():
+    """Registra un nuovo utente nel sistema con il ruolo di 'collector'."""
     data = request.get_json()
     validate_json_payload(data, ["username", "name", "surname", "email", "password"])
 
@@ -34,7 +31,6 @@ def register():
     if len(password) < 6:
         raise BadRequestError("La password deve essere di almeno 6 caratteri")
 
-    # Hash della password
     password_hash = generate_password_hash(password)
 
     try:
@@ -57,12 +53,9 @@ def register():
     }), 201
 
 
-# --------------------------------------------------------------------------
-# POST /api/auth/login
-# Autentica l'utente e restituisce un token JWT.
-# --------------------------------------------------------------------------
 @bp.route("/login", methods=["POST"])
 def login():
+    """Autentica l'utente tramite credenziali e restituisce un token di sessione JWT."""
     data = request.get_json()
     validate_json_payload(data, ["username", "password"])
 
@@ -74,7 +67,6 @@ def login():
     if not check_password_hash(user["passwordHash"], data["password"]):
         raise UnauthorizedError("Credenziali non valide")
 
-    # Genera token JWT con scadenza a 24 ore
     token = jwt.encode(
         {
             "id_user": user["id_user"],

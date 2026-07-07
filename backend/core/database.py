@@ -1,14 +1,9 @@
 """
-GrooveBox – Data Access Layer (Step 1)
-======================================
-Genera fisicamente il file `groovebox.db` con le 5 tabelle definite nel
-modello relazionale del documento di progetto (Capitolo 3.2).
-
-Tabelle:
-    USER, ALBUM, ARTIST, ALBUM_ARTIST, PHYSICAL_COPY
-
-Uso standalone (crea / ricrea il database):
-    python database.py
+GrooveBox - Configurazione e Connessione Database Relazionale
+=============================================================
+Definisce lo schema DDL delle tabelle relazionali dell'applicazione 
+(USER, ALBUM, ARTIST, ALBUM_ARTIST, PHYSICAL_COPY) aderendo al modello logico, 
+e fornisce l'infrastruttura di bootstrap del database SQLite.
 """
 
 import sqlite3
@@ -21,14 +16,13 @@ try:
 except ModuleNotFoundError:
     from config import Config
 
-# ---------------------------------------------------------------------------
-# Helper: connessione al database
-# ---------------------------------------------------------------------------
 
 def get_db():
-    """Restituisce una connessione SQLite con foreign keys abilitate e
-    row_factory impostata su sqlite3.Row. Se all'interno del contesto Flask,
-    la connessione viene salvata in g per essere chiusa automaticamente al teardown."""
+    """
+    Ritorna una connessione attiva a SQLite garantendo l'abilitazione delle 
+    foreign key e la configurazione del row factory per l'accesso per chiave.
+    All'interno del contesto Flask, memorizza la connessione nell'oggetto globale g.
+    """
     if has_app_context():
         if 'db' not in g:
             g.db = sqlite3.connect(Config.DATABASE_PATH)
@@ -41,16 +35,9 @@ def get_db():
         conn.execute("PRAGMA foreign_keys = ON;")
         return conn
 
-# ---------------------------------------------------------------------------
-# Schema DDL – esattamente aderente al modello relazionale (doc §3.2)
-# ---------------------------------------------------------------------------
 
+# Schema DDL del database relazionale (Capitolo 3.2 del documento di progetto)
 SCHEMA_SQL = """
--- =========================================================================
--- TABELLA: USER
--- Identifica tutti i soggetti registrati sulla piattaforma.
--- L'attributo 'role' discrimina tra 'collector' e 'administrator'.
--- =========================================================================
 CREATE TABLE IF NOT EXISTS USER (
     id_user         INTEGER     PRIMARY KEY AUTOINCREMENT,
     username        VARCHAR(30)     NOT NULL UNIQUE,
@@ -62,11 +49,6 @@ CREATE TABLE IF NOT EXISTS USER (
                                     CHECK (role IN ('collector', 'administrator'))
 );
 
--- =========================================================================
--- TABELLA: ALBUM
--- Anagrafica globale e condivisa dei dischi (catalogo comunitario).
--- FK id_user → USER  (relazione INSERTS 1:N – chi ha inserito l'album).
--- =========================================================================
 CREATE TABLE IF NOT EXISTS ALBUM (
     id_album        INTEGER     PRIMARY KEY AUTOINCREMENT,
     title           VARCHAR(100)    NOT NULL,
@@ -78,19 +60,11 @@ CREATE TABLE IF NOT EXISTS ALBUM (
     FOREIGN KEY (id_user) REFERENCES USER(id_user) ON DELETE SET NULL
 );
 
--- =========================================================================
--- TABELLA: ARTIST
--- Singoli artisti o gruppi musicali autori degli album.
--- =========================================================================
 CREATE TABLE IF NOT EXISTS ARTIST (
     id_artist       INTEGER     PRIMARY KEY AUTOINCREMENT,
     name            VARCHAR(100)    NOT NULL
 );
 
--- =========================================================================
--- TABELLA: ALBUM_ARTIST  (tabella ponte – relazione PUBLISHES N:M)
--- Associa artisti e album. Chiave primaria composta (id_album, id_artist).
--- =========================================================================
 CREATE TABLE IF NOT EXISTS ALBUM_ARTIST (
     id_album        INTEGER     NOT NULL,
     id_artist       INTEGER     NOT NULL,
@@ -100,12 +74,6 @@ CREATE TABLE IF NOT EXISTS ALBUM_ARTIST (
     FOREIGN KEY (id_artist) REFERENCES ARTIST(id_artist) ON DELETE CASCADE
 );
 
--- =========================================================================
--- TABELLA: PHYSICAL_COPY
--- Specifico supporto fisico (vinile, CD, cassetta) posseduto da un utente.
--- FK id_user  → USER  (relazione OWNS   1:N)
--- FK id_album → ALBUM (relazione REFERS N:1)
--- =========================================================================
 CREATE TABLE IF NOT EXISTS PHYSICAL_COPY (
     id_copy         INTEGER     PRIMARY KEY AUTOINCREMENT,
     format          VARCHAR(20)     NOT NULL CHECK (format IN ('Vinile', 'CD', 'Cassetta')),
@@ -120,14 +88,9 @@ CREATE TABLE IF NOT EXISTS PHYSICAL_COPY (
 );
 """
 
-# ---------------------------------------------------------------------------
-# Inizializzazione del database
-# ---------------------------------------------------------------------------
 
 def init_db():
-    """Crea (o ricrea) il file groovebox.db applicando lo schema DDL."""
-    # Usiamo una connessione diretta e isolata, NON get_db(), per evitare
-    # di chiudere la connessione condivisa in g.db durante il bootstrap.
+    """Inizializza il file del database SQLite applicando lo schema DDL."""
     conn = sqlite3.connect(Config.DATABASE_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.executescript(SCHEMA_SQL)
@@ -136,25 +99,18 @@ def init_db():
     print(f"[OK] Schema database verificato/inizializzato: {Config.DATABASE_PATH}")
 
 
-# ---------------------------------------------------------------------------
-# Seed: popolamento iniziale con utenti di default
-# ---------------------------------------------------------------------------
-
 def seed_db():
-    """Inserisce i dati iniziali se il database e' vuoto."""
-    # Usiamo una connessione diretta e isolata, NON get_db(), per evitare
-    # di chiudere la connessione condivisa in g.db durante il bootstrap.
+    """Esegue il seeding dei dati iniziali nel database se non sono presenti record utente."""
     conn = sqlite3.connect(Config.DATABASE_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
 
-    # Controlla se esistono gia' utenti
     count = conn.execute("SELECT COUNT(*) FROM USER").fetchone()[0]
     if count > 0:
         conn.close()
         print("[OK] Seed saltato: il database contiene gia' dei dati")
         return
 
-    # 1. Amministratore di default  (admin / admin)
+    # Inserimento dell'amministratore di default (admin / admin)
     conn.execute(
         """INSERT INTO USER (username, name, surname, email, passwordHash, role)
            VALUES (?, ?, ?, ?, ?, ?)""",
@@ -168,7 +124,7 @@ def seed_db():
         )
     )
 
-    # 2. Collector di esempio  (test / test)
+    # Inserimento del collector di esempio (test / test)
     conn.execute(
         """INSERT INTO USER (username, name, surname, email, passwordHash, role)
            VALUES (?, ?, ?, ?, ?, ?)""",
@@ -187,22 +143,16 @@ def seed_db():
     print("[OK] Seed completato: creati utenti admin e test")
 
 
-# ---------------------------------------------------------------------------
-# Entry-point diretto
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
     init_db()
     seed_db()
 
-    # Verifica rapida: elenca le tabelle create
     conn = get_db()
     cursor = conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
     )
     tables = [row["name"] for row in cursor.fetchall()]
 
-    # Mostra gli utenti inseriti dal seed
     users = conn.execute(
         "SELECT id_user, username, role FROM USER"
     ).fetchall()
@@ -212,4 +162,5 @@ if __name__ == "__main__":
     print(f"[OK] Utenti nel database:")
     for u in users:
         print(f"     - {u['username']} (ruolo: {u['role']})")
+
 

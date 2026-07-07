@@ -1,9 +1,9 @@
 """
-GrooveBox - Middleware di autenticazione JWT
-============================================
-Decoratore @token_required per la protezione delle rotte API.
-Estrae il token JWT dall'header Authorization, lo valida e rende
-disponibile l'utente corrente in flask.g.current_user.
+GrooveBox - Middleware di Autenticazione JWT
+===========================================
+Fornisce il decoratore `@token_required` per proteggere le rotte dell'API.
+Valida il token JWT presente nell'header HTTP Authorization e inserisce
+l'utente autenticato nell'oggetto globale g.current_user.
 """
 
 from functools import wraps
@@ -14,17 +14,16 @@ from dal.user_dal import get_user_by_id
 
 
 def token_required(f):
-    """Decoratore: richiede un token JWT valido nell'header Authorization.
-
-    In caso di successo, popola `g.current_user` con il dizionario
-    completo dell'utente (escluso passwordHash) e prosegue verso
-    la funzione decorata.
+    """
+    Decoratore per la verifica dell'autenticazione tramite JWT.
+    
+    Estrae il token dall'header Authorization (Bearer scheme), lo decodifica e
+    verifica la presenza dell'utente a database, impostando g.current_user.
     """
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
 
-        # Estrai il token dall'header "Authorization: Bearer <token>"
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
@@ -43,7 +42,6 @@ def token_required(f):
         except jwt.InvalidTokenError:
             raise UnauthorizedError("Token non valido")
 
-        # Verifica che l'utente esista ancora nel database
         user = get_user_by_id(payload["id_user"])
 
         if not user:
@@ -53,3 +51,4 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
+

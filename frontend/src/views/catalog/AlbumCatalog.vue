@@ -1,3 +1,11 @@
+<!--
+GrooveBox - Pagina Catalogo Album
+=================================
+Consente la visualizzazione dei dischi registrati a catalogo tramite filtri di ricerca.
+Include il form di inserimento per nuovi album (riservato ai Collector) con ricerca
+e associazione dinamica degli artisti.
+-->
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
@@ -51,8 +59,8 @@ onMounted(async () => {
     ])
     albums.value = albumRes.data
     artists.value = artistRes.data
-  } catch (err) {
-    console.error(err)
+  } catch (_) {
+    // Errore silenzioso: la UI mostra già uno stato vuoto
   } finally {
     loading.value = false
   }

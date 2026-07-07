@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Catalogo Artisti
+===================================
+Visualizza l'elenco degli artisti memorizzati a catalogo e permette la creazione 
+di nuovi record tramite un'interfaccia di inserimento rapida.
+-->
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -21,8 +28,8 @@ onMounted(async () => {
   try {
     const res = await api.get('/artists')
     artists.value = res.data
-  } catch (err) {
-    console.error(err)
+  } catch (_) {
+    // Errore silenzioso: la UI mostra già lo stato vuoto
   } finally {
     loading.value = false
   }

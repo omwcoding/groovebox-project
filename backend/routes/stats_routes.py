@@ -1,11 +1,8 @@
 """
-GrooveBox - Rotte Statistiche
-==============================
-Blueprint: /api/stats
-
-Matrice di visibilita' (doc 2.1 - Goal):
-  Administrator -> Monitoraggio e Statistiche: R
-                   Visualizzare le statistiche di utilizzo della piattaforma.
+GrooveBox - Route Blueprint per Statistiche e Monitoraggio
+=========================================================
+Fornisce gli endpoint riservati agli amministratori per l'analisi 
+aggregata dei dati e l'esportazione dei report in formato JSON.
 """
 
 import json
@@ -17,13 +14,10 @@ from core.errors import ForbiddenError
 bp = Blueprint("stats", __name__, url_prefix="/api/stats")
 
 
-# --------------------------------------------------------------------------
-# GET /api/stats
-# Dashboard statistiche della piattaforma (solo Admin).
-# --------------------------------------------------------------------------
 @bp.route("", methods=["GET"])
 @token_required
 def get_stats():
+    """Restituisce le metriche statistiche aggregate sull'utilizzo della piattaforma (solo Admin)."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Accesso riservato agli amministratori")
 
@@ -34,13 +28,10 @@ def get_stats():
     })
 
 
-# --------------------------------------------------------------------------
-# GET /api/stats/export
-# Esporta il dump delle statistiche della piattaforma in JSON (solo Admin).
-# --------------------------------------------------------------------------
 @bp.route("/export", methods=["GET"])
 @token_required
 def export_stats():
+    """Genera e serve come download un file JSON contenente il dump completo delle statistiche (solo Admin)."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Accesso riservato agli amministratori")
 

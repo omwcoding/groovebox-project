@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Componente DetailField
+==================================
+Rappresenta una coppia etichetta-valore per la visualizzazione uniforme 
+di metadati e dettagli informativi all'interno delle schede del catalogo.
+-->
+
 <script setup>
 defineProps({
   label: {

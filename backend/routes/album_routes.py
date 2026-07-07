@@ -1,13 +1,8 @@
 """
-GrooveBox - Rotte Album
-========================
-Blueprint: /api/albums
-
-Matrice di visibilita' (doc 3.4):
-  Collector     -> ALBUM: ALL scope, CR__  (crea e consulta)
-  Administrator -> ALBUM: ALL scope, CRUD  (gestione completa catalogo)
-
-Gestisce anche la relazione PUBLISHES (ALBUM_ARTIST) in modo trasparente.
+GrooveBox - Route Blueprint per Album
+=====================================
+Definisce gli endpoint per le operazioni CRUD sul catalogo degli album 
+e per l'upload/recupero delle copertine (immagini).
 """
 
 from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
@@ -31,42 +26,33 @@ bp = Blueprint("albums", __name__, url_prefix="/api/albums")
 
 
 def _allowed(filename):
+    """Verifica se l'estensione del file rientra nei formati consentiti."""
     allowed_exts = current_app.config["ALLOWED_EXTENSIONS"]
     return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_exts
 
 
-# --------------------------------------------------------------------------
-# GET /api/albums
-# Restituisce tutti gli album del catalogo (Collector + Admin).
-# --------------------------------------------------------------------------
 @bp.route("", methods=["GET"])
 @token_required
 def get_albums():
+    """Restituisce la lista di tutti gli album del catalogo."""
     albums = get_all_albums()
     return jsonify({"status": "success", "data": albums})
 
 
-# --------------------------------------------------------------------------
-# GET /api/albums/<id>
-# Dettaglio di un singolo album (Collector + Admin).
-# --------------------------------------------------------------------------
 @bp.route("/<int:album_id>", methods=["GET"])
 @token_required
 def get_album(album_id):
+    """Restituisce i dettagli di un singolo album tramite ID."""
     album = find_album_by_id(album_id)
     if not album:
         raise NotFoundError("Album non trovato")
     return jsonify({"status": "success", "data": album})
 
 
-# --------------------------------------------------------------------------
-# POST /api/albums
-# Inserisce un nuovo album nel catalogo (solo Collector).
-# Body JSON: { title, releaseYear?, genre?, artist_ids?: [int] }
-# --------------------------------------------------------------------------
 @bp.route("", methods=["POST"])
 @token_required
 def create_album():
+    """Registra un nuovo album nel catalogo globale (autorizzato solo per ruolo 'collector')."""
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Solo i Collector possono inserire nuovi album")
 
@@ -81,7 +67,6 @@ def create_album():
     if genre and genre not in current_app.config["ALLOWED_GENRES"]:
         raise BadRequestError(f"Genere musicale '{genre}' non valido o non consentito")
 
-    # Verifica che gli artist_ids esistano
     for aid in artist_ids:
         artist = find_artist_by_id(aid)
         if not artist:
@@ -97,14 +82,10 @@ def create_album():
     }), 201
 
 
-# --------------------------------------------------------------------------
-# PUT /api/albums/<id>
-# Modifica un album esistente (solo Admin).
-# Body JSON: { title?, releaseYear?, genre?, artist_ids?: [int] }
-# --------------------------------------------------------------------------
 @bp.route("/<int:album_id>", methods=["PUT"])
 @token_required
 def update_album(album_id):
+    """Aggiorna le informazioni di un album a catalogo (autorizzato solo per ruolo 'administrator')."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Solo gli amministratori possono modificare gli album")
 
@@ -116,7 +97,6 @@ def update_album(album_id):
     if not data:
         raise BadRequestError("Nessun dato fornito nella richiesta")
 
-    # Aggiornamento campi
     fields = []
     values = []
     for col in ["title", "releaseYear", "genre"]:
@@ -132,7 +112,6 @@ def update_album(album_id):
     artist_ids = None
     if "artist_ids" in data:
         artist_ids = data["artist_ids"]
-        # Verifica esistenza artisti
         for aid in artist_ids:
             a = find_artist_by_id(aid)
             if not a:
@@ -146,14 +125,10 @@ def update_album(album_id):
     })
 
 
-# --------------------------------------------------------------------------
-# DELETE /api/albums/<id>
-# Elimina un album dal catalogo (solo Admin).
-# Rimuove anche le associazioni ALBUM_ARTIST e le PHYSICAL_COPY collegate (via ON DELETE CASCADE).
-# --------------------------------------------------------------------------
 @bp.route("/<int:album_id>", methods=["DELETE"])
 @token_required
 def delete_album(album_id):
+    """Elimina definitivamente un album dal catalogo (autorizzato solo per ruolo 'administrator')."""
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Solo gli amministratori possono eliminare gli album")
 
@@ -168,14 +143,10 @@ def delete_album(album_id):
     })
 
 
-# --------------------------------------------------------------------------
-# POST /api/albums/<id>/cover
-# Carica una copertina per l'album (Collector proprietario o Admin).
-# Form-data: file = <image>
-# --------------------------------------------------------------------------
 @bp.route("/<int:album_id>/cover", methods=["POST"])
 @token_required
 def upload_cover(album_id):
+    """Carica o sostituisce l'immagine di copertina per l'album specificato."""
     album = find_album_by_id(album_id)
     if not album:
         raise NotFoundError("Album non trovato")
@@ -201,7 +172,6 @@ def upload_cover(album_id):
     filename = f"album_{album_id}_{uuid.uuid4().hex[:8]}.{ext}"
     file.save(os.path.join(upload_dir, filename))
 
-    # Rimuove copertina precedente se diversa
     old = album.get("coverPath")
     if old and old != filename:
         old_path = os.path.join(upload_dir, old)
@@ -215,12 +185,9 @@ def upload_cover(album_id):
     return jsonify({"status": "success", "coverPath": filename}), 200
 
 
-# --------------------------------------------------------------------------
-# GET /api/albums/<id>/cover
-# Serve il file immagine della copertina.
-# --------------------------------------------------------------------------
 @bp.route("/<int:album_id>/cover", methods=["GET"])
 def get_cover(album_id):
+    """Serve il file immagine della copertina associato all'album."""
     album = find_album_by_id(album_id)
     if not album or not album.get("coverPath"):
         raise NotFoundError("Copertina non trovata")

@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Dettaglio Artista
+====================================
+Mostra le informazioni di un artista e l'elenco (discografia) degli album ad esso correlati.
+Fornisce agli amministratori i controlli per la rinomina o cancellazione dell'artista.
+-->
+
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'

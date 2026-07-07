@@ -1,3 +1,11 @@
+<!--
+GrooveBox - Pagina della Collezione Utente
+==========================================
+Permette ad un utente con ruolo 'collector' di visualizzare ed esplorare le copie fisiche 
+in suo possesso. Gestisce l'aggiunta di nuove copie legandole a dischi esistenti 
+o tramite l'inserimento transazionale a cascata.
+-->
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
@@ -170,8 +178,8 @@ onMounted(async () => {
         searchInput.value = getAlbumLabel(selected)
       }
     }
-  } catch (err) {
-    console.error(err)
+  } catch (_) {
+    // Errore silenzioso: la UI mostra già lo stato vuoto
   } finally {
     loading.value = false
   }

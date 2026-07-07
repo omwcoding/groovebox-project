@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Pagina Landing Pubblica
+===================================
+Pagina di benvenuto principale accessibile ai visitatori non autenticati.
+Presenta brevemente gli obiettivi dell'applicazione e indirizza verso le pagine di accesso o registrazione.
+-->
+
 <script setup>
 import { RouterLink } from 'vue-router'
 </script>

@@ -1,3 +1,11 @@
+<!--
+GrooveBox - Pagina Dettaglio Album
+==================================
+Mostra le informazioni dettagliate di un album specifico. Consente agli amministratori
+la modifica o l'eliminazione della scheda, e ai collezionisti l'aggiunta rapida
+alla propria libreria personale.
+-->
+
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'

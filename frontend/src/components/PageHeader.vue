@@ -1,3 +1,10 @@
+<!--
+GrooveBox - Componente PageHeader
+=================================
+Header standard per le pagine principali del frontend. Gestisce la visualizzazione
+di un titolo principale e di un sottotitolo descrittivo opzionale.
+-->
+
 <script setup>
 defineProps({
   title: {
