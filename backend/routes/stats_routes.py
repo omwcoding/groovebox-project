@@ -8,7 +8,8 @@ Matrice di visibilita' (doc 2.1 - Goal):
                    Visualizzare le statistiche di utilizzo della piattaforma.
 """
 
-from flask import Blueprint, jsonify, g
+import json
+from flask import Blueprint, jsonify, g, Response
 from core.auth import token_required
 from dal.stats_dal import get_platform_stats
 from core.errors import ForbiddenError
@@ -42,9 +43,6 @@ def get_stats():
 def export_stats():
     if g.current_user["role"] != "administrator":
         raise ForbiddenError("Accesso riservato agli amministratori")
-
-    import json
-    from flask import Response
 
     stats = get_platform_stats()
     json_data = json.dumps(stats, indent=4, ensure_ascii=False)

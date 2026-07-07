@@ -19,7 +19,7 @@ from dal.copy_dal import (
     create_copy_cascade,
     update_copy_data,
     delete_copy_by_id,
-    delete_user_copies
+    delete_all_copies_by_user
 )
 from dal.album_dal import find_album_by_id
 from utils.validators import validate_json_payload
@@ -234,7 +234,7 @@ def clear_copies():
     if g.current_user["role"] != "collector":
         raise ForbiddenError("Accesso riservato ai Collector")
 
-    delete_user_copies(g.current_user["id_user"])
+    delete_all_copies_by_user(g.current_user["id_user"])
     return jsonify({
         "status": "success",
         "message": "Tutta la collezione è stata svuotata con successo"

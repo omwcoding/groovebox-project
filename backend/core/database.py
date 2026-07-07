@@ -126,11 +126,14 @@ CREATE TABLE IF NOT EXISTS PHYSICAL_COPY (
 
 def init_db():
     """Crea (o ricrea) il file groovebox.db applicando lo schema DDL."""
-    conn = get_db()
+    # Usiamo una connessione diretta e isolata, NON get_db(), per evitare
+    # di chiudere la connessione condivisa in g.db durante il bootstrap.
+    conn = sqlite3.connect(Config.DATABASE_PATH)
+    conn.execute("PRAGMA foreign_keys = ON;")
     conn.executescript(SCHEMA_SQL)
     conn.commit()
     conn.close()
-    print(f"[OK] Database creato con successo: {Config.DATABASE_PATH}")
+    print(f"[OK] Schema database verificato/inizializzato: {Config.DATABASE_PATH}")
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +142,10 @@ def init_db():
 
 def seed_db():
     """Inserisce i dati iniziali se il database e' vuoto."""
-    conn = get_db()
+    # Usiamo una connessione diretta e isolata, NON get_db(), per evitare
+    # di chiudere la connessione condivisa in g.db durante il bootstrap.
+    conn = sqlite3.connect(Config.DATABASE_PATH)
+    conn.execute("PRAGMA foreign_keys = ON;")
 
     # Controlla se esistono gia' utenti
     count = conn.execute("SELECT COUNT(*) FROM USER").fetchone()[0]

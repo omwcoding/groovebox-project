@@ -91,6 +91,14 @@ def create_copy_cascade(title, artist_ids, release_year, genre, format_val, cond
         return copy_id
 
 def update_copy_data(copy_id, fields, values):
+    """
+    Aggiorna i dati di una copia fisica.
+
+    SICUREZZA: `fields` deve contenere SOLO stringhe colonna hardcoded
+    (es. 'format = ?', 'condition = ?'), MAI valori provenienti dall'input utente.
+    I valori utente vanno sempre e solo in `values`, passati come parametri
+    alla query per sfruttare il prepared statement di sqlite3.
+    """
     conn = get_db()
     with conn:
         query = f"UPDATE PHYSICAL_COPY SET {', '.join(fields)} WHERE id_copy = ?"
@@ -101,7 +109,8 @@ def delete_copy_by_id(copy_id):
     with conn:
         conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_copy = ?", (copy_id,))
 
-def delete_user_copies(user_id):
+def delete_all_copies_by_user(user_id):
+    """Svuota l'intera collezione dell'utente eliminando tutte le sue copie fisiche."""
     conn = get_db()
     with conn:
         conn.execute("DELETE FROM PHYSICAL_COPY WHERE id_user = ?", (user_id,))

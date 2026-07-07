@@ -69,6 +69,14 @@ def insert_album(title, release_year, genre, artist_ids, creator_user_id):
         return album_id
 
 def update_album_data(album_id, fields, values, artist_ids=None):
+    """
+    Aggiorna i dati di un album e, opzionalmente, i suoi artisti associati.
+
+    SICUREZZA: `fields` deve contenere SOLO stringhe colonna hardcoded
+    (es. 'title = ?', 'genre = ?'), MAI valori provenienti dall'input utente.
+    I valori utente vanno sempre e solo in `values`, passati come parametri
+    alla query per sfruttare il prepared statement di sqlite3.
+    """
     conn = get_db()
     with conn:
         if fields:

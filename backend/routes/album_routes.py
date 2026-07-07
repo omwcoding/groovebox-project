@@ -11,6 +11,7 @@ Gestisce anche la relazione PUBLISHES (ALBUM_ARTIST) in modo trasparente.
 """
 
 from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
+from werkzeug.utils import secure_filename
 from core.auth import token_required
 from dal.album_dal import (
     get_all_albums,
@@ -189,13 +190,14 @@ def upload_cover(album_id):
         raise BadRequestError("Nessun file fornito nella richiesta")
 
     file = request.files["file"]
-    if file.filename == "" or not _allowed(file.filename):
+    safe_original = secure_filename(file.filename)
+    if not safe_original or not _allowed(safe_original):
         raise BadRequestError("Formato copertina non supportato (ammessi: jpg, png, webp)")
 
     upload_dir = current_app.config["COVERS_FOLDER"]
     os.makedirs(upload_dir, exist_ok=True)
 
-    ext = file.filename.rsplit(".", 1)[1].lower()
+    ext = safe_original.rsplit(".", 1)[1].lower()
     filename = f"album_{album_id}_{uuid.uuid4().hex[:8]}.{ext}"
     file.save(os.path.join(upload_dir, filename))
 

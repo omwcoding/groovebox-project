@@ -25,7 +25,7 @@ def create_app():
     app.config.from_object(Config)
 
     # ---- CORS ----
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*": {"origins": "*"}})  # TODO: restringere origins in produzione
 
     # ---- Inizializzazione Database ----
     init_db()

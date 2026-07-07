@@ -9,8 +9,9 @@ Matrice di visibilita' (doc 3.4):
 """
 
 from flask import Blueprint, request, jsonify, g
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from core.auth import token_required
+from core.database import get_db
 from dal.user_dal import (
     get_user_by_id,
     get_all_collectors,
@@ -69,8 +70,6 @@ def update_my_profile():
         if not current_password:
             raise BadRequestError("La password attuale è obbligatoria per effettuare la modifica")
             
-        from core.database import get_db
-        from werkzeug.security import check_password_hash
         conn = get_db()
         db_user = conn.execute("SELECT passwordHash FROM USER WHERE id_user = ?", (g.current_user["id_user"],)).fetchone()
         

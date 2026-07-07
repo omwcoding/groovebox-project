@@ -34,8 +34,12 @@ def insert_collector(username, name, surname, email, password_hash):
 
 def update_user_profile(user_id, fields, values):
     """
-    fields: lista di stringhe es: ['name = ?', 'email = ?']
-    values: lista di valori corrispondenti ai placeholders
+    Aggiorna il profilo utente con i campi specificati.
+
+    SICUREZZA: `fields` deve contenere SOLO stringhe colonna hardcoded
+    (es. 'name = ?', 'email = ?'), MAI valori provenienti dall'input utente.
+    I valori utente vanno sempre e solo in `values`, passati come parametri
+    alla query per sfruttare il prepared statement di sqlite3.
     """
     conn = get_db()
     query = f"UPDATE USER SET {', '.join(fields)} WHERE id_user = ?"

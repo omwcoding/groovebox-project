@@ -69,10 +69,10 @@ def login():
     user = get_user_by_username(data["username"])
 
     if not user:
-        raise UnauthorizedError("Username inesistente")
+        raise UnauthorizedError("Credenziali non valide")
 
     if not check_password_hash(user["passwordHash"], data["password"]):
-        raise UnauthorizedError("Password errata")
+        raise UnauthorizedError("Credenziali non valide")
 
     # Genera token JWT con scadenza a 24 ore
     token = jwt.encode(
