@@ -73,9 +73,9 @@ CREATE TABLE IF NOT EXISTS ALBUM (
     releaseYear     INTEGER,
     genre           VARCHAR(50)     CHECK (genre IS NULL OR genre IN ('Rock / Alternative', 'Pop', 'Hip-Hop / Rap', 'Electronic / Dance', 'Ambient / Experimental', 'Metal / Hard Rock', 'Jazz / Blues', 'Soul / R&B / Funk', 'Reggae / Dub', 'Folk / Acoustic', 'Classical', 'Soundtrack / OST', 'World / Altro')),
     coverPath       VARCHAR(255),
-    id_user         INTEGER         NOT NULL,
+    id_user         INTEGER         DEFAULT NULL,
 
-    FOREIGN KEY (id_user) REFERENCES USER(id_user)
+    FOREIGN KEY (id_user) REFERENCES USER(id_user) ON DELETE SET NULL
 );
 
 -- =========================================================================

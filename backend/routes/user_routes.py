@@ -15,7 +15,7 @@ from dal.user_dal import (
     get_user_by_id,
     get_all_collectors,
     update_user_profile,
-    delete_user_and_transfer_albums
+    delete_user_and_keep_albums
 )
 from core.errors import BadRequestError, ForbiddenError, NotFoundError, ConflictError
 
@@ -108,7 +108,7 @@ def delete_my_account():
         raise ForbiddenError("Solo i Collector possono eliminare il proprio account")
 
     user_id = g.current_user["id_user"]
-    delete_user_and_transfer_albums(user_id)
+    delete_user_and_keep_albums(user_id)
 
     return jsonify({
         "status": "success",
@@ -173,7 +173,7 @@ def delete_user(user_id):
     if user["role"] == "administrator":
         raise ForbiddenError("Non e' possibile eliminare un amministratore")
 
-    delete_user_and_transfer_albums(user_id)
+    delete_user_and_keep_albums(user_id)
 
     return jsonify({
         "status": "success",

@@ -1,13 +1,26 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { api } from '@/stores/api'
 import { RouterLink } from 'vue-router'
 import PageHeader from '@/components/PageHeader.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import ErrorMessage from '@/components/ErrorMessage.vue'
 
 const users = ref([])
 const loading = ref(true)
 const error = ref('')
+const searchQuery = ref('')
 
+const filteredUsers = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim()
+  if (!query) return users.value
+  return users.value.filter(u => 
+    u.username?.toLowerCase().includes(query) ||
+    u.name?.toLowerCase().includes(query) ||
+    u.surname?.toLowerCase().includes(query) ||
+    u.email?.toLowerCase().includes(query)
+  )
+})
 
 onMounted(async () => {
   try {
@@ -23,54 +36,75 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-8 animate-fade-in">
-    <PageHeader title="Gestione Utenti" :subtitle="`${users.length} collezionisti registrati in piattaforma.`" />
+    <PageHeader title="Gestione Utenti" :subtitle="`${filteredUsers.length} di ${users.length} collezionisti trovati.`" />
 
     <ErrorMessage v-if="error" :message="error" />
 
     <LoadingSpinner v-if="loading" />
 
-    <div v-else-if="users.length > 0" class="glass-panel rounded-apple-2xl overflow-hidden shadow-2xl">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-white/5 bg-white/[0.01]">
-              <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30">Profilo</th>
-              <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30 hidden sm:table-cell">Indirizzo Email</th>
-              <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30 hidden md:table-cell">Ruolo</th>
-              <th class="text-right px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30">Dettagli</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id_user"
-                class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
-              <td class="px-6 py-4">
-                <RouterLink :to="`/users/${user.id_user}`" class="flex items-center gap-3 group">
-                  <div class="w-10 h-10 rounded-full bg-brand-secondary/20 flex items-center justify-center text-xs font-bold text-brand-secondary shrink-0 group-hover:scale-105 transition-transform">
-                    {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
-                  </div>
-                  <div>
-                    <p class="font-bold text-white/95 group-hover:text-brand-secondary transition-colors">{{ user.name }} {{ user.surname }}</p>
-                    <p class="text-xs text-white/30 font-medium">@{{ user.username }}</p>
-                  </div>
-                </RouterLink>
-              </td>
-              <td class="px-6 py-4 text-white/60 font-medium hidden sm:table-cell">{{ user.email }}</td>
-              <td class="px-6 py-4 hidden md:table-cell">
-                <span class="px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold rounded-full">
-                  {{ user.role }}
-                </span>
-              </td>
-              <td class="px-6 py-4 text-right">
-                <RouterLink :to="`/users/${user.id_user}`"
-                  class="inline-flex px-4 py-2 text-xs font-bold uppercase tracking-widest text-brand-secondary bg-brand-secondary/5 border border-brand-secondary/20 hover:bg-brand-secondary/15 rounded-full transition-all">
-                  Vedi
-                </RouterLink>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <template v-else-if="users.length > 0">
+      <!-- Barra di ricerca -->
+      <div class="relative max-w-md w-full">
+        <input 
+          v-model="searchQuery" 
+          type="text" 
+          placeholder="Cerca utente per username, nome o email..." 
+          class="apple-input !pl-10"
+        />
+        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
       </div>
-    </div>
+
+      <!-- Tabella Utenti se filtrati -->
+      <div v-if="filteredUsers.length > 0" class="glass-panel rounded-apple-2xl overflow-hidden shadow-2xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/5 bg-white/[0.01]">
+                <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30">Profilo</th>
+                <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30 hidden sm:table-cell">Indirizzo Email</th>
+                <th class="text-left px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30 hidden md:table-cell">Ruolo</th>
+                <th class="text-right px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-white/30">Dettagli</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in filteredUsers" :key="user.id_user"
+                  class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+                <td class="px-6 py-4">
+                  <RouterLink :to="`/users/${user.id_user}`" class="flex items-center gap-3 group">
+                    <div class="w-10 h-10 rounded-full bg-brand-secondary/20 flex items-center justify-center text-xs font-bold text-brand-secondary shrink-0 group-hover:scale-105 transition-transform">
+                      {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
+                    </div>
+                    <div>
+                      <p class="font-bold text-white/95 group-hover:text-brand-secondary transition-colors">{{ user.name }} {{ user.surname }}</p>
+                      <p class="text-xs text-white/30 font-medium">@{{ user.username }}</p>
+                    </div>
+                  </RouterLink>
+                </td>
+                <td class="px-6 py-4 text-white/60 font-medium hidden sm:table-cell">{{ user.email }}</td>
+                <td class="px-6 py-4 hidden md:table-cell">
+                  <span class="px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary text-xs font-bold rounded-full">
+                    {{ user.role }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <RouterLink :to="`/users/${user.id_user}`"
+                    class="inline-flex px-4 py-2 text-xs font-bold uppercase tracking-widest text-brand-secondary bg-brand-secondary/5 border border-brand-secondary/20 hover:bg-brand-secondary/15 rounded-full transition-all">
+                    Vedi
+                  </RouterLink>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Messaggio se la ricerca non produce risultati -->
+      <div v-else class="py-16 text-center text-white/30 italic">
+        Nessun utente corrisponde alla ricerca.
+      </div>
+    </template>
 
     <div v-else class="py-20 flex flex-col items-center justify-center gap-6 glass-panel rounded-apple-2xl border-dashed border-white/10 text-center px-10">
       <div class="bg-white/5 p-6 rounded-full">

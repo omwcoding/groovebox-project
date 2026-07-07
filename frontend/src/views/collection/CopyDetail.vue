@@ -78,6 +78,15 @@ const getConditionBadgeClass = (cond) => {
       return 'bg-white/5 border-white/5 text-white/40'
   }
 }
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const parts = dateStr.split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`
+  }
+  return dateStr
+}
 </script>
 
 <template>
@@ -112,15 +121,14 @@ const getConditionBadgeClass = (cond) => {
                 {{ copy.album_title }}
               </RouterLink>
               
-              <div v-if="copy.artists?.length" class="flex flex-wrap gap-2 mt-3 mb-1">
-                <RouterLink
-                  v-for="artist in copy.artists" :key="artist.id_artist"
-                  :to="`/artists/${artist.id_artist}`"
-                  class="px-3 py-1 bg-brand-secondary/15 border border-brand-secondary/20 text-brand-secondary
-                         rounded-full text-xs font-bold hover:bg-brand-secondary/25 transition-all"
-                >
-                  {{ artist.name }}
-                </RouterLink>
+              <div v-if="copy.artists?.length" class="text-white/60 text-base font-semibold mt-2.5 mb-1.5">
+                di 
+                <template v-for="(artist, index) in copy.artists" :key="artist.id_artist">
+                  <RouterLink :to="`/artists/${artist.id_artist}`" class="text-brand-secondary hover:underline font-bold">
+                    {{ artist.name }}
+                  </RouterLink>
+                  <span v-if="index < copy.artists.length - 1" class="text-white/30"> &middot; </span>
+                </template>
               </div>
 
               <div class="flex flex-wrap gap-2 mt-4">
@@ -135,7 +143,7 @@ const getConditionBadgeClass = (cond) => {
 
             <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/5 text-sm">
               <DetailField label="Genere" :value="copy.genre" />
-              <DetailField label="Registrato il" :value="copy.addedDate" />
+              <DetailField label="Registrato il" :value="formatDate(copy.addedDate)" />
             </div>
 
             <div v-if="copy.personalNotes" class="pt-6 border-t border-white/5 space-y-2">

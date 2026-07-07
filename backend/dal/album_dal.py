@@ -25,7 +25,7 @@ def get_all_albums():
         "SELECT al.*, us.username AS creator_username "
         "FROM ALBUM al "
         "LEFT JOIN USER us ON al.id_user = us.id_user "
-        "ORDER BY al.title"
+        "ORDER BY al.id_album DESC"
     ).fetchall()
     return [enrich_album(a) for a in albums]
 

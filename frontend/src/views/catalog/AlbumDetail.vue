@@ -125,7 +125,10 @@ async function handleDelete() {
               <DetailField label="Anno di uscita" :value="album.releaseYear" />
               <DetailField label="Genere" :value="album.genre" />
               <DetailField v-if="authStore.isAdmin" label="Inserito da" class="col-span-2 sm:col-span-1">
-                <RouterLink :to="`/users/${album.id_user}`" class="font-semibold text-brand-secondary hover:underline">
+                <span v-if="album.id_user === null" class="font-semibold text-white/40">
+                  Utente eliminato
+                </span>
+                <RouterLink v-else :to="`/users/${album.id_user}`" class="font-semibold text-brand-secondary hover:underline">
                   @{{ album.creator_username || 'Sistema' }}
                 </RouterLink>
               </DetailField>

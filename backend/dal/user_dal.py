@@ -43,10 +43,10 @@ def update_user_profile(user_id, fields, values):
         conn.execute(query, values + [user_id])
     return get_user_by_id(user_id)
 
-def delete_user_and_transfer_albums(user_id, admin_id=1):
+def delete_user_and_keep_albums(user_id):
     conn = get_db()
     with conn:
-        # Trasferisci la paternità degli album creati all'utente amministratore (id_user = 1)
-        conn.execute("UPDATE ALBUM SET id_user = ? WHERE id_user = ?", (admin_id, user_id))
+        # Imposta id_user = NULL per mantenere gli album dissociandoli dall'utente eliminato
+        conn.execute("UPDATE ALBUM SET id_user = NULL WHERE id_user = ?", (user_id,))
         # Rimuove l'utente. Le copie associate verranno eliminate a cascata (ON DELETE CASCADE)
         conn.execute("DELETE FROM USER WHERE id_user = ?", (user_id,))

@@ -69,13 +69,13 @@ const getConditionClass = (cond) => {
     :style="{ animationDelay: `${index * 30}ms` }"
   >
     <!-- Album Art / Placeholder -->
-    <div class="aspect-square glass-card overflow-hidden relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500 flex items-center justify-center">
+    <div class="w-full aspect-square rounded-apple-2xl overflow-hidden bg-white/5 relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500">
       <img v-if="coverPath"
         :src="`/api/albums/${idAlbum}/cover`"
         :alt="title"
-        class="w-full h-full object-cover"
+        class="absolute inset-0 w-full h-full object-cover"
       />
-      <div v-else class="w-full h-full flex items-center justify-center bg-white/5">
+      <div v-else class="absolute inset-0 flex items-center justify-center bg-white/5">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="opacity-15 group-hover:opacity-30 group-hover:rotate-12 transition-all duration-500">
           <circle cx="12" cy="12" r="10"/>
           <path d="M6 12c0-1.7.7-3.2 1.8-4.2"/>
@@ -93,15 +93,17 @@ const getConditionClass = (cond) => {
     </div>
 
     <!-- Info -->
-    <div class="space-y-1 px-1">
-      <h3 class="font-bold text-base leading-tight line-clamp-1 group-hover:text-brand-secondary transition-colors">
-        {{ title }}
-      </h3>
-      <p class="text-white/40 text-xs font-semibold truncate">
-        {{ artists?.map(a => a.name).join(', ') || 'Artista sconosciuto' }}
-      </p>
+    <div class="space-y-1.5 px-1 flex flex-col justify-between h-20">
+      <div>
+        <h3 class="font-bold text-base leading-snug line-clamp-1 group-hover:text-brand-secondary transition-colors" :title="title">
+          {{ title }}
+        </h3>
+        <p class="text-white/40 text-xs font-semibold truncate mt-0.5">
+          {{ artists?.map(a => a.name).join(', ') || 'Artista sconosciuto' }}
+        </p>
+      </div>
       
-      <div class="flex items-center justify-between text-white/30 text-[10px] font-bold uppercase tracking-wider mt-0.5">
+      <div class="flex items-center justify-between text-white/30 text-[10px] font-bold uppercase tracking-wider">
         <div class="flex items-center gap-1.5 truncate">
           <span v-if="releaseYear">{{ releaseYear }}</span>
           <span v-if="releaseYear && genre">&middot;</span>
