@@ -18,6 +18,49 @@ const formError = ref('')
 const formLoading = ref(false)
 const formName = ref('')
 
+const activeTab = ref('discogs')
+const discogsQuery = ref('')
+const discogsResults = ref([])
+const discogsSearchLoading = ref(false)
+const discogsImportLoadingId = ref(null)
+
+async function handleDiscogsSearch() {
+  const query = discogsQuery.value.trim()
+  if (!query) return
+  discogsSearchLoading.value = true
+  formError.value = ''
+  try {
+    const res = await api.get(`/discogs/search/artist?q=${encodeURIComponent(query)}`)
+    discogsResults.value = res.data
+  } catch (err) {
+    formError.value = err.message || 'Errore nella ricerca su Discogs'
+  } finally {
+    discogsSearchLoading.value = false
+  }
+}
+
+async function handleDiscogsImport(discogsId) {
+  discogsImportLoadingId.value = discogsId
+  formError.value = ''
+  try {
+    const res = await api.post('/discogs/import/artist', { discogs_id: discogsId })
+    artists.value.unshift(res.data)
+    resetForm()
+  } catch (err) {
+    formError.value = err.message || "Errore durante l'importazione"
+  } finally {
+    discogsImportLoadingId.value = null
+  }
+}
+
+function resetForm() {
+  formName.value = ''
+  formError.value = ''
+  showForm.value = false
+  discogsQuery.value = ''
+  discogsResults.value = []
+}
+
 const filteredArtists = computed(() => {
   if (!search.value.trim()) return artists.value
   const q = search.value.toLowerCase()
@@ -45,8 +88,7 @@ async function handleCreate() {
   try {
     const res = await api.post('/artists', { name: formName.value.trim() })
     artists.value.unshift(res.data)
-    formName.value = ''
-    showForm.value = false
+    resetForm()
   } catch (err) {
     formError.value = err.message || 'Errore durante la creazione'
   } finally {
@@ -76,17 +118,95 @@ async function handleCreate() {
       </button>
     </div>
 
-    <!-- Form rapido -->
+    <!-- Form rapido / Importazione -->
     <transition name="page">
-      <div v-if="showForm" class="glass-panel p-6 rounded-apple-2xl shadow-2xl">
+      <div v-if="showForm" class="glass-panel p-6 rounded-apple-2xl shadow-2xl space-y-6">
+        <h3 class="text-xl font-bold text-center">Aggiungi un nuovo artista</h3>
+        
+        <!-- Tab Selector -->
+        <div class="flex border-b border-white/10 mb-4 justify-center">
+          <button 
+            type="button" 
+            @click="activeTab = 'discogs'"
+            :class="['px-6 py-2 font-bold text-xs border-b-2 transition-all', activeTab === 'discogs' ? 'border-brand-secondary text-brand-secondary font-extrabold' : 'border-transparent text-white/50 hover:text-white']"
+          >
+            Importa da Discogs
+          </button>
+          <button 
+            type="button" 
+            @click="activeTab = 'manual'"
+            :class="['px-6 py-2 font-bold text-xs border-b-2 transition-all', activeTab === 'manual' ? 'border-brand-secondary text-brand-secondary font-extrabold' : 'border-transparent text-white/50 hover:text-white']"
+          >
+            Inserimento Manuale
+          </button>
+        </div>
+
         <div v-if="formError" class="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3">
           {{ formError }}
         </div>
-        <form @submit.prevent="handleCreate" class="flex flex-col sm:flex-row gap-3">
+
+        <!-- Tab Discogs -->
+        <div v-if="activeTab === 'discogs'" class="space-y-4">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <input 
+              v-model="discogsQuery" 
+              type="text" 
+              placeholder="Cerca artista su Discogs (Es. Pink Floyd, Daft Punk...)" 
+              class="apple-input flex-grow font-semibold"
+              @keyup.enter="handleDiscogsSearch"
+            />
+            <button 
+              type="button" 
+              @click="handleDiscogsSearch" 
+              :disabled="discogsSearchLoading"
+              class="apple-button apple-button-primary shadow-lg shadow-white/5 whitespace-nowrap font-bold text-sm px-6"
+            >
+              {{ discogsSearchLoading ? 'Cerca...' : 'Cerca' }}
+            </button>
+          </div>
+
+          <!-- Risultati Discogs Artisti -->
+          <div v-if="discogsResults.length > 0" class="space-y-2 max-h-52 overflow-y-auto divide-y divide-white/5 pr-2">
+            <div 
+              v-for="item in discogsResults" 
+              :key="item.discogs_id"
+              class="flex items-center justify-between gap-4 py-2 first:pt-0"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <!-- Artist thumbnail -->
+                <div class="w-10 h-10 rounded-full bg-white/5 border border-white/5 overflow-hidden flex items-center justify-center shrink-0">
+                  <img v-if="item.thumb" :src="item.thumb" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                  <span v-else class="text-lg">&#127908;</span>
+                </div>
+                <!-- Info -->
+                <div class="min-w-0">
+                  <p class="font-bold text-sm text-white truncate">{{ item.name }}</p>
+                </div>
+              </div>
+
+              <!-- Action -->
+              <button 
+                type="button" 
+                @click="handleDiscogsImport(item.discogs_id)"
+                :disabled="discogsImportLoadingId !== null"
+                class="apple-button apple-button-primary !py-1.5 !px-3.5 text-xs shadow-md font-bold whitespace-nowrap"
+              >
+                <span v-if="discogsImportLoadingId === item.discogs_id">Importazione...</span>
+                <span v-else>Importa</span>
+              </button>
+            </div>
+          </div>
+          <div v-else-if="discogsQuery && !discogsSearchLoading" class="text-center py-4 text-white/30 text-xs font-semibold">
+            Nessun artista trovato.
+          </div>
+        </div>
+
+        <!-- Tab Manuale -->
+        <form v-else @submit.prevent="handleCreate" class="space-y-6 w-full flex flex-col sm:flex-row gap-3">
           <input v-model="formName" type="text" required placeholder="Nome artista (Es. Pink Floyd)"
-            class="apple-input flex-grow" />
+            class="apple-input flex-grow font-semibold" />
           <button type="submit" :disabled="formLoading"
-            class="apple-button apple-button-primary shadow-lg shadow-white/5 whitespace-nowrap">
+            class="apple-button apple-button-primary shadow-lg shadow-white/5 whitespace-nowrap font-bold text-sm px-6">
             {{ formLoading ? 'Aggiunta...' : 'Crea Artista' }}
           </button>
         </form>

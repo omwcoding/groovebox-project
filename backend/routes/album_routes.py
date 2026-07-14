@@ -64,8 +64,7 @@ def create_album():
     genre = data.get("genre", "").strip() or None
     artist_ids = data.get("artist_ids", [])
 
-    if genre and genre not in current_app.config["ALLOWED_GENRES"]:
-        raise BadRequestError(f"Genere musicale '{genre}' non valido o non consentito")
+
 
     for aid in artist_ids:
         artist = find_artist_by_id(aid)
@@ -104,8 +103,6 @@ def update_album(album_id):
             val = data[col]
             if col == "genre" and val:
                 val = val.strip() or None
-                if val and val not in current_app.config["ALLOWED_GENRES"]:
-                    raise BadRequestError(f"Genere musicale '{val}' non valido o non consentito")
             fields.append(f"{col} = ?")
             values.append(val.strip() if isinstance(val, str) else val)
 
@@ -137,6 +134,20 @@ def delete_album(album_id):
         raise NotFoundError("Album non trovato")
 
     delete_album_by_id(album_id)
+
+    # Rimuovi la copertina dal disco se nessun altro album la usa
+    cover_path = album.get("coverPath")
+    if cover_path:
+        conn = get_db()
+        count = conn.execute("SELECT COUNT(*) FROM ALBUM WHERE coverPath = ?", (cover_path,)).fetchone()[0]
+        if count == 0:
+            filepath = os.path.join(current_app.config["COVERS_FOLDER"], cover_path)
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except Exception as e:
+                    current_app.logger.warning(f"Errore rimozione copertina {filepath}: {e}")
+
     return jsonify({
         "status": "success",
         "message": "Album eliminato dal catalogo con successo"

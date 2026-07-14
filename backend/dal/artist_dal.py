@@ -17,6 +17,16 @@ def find_artist_by_id(artist_id):
     conn = get_db()
     return conn.execute("SELECT * FROM ARTIST WHERE id_artist = ?", (artist_id,)).fetchone()
 
+def find_artist_by_discogs_id(discogs_id):
+    """Cerca un singolo artista per ID Discogs."""
+    conn = get_db()
+    return conn.execute("SELECT * FROM ARTIST WHERE discogs_id = ?", (discogs_id,)).fetchone()
+
+def find_artist_by_name(name):
+    """Cerca un singolo artista per nome (senza distinzione tra maiuscole/minuscole)."""
+    conn = get_db()
+    return conn.execute("SELECT * FROM ARTIST WHERE LOWER(name) = ?", (name.strip().lower(),)).fetchone()
+
 def get_artist_albums(artist_id):
     """Recupera tutti gli album associati a un determinato artista, ordinati per anno di uscita."""
     conn = get_db()
@@ -29,12 +39,24 @@ def get_artist_albums(artist_id):
         (artist_id,)
     ).fetchall()
 
-def insert_artist(name):
+def insert_artist(name, discogs_id=None, biography=None, image_path=None):
     """Inserisce un nuovo artista a catalogo."""
     conn = get_db()
     with conn:
-        cursor = conn.execute("INSERT INTO ARTIST (name) VALUES (?)", (name.strip(),))
+        cursor = conn.execute(
+            "INSERT INTO ARTIST (name, discogs_id, biography, image_path) VALUES (?, ?, ?, ?)",
+            (name.strip(), discogs_id, biography, image_path)
+        )
         return cursor.lastrowid
+
+def update_artist_discogs_info(artist_id, discogs_id, biography, image_path):
+    """Aggiorna le informazioni Discogs di un artista esistente."""
+    conn = get_db()
+    with conn:
+        conn.execute(
+            "UPDATE ARTIST SET discogs_id = ?, biography = ?, image_path = ? WHERE id_artist = ?",
+            (discogs_id, biography, image_path, artist_id)
+        )
 
 def update_artist_name(artist_id, name):
     """Aggiorna la denominazione di un artista esistente."""

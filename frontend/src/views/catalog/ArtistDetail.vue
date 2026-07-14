@@ -24,6 +24,14 @@ const editing = ref(false)
 const error = ref('')
 const editName = ref('')
 
+function formatBiography(text) {
+  if (!text) return ''
+  return text
+    .replace(/\[a=([^\]]+)\]/g, '$1')
+    .replace(/\[[lra]=([^\]]+)\]/g, '$1')
+    .replace(/\[\/?(b|i|u)\]/g, '')
+}
+
 onMounted(async () => {
   try {
     const res = await api.get(`/artists/${route.params.id}`)
@@ -82,15 +90,27 @@ const filteredAlbums = computed(() => {
 
       <!-- Header artista -->
       <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-white/5">
-        <div class="w-20 h-20 bg-white/5 border border-white/5 rounded-full flex items-center justify-center text-4xl shrink-0">
-          &#127908;
+        <div class="w-20 h-20 bg-white/5 border border-white/5 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+          <img v-if="artist.image_path" :src="`/api/artists/${artist.id_artist}/image`" class="w-full h-full object-cover" />
+          <span v-else class="text-4xl">&#127908;</span>
         </div>
         
         <div class="min-w-0 flex-grow text-center sm:text-left space-y-1">
           <div v-if="!editing" class="space-y-2">
-            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
-              {{ artist.name }}
-            </h1>
+            <div class="flex items-center gap-3 justify-center sm:justify-start flex-wrap">
+              <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+                {{ artist.name }}
+              </h1>
+              <a 
+                v-if="artist.discogs_id" 
+                :href="`https://www.discogs.com/artist/${artist.discogs_id}`" 
+                target="_blank" 
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white rounded-full text-[10px] font-bold tracking-wider uppercase transition-all"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                Discogs
+              </a>
+            </div>
             <p class="text-white/40 text-sm font-semibold tracking-tight">
               {{ artist.albums?.length || 0 }} album associati nel catalogo
             </p>
@@ -120,6 +140,14 @@ const filteredAlbums = computed(() => {
           class="apple-button apple-button-secondary py-2 text-sm !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
           Elimina
         </button>
+      </div>
+
+      <!-- Biografia (da Discogs) -->
+      <div v-if="artist.biography" class="pt-6 border-t border-white/5 pb-2">
+        <h3 class="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Biografia</h3>
+        <p class="text-sm text-white/70 leading-relaxed whitespace-pre-wrap font-medium">
+          {{ formatBiography(artist.biography) }}
+        </p>
       </div>
 
       <!-- Discografia -->

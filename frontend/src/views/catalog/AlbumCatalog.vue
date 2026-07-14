@@ -34,6 +34,47 @@ const form = ref({
 const coverFile = ref(null)
 const coverPreview = ref(null)
 
+// Discogs search and import state
+const activeTab = ref('discogs')
+const discogsQuery = ref('')
+const discogsResults = ref([])
+const discogsSearchLoading = ref(false)
+const discogsImportLoadingId = ref(null)
+
+async function handleDiscogsSearch() {
+  const query = discogsQuery.value.trim()
+  if (!query) return
+  discogsSearchLoading.value = true
+  formError.value = ''
+  try {
+    const res = await api.get(`/discogs/search/album?q=${encodeURIComponent(query)}`)
+    discogsResults.value = res.data
+  } catch (err) {
+    formError.value = err.message || 'Errore nella ricerca su Discogs'
+  } finally {
+    discogsSearchLoading.value = false
+  }
+}
+
+async function handleDiscogsImport(discogsId) {
+  discogsImportLoadingId.value = discogsId
+  formError.value = ''
+  try {
+    const res = await api.post('/discogs/import/album', { discogs_id: discogsId })
+    albums.value.unshift(res.data)
+    
+    // Aggiorna gli artisti locali in caso siano stati inseriti nuovi artisti durante l'import
+    const artistRes = await api.get('/artists')
+    artists.value = artistRes.data
+    
+    resetForm()
+  } catch (err) {
+    formError.value = err.message || "Errore durante l'importazione"
+  } finally {
+    discogsImportLoadingId.value = null
+  }
+}
+
 function handleCoverPick(e) {
   const file = e.target.files[0]
   if (!file) return
@@ -74,6 +115,8 @@ function resetForm() {
   showForm.value = false
   artistSearchInput.value = ''
   isArtistDropdownOpen.value = false
+  discogsQuery.value = ''
+  discogsResults.value = []
 }
 
 async function handleCreate() {
@@ -192,9 +235,103 @@ function closeArtistDropdown() {
     <!-- Form Nuovo Album -->
     <transition name="page">
       <div v-if="showForm" class="glass-panel p-6 md:p-8 rounded-apple-2xl shadow-2xl">
-        <h3 class="text-2xl font-bold mb-6 text-center">Pubblica un nuovo album</h3>
+        <h3 class="text-2xl font-bold mb-4 text-center">Aggiungi un nuovo album</h3>
+        
+        <!-- Tab Selector -->
+        <div class="flex border-b border-white/10 mb-6 justify-center">
+          <button 
+            type="button" 
+            @click="activeTab = 'discogs'"
+            :class="['px-6 py-2.5 font-bold text-sm border-b-2 transition-all', activeTab === 'discogs' ? 'border-brand-secondary text-brand-secondary font-extrabold' : 'border-transparent text-white/50 hover:text-white']"
+          >
+            Importa da Discogs
+          </button>
+          <button 
+            type="button" 
+            @click="activeTab = 'manual'"
+            :class="['px-6 py-2.5 font-bold text-sm border-b-2 transition-all', activeTab === 'manual' ? 'border-brand-secondary text-brand-secondary font-extrabold' : 'border-transparent text-white/50 hover:text-white']"
+          >
+            Inserimento Manuale
+          </button>
+        </div>
+
         <ErrorMessage v-if="formError" :message="formError" />
-        <form @submit.prevent="handleCreate" class="space-y-6">
+
+        <!-- Tab Discogs -->
+        <div v-if="activeTab === 'discogs'" class="space-y-6">
+          <div class="space-y-2">
+            <label for="discogs-query" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Cerca album o artista su Discogs</label>
+            <div class="flex gap-3">
+              <input 
+                id="discogs-query" 
+                v-model="discogsQuery" 
+                type="text" 
+                placeholder="Es. Dark Side of the Moon, Nevermind..." 
+                class="apple-input flex-grow font-semibold"
+                @keyup.enter="handleDiscogsSearch"
+              />
+              <button 
+                type="button" 
+                @click="handleDiscogsSearch" 
+                :disabled="discogsSearchLoading"
+                class="apple-button apple-button-primary shadow-lg shadow-white/5 whitespace-nowrap font-bold text-sm px-6"
+              >
+                {{ discogsSearchLoading ? 'Cerca...' : 'Cerca' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Risultati Discogs -->
+          <div v-if="discogsResults.length > 0" class="space-y-3 max-h-80 overflow-y-auto divide-y divide-white/5 pr-2">
+            <div 
+              v-for="item in discogsResults" 
+              :key="item.discogs_id"
+              class="flex items-center justify-between gap-4 py-3 first:pt-0"
+            >
+              <div class="flex items-center gap-4 min-w-0">
+                <!-- Cover thumbnail -->
+                <div class="w-12 h-12 rounded-lg bg-white/5 border border-white/5 overflow-hidden flex items-center justify-center shrink-0">
+                  <img v-if="item.thumb" :src="item.thumb" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                  <span v-else class="text-xl">&#127925;</span>
+                </div>
+                <!-- Info -->
+                <div class="min-w-0">
+                  <p class="font-bold text-sm text-white truncate">{{ item.title }}</p>
+                  <p class="text-xs text-white/50 font-medium truncate">
+                    {{ item.artist_name || 'Artista Sconosciuto' }} 
+                    <span v-if="item.year" class="text-white/30">&middot; {{ item.year }}</span>
+                  </p>
+                  <span class="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider text-brand-secondary bg-brand-secondary/10 px-2 py-0.5 rounded-full">
+                    {{ item.genre }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Action -->
+              <button 
+                type="button" 
+                @click="handleDiscogsImport(item.discogs_id)"
+                :disabled="discogsImportLoadingId !== null"
+                class="apple-button apple-button-primary !py-1.5 !px-4 text-xs shadow-md font-bold whitespace-nowrap"
+              >
+                <span v-if="discogsImportLoadingId === item.discogs_id">Importazione...</span>
+                <span v-else>Importa</span>
+              </button>
+            </div>
+          </div>
+          <div v-else-if="discogsQuery && !discogsSearchLoading" class="text-center py-6 text-white/30 text-sm font-semibold">
+            Nessun risultato trovato. Prova un'altra ricerca.
+          </div>
+          
+          <div class="pt-4 border-t border-white/5 flex gap-3">
+            <button type="button" @click="resetForm" class="apple-button apple-button-secondary w-full sm:w-auto">
+              Annulla
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab Manuale -->
+        <form v-else @submit.prevent="handleCreate" class="space-y-6">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div class="sm:col-span-2 space-y-2">
               <label for="album-title" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Titolo dell'album *</label>

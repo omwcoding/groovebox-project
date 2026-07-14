@@ -9,6 +9,7 @@ gestore centralizzato delle eccezioni.
 from flask import Flask, g
 from flask_cors import CORS
 from dotenv import load_dotenv
+import os
 
 from core.database import init_db, seed_db
 from core.config import Config
@@ -29,12 +30,17 @@ def create_app():
     init_db()
     seed_db()
 
+    # Crea le cartelle per gli upload se non esistono
+    os.makedirs(app.config["COVERS_FOLDER"], exist_ok=True)
+    os.makedirs(app.config["ARTISTS_FOLDER"], exist_ok=True)
+
     from routes.auth_routes import bp as auth_bp
     from routes.user_routes import bp as user_bp
     from routes.album_routes import bp as album_bp
     from routes.artist_routes import bp as artist_bp
     from routes.copy_routes import bp as copy_bp
     from routes.stats_routes import bp as stats_bp
+    from routes.discogs_routes import bp as discogs_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
@@ -42,6 +48,7 @@ def create_app():
     app.register_blueprint(artist_bp)
     app.register_blueprint(copy_bp)
     app.register_blueprint(stats_bp)
+    app.register_blueprint(discogs_bp)
 
     @app.route("/api/health", methods=["GET"])
     def health_check():

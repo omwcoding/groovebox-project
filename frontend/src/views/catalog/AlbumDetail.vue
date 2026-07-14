@@ -189,7 +189,18 @@ async function handleDelete() {
         <div class="flex-grow p-8 md:p-12 flex flex-col justify-between">
           <div class="space-y-6">
             <div>
-              <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">{{ album.title }}</h1>
+              <div class="flex items-center gap-3 flex-wrap mb-2">
+                <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">{{ album.title }}</h1>
+                <a 
+                  v-if="album.discogs_id" 
+                  :href="`https://www.discogs.com/release/${album.discogs_id}`" 
+                  target="_blank" 
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white rounded-full text-[10px] font-bold tracking-wider uppercase transition-all"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                  Discogs
+                </a>
+              </div>
               <div v-if="album.artists?.length" class="flex flex-wrap gap-2 mb-6">
                 <RouterLink
                   v-for="artist in album.artists" :key="artist.id_artist"
@@ -205,6 +216,10 @@ async function handleDelete() {
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-6 border-t border-white/5">
               <DetailField label="Anno di uscita" :value="album.releaseYear" />
               <DetailField label="Genere" :value="album.genre" />
+              <DetailField label="Paese di stampa" :value="album.country" />
+              <DetailField label="Etichetta" :value="album.label" />
+              <DetailField label="N. Catalogo" :value="album.catno" />
+              <DetailField label="Codice a Barre" :value="album.barcode" />
               <DetailField v-if="authStore.isAdmin" label="Inserito da" class="col-span-2 sm:col-span-1">
                 <span v-if="album.id_user === null" class="font-semibold text-white/40">
                   Utente eliminato
@@ -213,6 +228,24 @@ async function handleDelete() {
                   @{{ album.creator_username || 'Sistema' }}
                 </RouterLink>
               </DetailField>
+            </div>
+
+            <!-- Tracklist Section -->
+            <div v-if="album.tracklist && album.tracklist.length > 0" class="pt-6 border-t border-white/5 space-y-3">
+              <h3 class="text-xs font-bold uppercase tracking-widest text-white/30 ml-1">Tracce</h3>
+              <div class="space-y-1 max-h-60 overflow-y-auto pr-2 divide-y divide-white/[0.03] border border-white/5 rounded-2xl bg-white/[0.01] p-4">
+                <div 
+                  v-for="track in album.tracklist" 
+                  :key="track.position" 
+                  class="flex items-center justify-between text-sm py-2.5 first:pt-0 last:pb-0 font-medium"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-white/30 text-xs w-6 font-bold uppercase tabular-nums">{{ track.position }}</span>
+                    <span class="text-white/80 truncate">{{ track.title }}</span>
+                  </div>
+                  <span class="text-white/40 text-xs tabular-nums font-semibold">{{ track.duration }}</span>
+                </div>
+              </div>
             </div>
           </div>
 

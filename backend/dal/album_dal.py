@@ -6,6 +6,7 @@ ponte associate (ALBUM_ARTIST).
 """
 
 from core.database import get_db
+import json
 
 def get_album_artists(album_id):
     """Recupera l'elenco degli artisti associati a un determinato album."""
@@ -26,6 +27,16 @@ def enrich_album(album_row):
     album_dict = dict(album_row)
     artists = get_album_artists(album_dict["id_album"])
     album_dict["artists"] = [dict(a) for a in artists]
+    
+    # Decodifica tracklist da JSON string a lista Python
+    if "tracklist" in album_dict and album_dict["tracklist"]:
+        try:
+            album_dict["tracklist"] = json.loads(album_dict["tracklist"])
+        except Exception:
+            album_dict["tracklist"] = []
+    else:
+        album_dict["tracklist"] = []
+        
     return album_dict
 
 def get_all_albums():
@@ -51,14 +62,22 @@ def find_album_by_id(album_id):
     return enrich_album(album)
 
 
-def insert_album(title, release_year, genre, artist_ids, creator_user_id):
+def insert_album(title, release_year, genre, artist_ids, creator_user_id, discogs_id=None, tracklist=None, cover_path=None, label=None, catno=None, barcode=None, country=None):
     """Inserisce un nuovo record album e crea le relative associazioni con gli artisti."""
     conn = get_db()
+    
+    tracklist_str = None
+    if tracklist is not None:
+        if isinstance(tracklist, (list, dict)):
+            tracklist_str = json.dumps(tracklist)
+        else:
+            tracklist_str = tracklist
+
     with conn:
         cursor = conn.execute(
-            """INSERT INTO ALBUM (title, releaseYear, genre, coverPath, id_user)
-               VALUES (?, ?, ?, NULL, ?)""",
-            (title.strip(), release_year, genre, creator_user_id)
+            """INSERT INTO ALBUM (title, releaseYear, genre, coverPath, id_user, discogs_id, tracklist, label, catno, barcode, country)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (title.strip(), release_year, genre, cover_path, creator_user_id, discogs_id, tracklist_str, label, catno, barcode, country)
         )
         album_id = cursor.lastrowid
         

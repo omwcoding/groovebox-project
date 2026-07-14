@@ -16,6 +16,16 @@ Il progetto segue rigorosamente un'architettura logica a **3 layer**:
 
 ---
 
+## Integrazione Discogs API
+
+GrooveBox è ora integrato con le **API di Discogs** (tramite autenticazione Consumer Key/Secret) per arricchire dinamicamente il catalogo comunitario:
+* **Ricerca & Importazione**: Gli utenti Collector e Admin possono cercare album e artisti direttamente su Discogs e importarli localmente con un singolo clic.
+* **Metadati Completi**: L'importazione compila automaticamente titolo, anno, generi musicali e stili, etichetta discografica, numero di catalogo, codice a barre e paese di stampa.
+* **Tracklist & Biografie**: Vengono salvate le tracklist complete dei brani ed il profilo biografico dell'artista.
+* **Download degli Asset**: Copertine e foto degli artisti vengono scaricate sul server locale in modo deterministico (riutilizzate se presenti in caso di reset DB) ed eliminate fisicamente alla cancellazione dell'album/artista.
+
+---
+
 ## Come Iniziare
 
 ### 1. Configurazione del Backend (Flask)
@@ -42,14 +52,21 @@ Il progetto segue rigorosamente un'architettura logica a **3 layer**:
    pip install -r requirements.txt
    ```
 5. Configura le variabili di ambiente:
-   Copia il file `.env.example` in `.env` e personalizza la chiave segreta:
+   Copia il file `.env.example` in `.env` e configura la chiave di Flask e le credenziali delle API di Discogs:
    ```bash
    cp .env.example .env
    ```
    *(Su Windows PowerShell usa `Copy-Item .env.example .env`)*
+
+   Apri il file `.env` appena generato ed inserisci i tuoi valori:
+   ```env
+   SECRET_KEY=la_tua_chiave_segreta_jwt
+   DISCOGS_CONSUMER_KEY=la_tua_consumer_key_discogs
+   DISCOGS_CONSUMER_SECRET=il_tuo_consumer_secret_discogs
+   ```
 6. Inizializza il database (con creazione tabelle ed eliminazione a cascata):
    ```bash
-   python database.py
+   python core/database.py
    ```
 7. (Opzionale) Esegui il seed di grandi dimensioni per avere 50 utenti, 120 album, 60 artisti e 250 copie:
    ```bash
@@ -93,6 +110,7 @@ Il progetto segue rigorosamente un'architettura logica a **3 layer**:
 * **`PyJWT`**: Gestisce la cifratura, firma e decodifica dei token JWT per l'autenticazione stateless.
 * **`Werkzeug`**: Fornisce utility per l'hashing sicuro delle password (`werkzeug.security`) e la bonifica dei nomi dei file caricati (`werkzeug.utils.secure_filename`).
 * **`python-dotenv`**: Carica le configurazioni e le chiavi segrete dal file `.env` nelle variabili d'ambiente.
+* **`requests`**: Client HTTP leggero per interagire con le API REST di Discogs ed effettuare il download delle immagini.
 
 ### Frontend (JavaScript)
 * **`Pinia`**: Store globale per la gestione centralizzata della sessione utente e persistenza del token JWT.

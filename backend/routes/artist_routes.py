@@ -5,7 +5,8 @@ Definisce gli endpoint per le operazioni CRUD sul catalogo degli artisti
 e per la consultazione della relativa discografia.
 """
 
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
+import os
 from core.auth import token_required
 from dal.artist_dal import (
     get_all_artists,
@@ -101,7 +102,32 @@ def delete_artist(artist_id):
         raise NotFoundError("Artista non trovato")
 
     delete_artist_by_id(artist_id)
+
+    # Rimuovi la foto dal disco se nessun altro artista la usa
+    image_path = dict(artist).get("image_path")
+    if image_path:
+        conn = get_db()
+        count = conn.execute("SELECT COUNT(*) FROM ARTIST WHERE image_path = ?", (image_path,)).fetchone()[0]
+        if count == 0:
+            filepath = os.path.join(current_app.config["ARTISTS_FOLDER"], image_path)
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except Exception as e:
+                    current_app.logger.warning(f"Errore rimozione foto artista {filepath}: {e}")
+
     return jsonify({
         "status": "success",
         "message": "Artista eliminato con successo"
     })
+
+
+@bp.route("/<int:artist_id>/image", methods=["GET"])
+def get_artist_image(artist_id):
+    """Serve la foto dell'artista associata."""
+    artist = find_artist_by_id(artist_id)
+    if not artist or not dict(artist).get("image_path"):
+        raise NotFoundError("Foto dell'artista non trovata")
+        
+    upload_dir = current_app.config["ARTISTS_FOLDER"]
+    return send_from_directory(upload_dir, dict(artist)["image_path"])

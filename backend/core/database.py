@@ -23,6 +23,10 @@ def get_db():
     foreign key e la configurazione del row factory per l'accesso per chiave.
     All'interno del contesto Flask, memorizza la connessione nell'oggetto globale g.
     """
+    db_dir = os.path.dirname(Config.DATABASE_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
     if has_app_context():
         if 'db' not in g:
             g.db = sqlite3.connect(Config.DATABASE_PATH)
@@ -53,16 +57,25 @@ CREATE TABLE IF NOT EXISTS ALBUM (
     id_album        INTEGER     PRIMARY KEY AUTOINCREMENT,
     title           VARCHAR(100)    NOT NULL,
     releaseYear     INTEGER,
-    genre           VARCHAR(50)     CHECK (genre IS NULL OR genre IN ('Rock / Alternative', 'Pop', 'Hip-Hop / Rap', 'Electronic / Dance', 'Ambient / Experimental', 'Metal / Hard Rock', 'Jazz / Blues', 'Soul / R&B / Funk', 'Reggae / Dub', 'Folk / Acoustic', 'Classical', 'Soundtrack / OST', 'World / Altro')),
+    genre           VARCHAR(100),
     coverPath       VARCHAR(255),
     id_user         INTEGER         DEFAULT NULL,
+    discogs_id      INTEGER         UNIQUE,
+    tracklist       TEXT,
+    label           VARCHAR(100),
+    catno           VARCHAR(50),
+    barcode         VARCHAR(50),
+    country         VARCHAR(50),
 
     FOREIGN KEY (id_user) REFERENCES USER(id_user) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS ARTIST (
     id_artist       INTEGER     PRIMARY KEY AUTOINCREMENT,
-    name            VARCHAR(100)    NOT NULL
+    name            VARCHAR(100)    NOT NULL,
+    discogs_id      INTEGER         UNIQUE,
+    biography       TEXT,
+    image_path      VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS ALBUM_ARTIST (
@@ -91,9 +104,122 @@ CREATE TABLE IF NOT EXISTS PHYSICAL_COPY (
 
 def init_db():
     """Inizializza il file del database SQLite applicando lo schema DDL."""
+    db_dir = os.path.dirname(Config.DATABASE_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
     conn = sqlite3.connect(Config.DATABASE_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.executescript(SCHEMA_SQL)
+    
+    # Esegui migrazioni dinamiche per le colonne Discogs se il database esisteva già
+    cursor = conn.cursor()
+    
+    # Verifica colonne ALBUM
+    cursor.execute("PRAGMA table_info(ALBUM)")
+    album_cols = [row[1] for row in cursor.fetchall()]
+    if "discogs_id" not in album_cols:
+        try:
+            cursor.execute("ALTER TABLE ALBUM ADD COLUMN discogs_id INTEGER UNIQUE;")
+            print("[MIGRATION] Aggiunta colonna discogs_id a ALBUM")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione discogs_id su ALBUM: {e}")
+            
+    if "tracklist" not in album_cols:
+        try:
+            cursor.execute("ALTER TABLE ALBUM ADD COLUMN tracklist TEXT;")
+            print("[MIGRATION] Aggiunta colonna tracklist a ALBUM")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione tracklist su ALBUM: {e}")
+
+    if "label" not in album_cols:
+        try:
+            cursor.execute("ALTER TABLE ALBUM ADD COLUMN label VARCHAR(100);")
+            print("[MIGRATION] Aggiunta colonna label a ALBUM")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione label su ALBUM: {e}")
+
+    if "catno" not in album_cols:
+        try:
+            cursor.execute("ALTER TABLE ALBUM ADD COLUMN catno VARCHAR(50);")
+            print("[MIGRATION] Aggiunta colonna catno a ALBUM")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione catno su ALBUM: {e}")
+
+    if "barcode" not in album_cols:
+        try:
+            cursor.execute("ALTER TABLE ALBUM ADD COLUMN barcode VARCHAR(50);")
+            print("[MIGRATION] Aggiunta colonna barcode a ALBUM")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione barcode su ALBUM: {e}")
+
+    if "country" not in album_cols:
+        try:
+            cursor.execute("ALTER TABLE ALBUM ADD COLUMN country VARCHAR(50);")
+            print("[MIGRATION] Aggiunta colonna country a ALBUM")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione country su ALBUM: {e}")
+            
+    # Verifica colonne ARTIST
+    cursor.execute("PRAGMA table_info(ARTIST)")
+    artist_cols = [row[1] for row in cursor.fetchall()]
+    if "discogs_id" not in artist_cols:
+        try:
+            cursor.execute("ALTER TABLE ARTIST ADD COLUMN discogs_id INTEGER UNIQUE;")
+            print("[MIGRATION] Aggiunta colonna discogs_id a ARTIST")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione discogs_id su ARTIST: {e}")
+            
+    if "biography" not in artist_cols:
+        try:
+            cursor.execute("ALTER TABLE ARTIST ADD COLUMN biography TEXT;")
+            print("[MIGRATION] Aggiunta colonna biography a ARTIST")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione biography su ARTIST: {e}")
+            
+    if "image_path" not in artist_cols:
+        try:
+            cursor.execute("ALTER TABLE ARTIST ADD COLUMN image_path VARCHAR(255);")
+            print("[MIGRATION] Aggiunta colonna image_path a ARTIST")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione image_path su ARTIST: {e}")
+
+    # Verifica se la tabella ALBUM ha il CHECK constraint
+    cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='ALBUM'")
+    album_sql_row = cursor.fetchone()
+    if album_sql_row and "CHECK" in album_sql_row[0]:
+        print("[MIGRATION] Rilevato CHECK constraint su ALBUM. Rimozione in corso...")
+        try:
+            cursor.execute("PRAGMA foreign_keys = OFF;")
+            cursor.execute("ALTER TABLE ALBUM RENAME TO ALBUM_old;")
+            cursor.execute("""
+                CREATE TABLE ALBUM (
+                    id_album        INTEGER     PRIMARY KEY AUTOINCREMENT,
+                    title           VARCHAR(100)    NOT NULL,
+                    releaseYear     INTEGER,
+                    genre           VARCHAR(100),
+                    coverPath       VARCHAR(255),
+                    id_user         INTEGER         DEFAULT NULL,
+                    discogs_id      INTEGER         UNIQUE,
+                    tracklist       TEXT,
+                    label           VARCHAR(100),
+                    catno           VARCHAR(50),
+                    barcode         VARCHAR(50),
+                    country         VARCHAR(50),
+                    FOREIGN KEY (id_user) REFERENCES USER(id_user) ON DELETE SET NULL
+                );
+            """)
+            cursor.execute("""
+                INSERT INTO ALBUM (id_album, title, releaseYear, genre, coverPath, id_user, discogs_id, tracklist, label, catno, barcode, country)
+                SELECT id_album, title, releaseYear, genre, coverPath, id_user, discogs_id, tracklist, label, catno, barcode, country
+                FROM ALBUM_old;
+            """)
+            cursor.execute("DROP TABLE ALBUM_old;")
+            cursor.execute("PRAGMA foreign_keys = ON;")
+            print("[MIGRATION] Rimozione CHECK constraint completata con successo.")
+        except Exception as e:
+            print(f"[MIGRATION ERROR] Impossibile rimuovere il CHECK constraint: {e}")
+
     conn.commit()
     conn.close()
     print(f"[OK] Schema database verificato/inizializzato: {Config.DATABASE_PATH}")

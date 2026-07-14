@@ -23,9 +23,14 @@ class Config:
 
     DATABASE_PATH = os.path.join(BACKEND_DIR, "instance", "groovebox.db")
     
+    # Credenziali Discogs
+    DISCOGS_CONSUMER_KEY = os.environ.get("DISCOGS_CONSUMER_KEY")
+    DISCOGS_CONSUMER_SECRET = os.environ.get("DISCOGS_CONSUMER_SECRET")
+    
     # Percorsi per la memorizzazione degli upload fisici (es. copertine degli album)
     UPLOAD_FOLDER = os.path.join(BACKEND_DIR, "uploads")
     COVERS_FOLDER = os.path.join(UPLOAD_FOLDER, "covers")
+    ARTISTS_FOLDER = os.path.join(UPLOAD_FOLDER, "artists")
     
     # Vincoli di validazione per il formato dei file e dei generi musicali del catalogo
     ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
