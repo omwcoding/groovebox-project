@@ -44,12 +44,12 @@ def search_releases(query, limit=10):
         # Il titolo in Discogs è solitamente "Artista - Titolo"
         title_full = r.get("title", "")
         artist_name = ""
-        album_title = title_full
+        album_title = clean_title(title_full)
         
         if " - " in title_full:
             parts = title_full.split(" - ", 1)
             artist_name = parts[0].strip()
-            album_title = parts[1].strip()
+            album_title = clean_title(parts[1].strip())
             
         formatted_results.append({
             "discogs_id": r.get("id"),
@@ -161,7 +161,7 @@ def get_release(release_id):
             
     return {
         "discogs_id": data.get("id"),
-        "title": data.get("title"),
+        "title": clean_title(data.get("title")),
         "release_year": release_year,
         "genre": mapped_genre,
         "cover_url": cover_url,
@@ -248,3 +248,27 @@ def map_genre(genres, styles):
             unique_terms.append(t)
             
     return ", ".join(unique_terms[:2]) if unique_terms else "Unknown"
+
+def clean_title(title):
+    """
+    Pulisce i titoli degli album rimuovendo le traduzioni fornite da Discogs (es. "Wish You Were Here = 炎").
+    Se rileva caratteri non latini (giapponesi, russi, cinesi) in una sola delle due parti separate da '=',
+    preferisce la parte contenente solo caratteri latini.
+    """
+    if not title:
+        return ""
+    if " = " in title:
+        parts = [p.strip() for p in title.split(" = ")]
+        if len(parts) >= 2:
+            import re
+            # Pattern per caratteri cirillici, cinesi, giapponesi, coreani
+            non_latin_pattern = re.compile(r'[\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\u0400-\u04ff\u1100-\u11ff\uac00-\ud7af]')
+            has_non_latin_0 = bool(non_latin_pattern.search(parts[0]))
+            has_non_latin_1 = bool(non_latin_pattern.search(parts[1]))
+            
+            if has_non_latin_0 and not has_non_latin_1:
+                return parts[1]
+            if has_non_latin_1 and not has_non_latin_0:
+                return parts[0]
+            return parts[0]
+    return title.strip()

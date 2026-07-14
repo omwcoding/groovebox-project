@@ -15,31 +15,25 @@ import sqlite3
 import os
 import random
 import datetime
-import urllib.request
-import urllib.parse
 import json
 import re
+import time
+import requests
+from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # backend/scripts/
 BACKEND_DIR = os.path.dirname(BASE_DIR)
+load_dotenv(os.path.join(BACKEND_DIR, ".env"))
 DATABASE_PATH = os.path.join(BACKEND_DIR, "instance", "groovebox.db")
 COVERS_DIR = os.path.join(BACKEND_DIR, "uploads", "covers")
+ARTISTS_DIR = os.path.join(BACKEND_DIR, "uploads", "artists")
 
 # Liste per la generazione di dati realistici per utenti e logiche di business
-FIRST_NAMES = [
-    "Luca", "Giulia", "Marco", "Sofia", "Francesco", "Alice", "Alessandro", "Emma", 
-    "Andrea", "Giorgia", "Matteo", "Chiara", "Davide", "Martina", "Lorenzo", "Sara", 
-    "Federico", "Elena", "Riccardo", "Gaia", "Gabriele", "Anna", "Tommaso", "Francesca"
-]
+FIRST_NAMES = ["Luca", "Giulia", "Marco", "Sofia", "Andrea"]
+SURNAMES = ["Rossi", "Ferrari", "Bianchi", "Russo", "Conti"]
 
-SURNAMES = [
-    "Rossi", "Ferrari", "Russo", "Bianchi", "Esposito", "Colombo", "Romano", "Ricci", 
-    "Marino", "Greco", "Bruno", "Gallo", "Conti", "De Luca", "Costa", "Giordano", 
-    "Mancini", "Rizzo", "Lombardi", "Moretti", "Barbieri", "Fontana", "Santoro", "Caruso"
-]
 
-GENRES = ["Rock / Alternative", "Pop", "Hip-Hop / Rap", "Electronic / Dance", "Ambient / Experimental", "Metal / Hard Rock", "Jazz / Blues", "Soul / R&B / Funk", "Reggae / Dub", "Folk / Acoustic", "Classical", "Soundtrack / OST", "World / Altro"]
 
 FORMATS = ["Vinile", "CD", "Cassetta"]
 # Allineato ai vincoli CHECK del database.py ('Nuovo', 'Come nuovo', 'Buono', 'Discreto', 'Rovinato')
@@ -53,21 +47,7 @@ NOTES_POOL = [
 ]
 
 # Pool di artisti reali da usare per raggiungere la quota di 60 artisti totali
-EXTRA_ARTISTS_POOL = [
-    "Fabrizio De André", "Francesco Guccini", "Lucio Battisti", "Lucio Dalla",
-    "Vasco Rossi", "Ligabue", "Jovanotti", "Subsonica", "Verdena", "Afterhours",
-    "Mina", "Adriano Celentano", "Claudio Baglioni", "Gianna Nannini", "Franco Battiato",
-    "Caparezza", "Fabri Fibra", "Marracash", "Guè", "Salmo", "Sfera Ebbasta", "Madame",
-    "Rino Gaetano", "Francesco De Gregori", "Antonello Venditti", "Pino Daniele", "Zen Circus",
-    "Brunori Sas", "Calibro 35", "Baustelle", "Lo Stato Sociale", "Maneskin", "Ghemon",
-    "Depeche Mode", "Oasis", "Blur", "The Smiths", "Pearl Jam", "Soundgarden", 
-    "Alice in Chains", "Foo Fighters", "Green Day", "Linkin Park", "Red Hot Chili Peppers", 
-    "System of a Down", "Rage Against the Machine", "Guns N' Roses", "AC/DC", "Black Sabbath", 
-    "Iron Maiden", "Deep Purple", "The Who", "The Doors", "Jimi Hendrix", "Lou Reed", 
-    "Joy Division", "New Order", "The Clash", "Ramones", "U2", "Muse", "Radiohead",
-    "Nirvana", "Pink Floyd", "Daft Punk", "The Beatles", "Miles Davis", "Kendrick Lamar",
-    "Taylor Swift", "Metallica", "Bob Marley", "Michael Jackson", "Queen", "David Bowie"
-]
+EXTRA_ARTISTS_POOL = ["Lucio Dalla", "Mina", "Franco Battiato", "Pino Daniele", "Lucio Battisti"]
 
 def split_artist_names(artist_string):
     """
@@ -81,135 +61,217 @@ def split_artist_names(artist_string):
     # Splitta per barra e rimuove spazi extra
     return [name.strip() for name in temp.split('|') if name.strip()]
 
-def map_itunes_genre(itunes_genre):
-    """
-    Mappa i generi restituiti dall'API di iTunes ai generi ammessi nel nostro database.
-    """
-    if not itunes_genre:
-        return "World / Altro"
-    g = itunes_genre.lower()
-    
-    if any(x in g for x in ["metal", "hard rock"]):
-        return "Metal / Hard Rock"
-    if any(x in g for x in ["rock", "alternative", "grunge", "punk", "indie"]):
-        return "Rock / Alternative"
-    if "pop" in g:
-        return "Pop"
-    if any(x in g for x in ["hip-hop", "rap", "hip hop"]):
-        return "Hip-Hop / Rap"
-    if any(x in g for x in ["electronic", "dance", "house", "techno", "trance", "synth"]):
-        return "Electronic / Dance"
-    if any(x in g for x in ["ambient", "experimental", "idm"]):
-        return "Ambient / Experimental"
-    if any(x in g for x in ["jazz", "blues"]):
-        return "Jazz / Blues"
-    if any(x in g for x in ["soul", "r&b", "funk", "disco"]):
-        return "Soul / R&B / Funk"
-    if any(x in g for x in ["reggae", "dub"]):
-        return "Reggae / Dub"
-    if any(x in g for x in ["folk", "acoustic", "singer"]):
-        return "Folk / Acoustic"
-    if "classical" in g:
-        return "Classical"
-    if any(x in g for x in ["soundtrack", "ost", "score", "movie"]):
-        return "Soundtrack / OST"
-        
-    return "World / Altro"
+
+
+def clean_artist_name(name):
+    if not name:
+        return ""
+    return re.sub(r'\s*\(\d+\)$', '', name).strip()
+
+def clean_title(title):
+    if not title:
+        return ""
+    if " = " in title:
+        parts = [p.strip() for p in title.split(" = ")]
+        if len(parts) >= 2:
+            non_latin_pattern = re.compile(r'[\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\u0400-\u04ff\u1100-\u11ff\uac00-\ud7af]')
+            has_non_latin_0 = bool(non_latin_pattern.search(parts[0]))
+            has_non_latin_1 = bool(non_latin_pattern.search(parts[1]))
+            
+            if has_non_latin_0 and not has_non_latin_1:
+                return parts[1]
+            if has_non_latin_1 and not has_non_latin_0:
+                return parts[0]
+            return parts[0]
+    return title.strip()
+
+def map_genre(genres, styles):
+    terms = []
+    if genres:
+        terms.append(genres[0])
+    if styles:
+        terms.extend(styles[:2])
+    unique_terms = []
+    for t in terms:
+        if t not in unique_terms:
+            unique_terms.append(t)
+    return ", ".join(unique_terms[:2]) if unique_terms else "Unknown"
 
 def fetch_real_albums_and_covers(target_count=120):
     """
-    Usa l'API pubblica di iTunes per recuperare album reali e scaricare le copertine.
-    Filtra singoli, EP, cover band, e mappa correttamente i generi musicali.
+    Usa l'API di Discogs per recuperare album reali e scaricare le copertine.
+    Estrae anche tracklist, casa discografica, numero di catalogo, codice a barre e paese di stampa.
     """
     os.makedirs(COVERS_DIR, exist_ok=True)
-    print("-> Interrogazione API iTunes per recuperare album reali in corso...")
+    print("-> Interrogazione API Discogs per recuperare album reali in corso...")
+    
+    key = os.environ.get("DISCOGS_CONSUMER_KEY")
+    secret = os.environ.get("DISCOGS_CONSUMER_SECRET")
+    if not key or not secret:
+        print("[!] Errore: DISCOGS_CONSUMER_KEY o DISCOGS_CONSUMER_SECRET non impostate nel file .env!")
+        return []
+        
+    headers = {
+        "User-Agent": "GrooveBoxSeed/1.0",
+        "Authorization": f"Discogs key={key.strip()}, secret={secret.strip()}"
+    }
     
     search_artists = [
-        "Pink Floyd", "Daft Punk", "Nirvana", "The Beatles", "Miles Davis", 
-        "Kendrick Lamar", "Taylor Swift", "Metallica", "Bob Marley", "Radiohead",
-        "Michael Jackson", "Queen", "David Bowie", "The Cure", "Fleetwood Mac",
-        "Eminem", "Coldplay", "Gorillaz", "The Rolling Stones", "Led Zeppelin"
+        "Tyler, the Creator", "Daft Punk", "Pino Daniele", "The Cure", "Lucio Dalla"
     ]
     
     real_albums = []
-    headers = {"User-Agent": "GrooveBoxUniversityProject/1.0"}
-    
-    # Parole chiave da escludere nei titoli degli album per evitare singoli ed EP
-    exclude_keywords = re.compile(r'\b(single|ep|tribute|karaoke|cover|covers|remix|remixes|instrumental|tribute|piano)\b', re.IGNORECASE)
     
     for artist in search_artists:
         if len(real_albums) >= target_count:
             break
             
-        query = urllib.parse.quote(artist)
-        url = f"https://itunes.apple.com/search?term={query}&entity=album&limit=25" # Aumentato a 25 per filtrare singoli ed EP
+        print(f"-> Ricerca release per {artist} su Discogs...")
+        search_url = "https://api.discogs.com/database/search"
+        params = {
+            "artist": artist,
+            "type": "release",
+            "per_page": 15
+        }
         
         try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=5) as response:
-                data = json.loads(response.read())
+            res = requests.get(search_url, headers=headers, params=params, timeout=5)
+            if res.status_code == 429:
+                print("   [!] Raggiunto rate limit Discogs, attesa di 10 secondi...")
+                time.sleep(10)
+                res = requests.get(search_url, headers=headers, params=params, timeout=5)
                 
-                for item in data.get('results', []):
-                    title = item.get('collectionName', '')
-                    artist_name = item.get('artistName', '')
-                    release_year = item.get('releaseDate', '2020')[:4]
-                    itunes_genre = item.get('primaryGenreName', '')
-                    track_count = item.get('trackCount', 0)
+            res.raise_for_status()
+            results = res.json().get("results", [])
+            
+            for item in results:
+                if len(real_albums) >= target_count:
+                    break
                     
-                    # 1. Filtro: l'artista originale dell'album deve contenere il nome cercato (evita cover band o tribute)
-                    if artist.lower() not in artist_name.lower():
-                        continue
-                        
-                    # 2. Filtro: evita singoli, EP, tribute o cover band basandosi sul titolo
-                    if exclude_keywords.search(title) or exclude_keywords.search(artist_name):
-                        continue
-                        
-                    # 3. Filtro: un album vero e proprio ha solitamente almeno 6 tracce (evita singoli/EP)
-                    if track_count < 6:
-                        continue
-                        
-                    # Mappa il genere iTunes a quelli supportati dal progetto
-                    genre = map_itunes_genre(itunes_genre)
+                release_id = item.get("id")
+                if not release_id:
+                    continue
                     
-                    # Copertina in alta risoluzione
-                    artwork_url = item.get('artworkUrl100', '').replace('100x100bb', '600x600bb')
+                detail_url = f"https://api.discogs.com/releases/{release_id}"
+                time.sleep(1.1)  # Garantisce il rispetto dei limiti di rate limit (max 60 req/min)
+                
+                try:
+                    detail_res = requests.get(detail_url, headers=headers, timeout=5)
+                    if detail_res.status_code == 429:
+                        print("   [!] Raggiunto rate limit Discogs nei dettagli, attesa di 15 secondi...")
+                        time.sleep(15)
+                        detail_res = requests.get(detail_url, headers=headers, timeout=5)
+                        
+                    detail_res.raise_for_status()
+                    data = detail_res.json()
                     
-                    if not title or not artwork_url:
+                    title = clean_title(data.get("title"))
+                    artists_data = data.get("artists", [])
+                    if not title or not artists_data:
                         continue
                         
-                    # Evita duplicati di album con lo stesso titolo
+                    discogs_artist_name = clean_artist_name(artists_data[0].get("name", ""))
+                    
+                    if artist.lower() not in discogs_artist_name.lower():
+                        continue
+                        
                     if any(a["title"].lower() == title.lower() for a in real_albums):
                         continue
                         
-                    safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title)[:30]
-                    filename = f"{safe_title}_{random.randint(1000, 9999)}.jpg"
-                    filepath = os.path.join(COVERS_DIR, filename)
+                    year = data.get("year")
+                    if not year and data.get("released"):
+                        released_str = data.get("released", "")
+                        if len(released_str) >= 4 and released_str[:4].isdigit():
+                            year = int(released_str[:4])
+                    if not year:
+                        year = 2020
+                        
+                    genre = map_genre(data.get("genres", []), data.get("styles", []))
                     
-                    # Evita di riscaricare la stessa immagine se si riavvia lo script
-                    if not os.path.exists(filepath):
-                        img_req = urllib.request.Request(artwork_url, headers=headers)
-                        with urllib.request.urlopen(img_req, timeout=5) as img_response, open(filepath, "wb") as out_file:
-                            out_file.write(img_response.read())
+                    tracklist = []
+                    for track in data.get("tracklist", []):
+                        if track.get("type_", "track") == "track":
+                            tracklist.append({
+                                "position": track.get("position", ""),
+                                "title": track.get("title", ""),
+                                "duration": track.get("duration", "")
+                            })
+                            
+                    if len(tracklist) < 4:
+                        continue
+                        
+                    label_name = None
+                    catno = None
+                    labels = data.get("labels", [])
+                    if labels:
+                        label_name = clean_artist_name(labels[0].get("name", ""))
+                        catno = labels[0].get("catno")
+                        
+                    barcode = None
+                    for ident in data.get("identifiers", []):
+                        if ident.get("type") == "Barcode":
+                            barcode = ident.get("value", "").strip().replace(" ", "")
+                            break
+                            
+                    country = data.get("country")
                     
+                    cover_url = None
+                    images = data.get("images", [])
+                    if images:
+                        primary_images = [img for img in images if img.get("type") == "primary"]
+                        if primary_images:
+                            cover_url = primary_images[0].get("uri")
+                        else:
+                            cover_url = images[0].get("uri")
+                    if not cover_url:
+                        cover_url = data.get("thumb")
+                        
+                    cover_filename = None
+                    if cover_url:
+                        ext = "jpg"
+                        if ".png" in cover_url.lower():
+                            ext = "png"
+                        elif ".webp" in cover_url.lower():
+                            ext = "webp"
+                        
+                        cover_filename = f"album_discogs_{release_id}.{ext}"
+                        filepath = os.path.join(COVERS_DIR, cover_filename)
+                        
+                        if not os.path.exists(filepath):
+                            img_res = requests.get(cover_url, headers=headers, timeout=5)
+                            if img_res.status_code == 200:
+                                with open(filepath, "wb") as f:
+                                    f.write(img_res.content)
+                            else:
+                                cover_filename = None
+                                
                     real_albums.append({
                         "title": title,
-                        "artist": artist_name,
-                        "year": int(release_year),
+                        "artist": discogs_artist_name,
+                        "artists": [{"name": clean_artist_name(a.get("name")), "discogs_id": a.get("id")} for a in artists_data],
+                        "year": year,
                         "genre": genre,
-                        "cover": filename
+                        "cover": cover_filename,
+                        "discogs_id": release_id,
+                        "tracklist": tracklist,
+                        "label": label_name,
+                        "catno": catno,
+                        "barcode": barcode,
+                        "country": country
                     })
-                    
-                    print(f"   [+] Elaborato: {title} - {artist_name} ({genre})")
+                    print(f"   [+] Elaborato: {title} - {discogs_artist_name} ({genre})")
                     
                     if len(real_albums) >= target_count:
                         break
                         
+                except Exception as ex:
+                    print(f"   [!] Errore nel caricamento del dettaglio release {release_id}: {ex}")
+                    
         except Exception as e:
-            print(f"   [!] Errore fetch artista {artist}: {e}")
+            print(f"   [!] Errore nella ricerca per {artist}: {e}")
             
-    print(f"-> Recuperati {len(real_albums)} album reali completi di copertina.")
+    print(f"-> Recuperati {len(real_albums)} album reali da Discogs.")
     return real_albums
-
 def main():
     if not os.path.exists(DATABASE_PATH):
         print(f"[!] Errore: File database '{DATABASE_PATH}' non trovato. Esegui prima la creazione del DB.")
@@ -219,8 +281,8 @@ def main():
     print("GrooveBox - Popolamento Database (Real Data Seed)")
     print("====================================================")
     
-    # 1. Recupera album reali e scarica le copertine
-    real_albums_data = fetch_real_albums_and_covers(target_count=120)
+    # 1. Recupera album reali e scarica le copertine (ridotto a 20 per velocità di debugging)
+    real_albums_data = fetch_real_albums_and_covers(target_count=20)
     
     conn = sqlite3.connect(DATABASE_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -236,13 +298,13 @@ def main():
         cursor.execute("DELETE FROM USER WHERE id_user > 2")
         conn.commit()
         
-        # 2. Genera Collector in modo che il totale nel DB sia ESATTAMENTE 50 (compresi admin e test)
-        print("-> Generazione di Collector (totale target utenti: 50)...")
+        # 2. Genera Collector in modo che il totale nel DB sia ESATTAMENTE 5 (compresi admin e test)
+        print("-> Generazione di Collector (totale target utenti: 5)...")
         password_hash = generate_password_hash("password123") 
         user_ids = [1, 2] # Utenti di default esistenti nel DB
         
         used_usernames = {"admin", "test"}
-        while len(user_ids) < 50: 
+        while len(user_ids) < 5: 
             name = random.choice(FIRST_NAMES)
             surname = random.choice(SURNAMES)
             username = f"{name.lower()}.{surname.lower()}"
@@ -260,25 +322,84 @@ def main():
             )
             user_ids.append(cursor.lastrowid)
             
-        print(f"   [OK] Creati {len(user_ids) - 2} nuovi collector (Totale utenti nel DB: 50).")
+        print(f"   [OK] Creati {len(user_ids) - 2} nuovi collector (Totale utenti nel DB: 5).")
 
-        # 3. Estrai e splitta gli Artisti per gestire le collaborazioni separatamente
-        print("-> Registrazione Artisti nel DB (suddividendo le collaborazioni)...")
+        # 3. Estrai e splitta gli Artisti per gestire le collaborazioni separatamente, arricchendoli da Discogs
+        print("-> Registrazione Artisti nel DB (recuperando biografia e foto da Discogs)...")
+        os.makedirs(ARTISTS_DIR, exist_ok=True)
         artist_id_map = {}
+        
+        # Definisci gli header per le chiamate Discogs
+        key = os.environ.get("DISCOGS_CONSUMER_KEY")
+        secret = os.environ.get("DISCOGS_CONSUMER_SECRET")
+        headers = {}
+        if key and secret:
+            headers = {
+                "User-Agent": "GrooveBoxSeed/1.0",
+                "Authorization": f"Discogs key={key.strip()}, secret={secret.strip()}"
+            }
+        
+        # Mappa i nomi degli artisti ai loro discogs_id
+        artist_discogs_map = {}
         for album_data in real_albums_data:
-            # Splitta il nome dell'artista
+            for art in album_data.get("artists", []):
+                artist_discogs_map[art["name"]] = art["discogs_id"]
+                
+        for album_data in real_albums_data:
             names = split_artist_names(album_data["artist"])
             for name in names:
                 if name not in artist_id_map:
-                    cursor.execute("INSERT INTO ARTIST (name) VALUES (?)", (name,))
+                    discogs_id = artist_discogs_map.get(name)
+                    bio = ""
+                    photo_filename = None
+                    
+                    if discogs_id and headers:
+                        print(f"   -> Recupero dettagli artista {name} (ID: {discogs_id})...")
+                        time.sleep(1.1)  # Rispetta il rate limit
+                        try:
+                            art_url = f"https://api.discogs.com/artists/{discogs_id}"
+                            art_res = requests.get(art_url, headers=headers, timeout=5)
+                            if art_res.status_code == 429:
+                                print("      [!] Rate limit raggiunto per artista, attesa di 15 secondi...")
+                                time.sleep(15)
+                                art_res = requests.get(art_url, headers=headers, timeout=5)
+                                
+                            art_res.raise_for_status()
+                            art_data = art_res.json()
+                            bio = art_data.get("profile", "")
+                            
+                            # Estrai foto
+                            photo_url = None
+                            images = art_data.get("images", [])
+                            if images:
+                                prim = [img for img in images if img.get("type") == "primary"]
+                                photo_url = prim[0].get("uri") if prim else images[0].get("uri")
+                                
+                            if photo_url:
+                                photo_filename = f"artist_discogs_{discogs_id}.jpg"
+                                filepath = os.path.join(ARTISTS_DIR, photo_filename)
+                                if not os.path.exists(filepath):
+                                    img_res = requests.get(photo_url, headers=headers, timeout=5)
+                                    if img_res.status_code == 200:
+                                        with open(filepath, "wb") as f:
+                                            f.write(img_res.content)
+                                    else:
+                                        photo_filename = None
+                        except Exception as e:
+                            print(f"      [!] Errore nel recupero dell'artista {name}: {e}")
+                            
+                    cursor.execute(
+                        "INSERT INTO ARTIST (name, discogs_id, biography, image_path) VALUES (?, ?, ?, ?)",
+                        (name, discogs_id, bio, photo_filename)
+                    )
                     artist_id_map[name] = cursor.lastrowid
         
-        # Assicurati che ci siano esattamente 60 artisti nel DB (riempi con EXTRA_ARTISTS_POOL se necessario)
+        # Assicurati che ci siano esattamente 10 artisti nel DB (riempi con EXTRA_ARTISTS_POOL se necessario)
         all_artist_ids = list(artist_id_map.values())
         extra_artists = list(set(EXTRA_ARTISTS_POOL) - set(artist_id_map.keys()))
         random.shuffle(extra_artists)
         
-        while len(all_artist_ids) < 60:
+        while len(all_artist_ids) < 10:
             if extra_artists:
                 extra_name = extra_artists.pop()
             else:
@@ -287,30 +408,42 @@ def main():
             artist_id = cursor.lastrowid
             all_artist_ids.append(artist_id)
             artist_id_map[extra_name] = artist_id
-
-        # Se per qualche motivo superiamo 60 (es. iTunes restituisce troppe collab), limitiamo a 60
-        if len(all_artist_ids) > 60:
-            artists_to_remove = all_artist_ids[60:]
-            all_artist_ids = all_artist_ids[:60]
+ 
+        # Se per qualche motivo superiamo 10, limitiamo a 10
+        if len(all_artist_ids) > 10:
+            artists_to_remove = all_artist_ids[10:]
+            all_artist_ids = all_artist_ids[:10]
             for aid in artists_to_remove:
                 cursor.execute("DELETE FROM ARTIST WHERE id_artist = ?", (aid,))
                 for k, v in list(artist_id_map.items()):
                     if v == aid:
                         del artist_id_map[k]
+ 
+        print(f"   [OK] Inseriti {len(all_artist_ids)} Artisti unici nel DB (target esatto: 10).")
 
-        print(f"   [OK] Inseriti {len(all_artist_ids)} Artisti unici nel DB (target esatto: 60).")
-
-        # 4. Genera esattamente 120 Album ed associa le relazioni
-        print("-> Inserimento di 120 Album ed associazione delle relazioni Album-Artista...")
+        # 4. Genera esattamente 20 Album ed associa le relazioni
+        print("-> Inserimento di 20 Album ed associazione delle relazioni Album-Artista...")
         album_ids = []
         album_artist_relations = []
         
         for album_data in real_albums_data:
             creator_id = random.choice(user_ids)
             cursor.execute(
-                """INSERT INTO ALBUM (title, releaseYear, genre, coverPath, id_user)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (album_data["title"], album_data["year"], album_data["genre"], album_data["cover"], creator_id)
+                """INSERT INTO ALBUM (title, releaseYear, genre, coverPath, id_user, discogs_id, tracklist, label, catno, barcode, country)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    album_data["title"], 
+                    album_data["year"], 
+                    album_data["genre"], 
+                    album_data["cover"], 
+                    creator_id,
+                    album_data.get("discogs_id"),
+                    json.dumps(album_data.get("tracklist")) if album_data.get("tracklist") else None,
+                    album_data.get("label"),
+                    album_data.get("catno"),
+                    album_data.get("barcode"),
+                    album_data.get("country")
+                )
             )
             album_id = cursor.lastrowid
             album_ids.append(album_id)
@@ -329,12 +462,12 @@ def main():
                 )
                 album_artist_relations.append((album_id, artist_id))
             
-        # Sistemiamo le relazioni in ALBUM_ARTIST per arrivare a ESATTAMENTE 130
+        # Sistemiamo le relazioni in ALBUM_ARTIST per arrivare a ESATTAMENTE 22
         current_relations_count = len(album_artist_relations)
         
-        if current_relations_count < 130:
-            needed = 130 - current_relations_count
-            print(f"   [i] Relazioni attuali: {current_relations_count}. Aggiunta di {needed} collaborazioni per raggiungere 130...")
+        if current_relations_count < 22:
+            needed = 22 - current_relations_count
+            print(f"   [i] Relazioni attuali: {current_relations_count}. Aggiunta di {needed} collaborazioni per raggiungere 22...")
             
             candidate_albums = list(album_ids)
             random.shuffle(candidate_albums)
@@ -353,9 +486,9 @@ def main():
                     album_artist_relations.append((album_id, sec_artist_id))
                     needed -= 1
                     
-        elif current_relations_count > 130:
-            excess = current_relations_count - 130
-            print(f"   [i] Relazioni attuali: {current_relations_count}. Rimozione di {excess} relazioni extra per rientrare nel target di 130...")
+        elif current_relations_count > 22:
+            excess = current_relations_count - 22
+            print(f"   [i] Relazioni attuali: {current_relations_count}. Rimozione di {excess} relazioni extra per rientrare nel target di 22...")
             
             album_counts = {}
             for album_id, _ in album_artist_relations:
@@ -375,13 +508,13 @@ def main():
                     excess -= 1
 
         print(f"   [OK] Inseriti {len(album_ids)} Album nel DB.")
-        print(f"   [OK] Create {len(album_artist_relations)} relazioni in ALBUM_ARTIST (target esatto: 130).")
+        print(f"   [OK] Create {len(album_artist_relations)} relazioni in ALBUM_ARTIST (target esatto: 22).")
 
-        # 5. Genera esattamente 250 Copie Fisiche
-        print("-> Generazione di 250 Copie Fisiche per le collezioni private...")
+        # 5. Genera esattamente 30 Copie Fisiche
+        print("-> Generazione di 30 Copie Fisiche per le collezioni private...")
         today = datetime.date.today()
         
-        for _ in range(250):
+        for _ in range(30):
             album_id = random.choice(album_ids)
             user_id = random.choice(user_ids)
             fmt = random.choice(FORMATS)
@@ -398,17 +531,17 @@ def main():
                 (fmt, cond, added_date, notes, user_id, album_id)
             )
             
-        print("   [OK] Create 250 copie fisiche.")
+        print("   [OK] Create 30 copie fisiche.")
         
         conn.commit()
         print("\n====================================================")
         print("POPOLAMENTO COMPLETATO CON SUCCESSO!")
         print("====================================================")
-        print(f"- Utenti totali nel DB: {len(user_ids)} (target: 50)")
-        print(f"- Artisti totali nel DB: {len(all_artist_ids)} (target: 60)")
-        print(f"- Album inseriti a catalogo: {len(album_ids)} (target: 120)")
-        print(f"- Relazioni Album-Artista inserite: {len(album_artist_relations)} (target: 130)")
-        print(f"- Copie fisiche totali distribuite: 250 (target: 250)")
+        print(f"- Utenti totali nel DB: {len(user_ids)} (target: 5)")
+        print(f"- Artisti totali nel DB: {len(all_artist_ids)} (target: 10)")
+        print(f"- Album inseriti a catalogo: {len(album_ids)} (target: 20)")
+        print(f"- Relazioni Album-Artista inserite: {len(album_artist_relations)} (target: 22)")
+        print(f"- Copie fisiche totali distribuite: 30 (target: 30)")
         print("====================================================")
         
     except Exception as e:
