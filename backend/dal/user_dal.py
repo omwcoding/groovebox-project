@@ -80,3 +80,18 @@ def get_user_public_profile(username):
         "FROM USER WHERE username = ? AND role = 'collector' AND is_public = 1",
         (username,)
     ).fetchone()
+
+
+def get_user_stats(user_id):
+    """Recupera il conteggio delle copie fisiche e degli album inseriti da un utente."""
+    conn = get_db()
+    copies_count = conn.execute(
+        "SELECT COUNT(*) FROM PHYSICAL_COPY WHERE id_user = ?", (user_id,)
+    ).fetchone()[0]
+    albums_count = conn.execute(
+        "SELECT COUNT(*) FROM ALBUM WHERE id_user = ?", (user_id,)
+    ).fetchone()[0]
+    return {
+        "copies_count": copies_count,
+        "albums_count": albums_count
+    }

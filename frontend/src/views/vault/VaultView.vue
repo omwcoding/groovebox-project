@@ -7,43 +7,23 @@ Consente la visualizzazione del proprio archivio musicale in due modalità:
 -->
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { api } from '@/stores/api'
+import { ref, onMounted } from 'vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import VaultShelf from '@/components/VaultShelf.vue'
 import AddToVaultModal from '@/components/AddToVaultModal.vue'
+import { useVault } from '@/composables/useVault'
 
-const copies = ref([])
-const loading = ref(true)
-const search = ref('')
-const filterFormat = ref('')
+const {
+  loading,
+  search,
+  filterFormat,
+  filteredCopies,
+  fetchCopies
+} = useVault()
+
 const viewMode = ref('shelf') // 'shelf' | 'grid'
 const showAddModal = ref(false)
-
-const filteredCopies = computed(() => {
-  return copies.value.filter(c => {
-    const matchesSearch = !search.value.trim() || 
-      c.album_title?.toLowerCase().includes(search.value.toLowerCase()) ||
-      c.genre?.toLowerCase().includes(search.value.toLowerCase()) ||
-      c.artists?.some(ar => ar.name.toLowerCase().includes(search.value.toLowerCase()))
-    
-    const matchesFormat = !filterFormat.value || c.format === filterFormat.value
-    
-    return matchesSearch && matchesFormat
-  })
-})
-
-async function fetchCopies() {
-  try {
-    const res = await api.get('/copies')
-    copies.value = res.data
-  } catch (err) {
-    // Gestione errore silenziosa
-  } finally {
-    loading.value = false
-  }
-}
 
 onMounted(() => {
   fetchCopies()

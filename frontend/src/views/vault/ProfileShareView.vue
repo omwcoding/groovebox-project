@@ -6,48 +6,31 @@ Raggiungibile pubblicamente alla route /share/:username.
 -->
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
-import { api } from '@/stores/api'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import VaultShelf from '@/components/VaultShelf.vue'
+import { useVault } from '@/composables/useVault'
 
 const route = useRoute()
 const username = route.params.username
 
-const user = ref(null)
-const copies = ref([])
-const loading = ref(true)
-const error = ref('')
+const {
+  copies,
+  user,
+  loading,
+  error,
+  search,
+  filterFormat,
+  filteredCopies,
+  fetchCopies
+} = useVault(username)
 
-const search = ref('')
-const filterFormat = ref('')
 const viewMode = ref('shelf') // 'shelf' | 'grid'
 
-const filteredCopies = computed(() => {
-  return copies.value.filter(c => {
-    const matchesSearch = !search.value.trim() || 
-      c.album_title?.toLowerCase().includes(search.value.toLowerCase()) ||
-      c.genre?.toLowerCase().includes(search.value.toLowerCase()) ||
-      c.artists?.some(ar => ar.name.toLowerCase().includes(search.value.toLowerCase()))
-    
-    const matchesFormat = !filterFormat.value || c.format === filterFormat.value
-    
-    return matchesSearch && matchesFormat
-  })
-})
-
-onMounted(async () => {
-  try {
-    const res = await api.get(`/users/share/${username}`)
-    user.value = res.data.user
-    copies.value = res.data.copies
-  } catch (err) {
-    error.value = err.message || 'Profilo condiviso non trovato o non disponibile.'
-  } finally {
-    loading.value = false
-  }
+onMounted(() => {
+  fetchCopies()
 })
 </script>
 

@@ -15,7 +15,7 @@ from utils.discogs import (
     get_artist,
     download_discogs_image
 )
-from dal.album_dal import insert_album, enrich_album
+from dal.album_dal import insert_album, enrich_album, search_albums_local
 from dal.artist_dal import (
     find_artist_by_discogs_id,
     find_artist_by_name,
@@ -53,26 +53,16 @@ def search_unified_route():
     if not query:
         raise BadRequestError("Parametro di ricerca 'q' mancante")
     
-    conn = get_db()
-    local_rows = conn.execute(
-        """SELECT DISTINCT al.* 
-           FROM ALBUM al
-           LEFT JOIN ALBUM_ARTIST aa ON al.id_album = aa.id_album
-           LEFT JOIN ARTIST ar ON aa.id_artist = ar.id_artist
-           WHERE al.title LIKE ? OR ar.name LIKE ?
-           LIMIT 10""",
-        (f"%{query}%", f"%{query}%")
-    ).fetchall()
+    local_albums = search_albums_local(query, limit=10)
     
     local_results = []
     local_discogs_ids = set()
-    for row in local_rows:
-        enriched = enrich_album(row)
-        if enriched:
-            enriched["source"] = "local"
-            local_results.append(enriched)
-            if enriched.get("discogs_id"):
-                local_discogs_ids.add(enriched["discogs_id"])
+    for album in local_albums:
+        if album:
+            album["source"] = "local"
+            local_results.append(album)
+            if album.get("discogs_id"):
+                local_discogs_ids.add(album["discogs_id"])
                 
     discogs_results = []
     try:

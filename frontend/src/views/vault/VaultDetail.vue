@@ -8,31 +8,33 @@ Consente la modifica delle note, del formato, delle condizioni o la rimozione da
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { api } from '@/stores/api'
 import BackButton from '@/components/BackButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import DetailField from '@/components/DetailField.vue'
 import { FORMAT_OPTIONS as formatOptions, CONDITION_OPTIONS as conditionOptions } from '@/constants/music'
+import { useVault } from '@/composables/useVault'
 
 const route = useRoute()
 const router = useRouter()
 
-const copy = ref(null)
-const loading = ref(true)
-const editing = ref(false)
-const error = ref('')
+const {
+  loading,
+  error,
+  fetchCopy,
+  updateCopy,
+  deleteCopy
+} = useVault()
 
+const copy = ref(null)
+const editing = ref(false)
 const form = ref({ format: '', condition: '', personalNotes: '' })
 
 onMounted(async () => {
   try {
-    const res = await api.get(`/copies/${route.params.id}`)
-    copy.value = res.data
+    copy.value = await fetchCopy(route.params.id)
   } catch (err) {
-    error.value = err.message || 'Copia non trovata nel Vault'
-  } finally {
-    loading.value = false
+    // Errore gestito da composable (error.value)
   }
 })
 
@@ -47,25 +49,24 @@ function startEdit() {
 
 async function handleSave() {
   try {
-    const res = await api.put(`/copies/${copy.value.id_copy}`, {
+    copy.value = await updateCopy(copy.value.id_copy, {
       format: form.value.format,
       condition: form.value.condition,
       personalNotes: form.value.personalNotes || null
     })
-    copy.value = res.data
     editing.value = false
   } catch (err) {
-    error.value = err.message || 'Errore durante l\'aggiornamento'
+    // Errore gestito da composable
   }
 }
 
 async function handleDelete() {
   if (!confirm('Rimuovere questo disco dal Vault?')) return
   try {
-    await api.delete(`/copies/${copy.value.id_copy}`)
+    await deleteCopy(copy.value.id_copy)
     router.push('/vault')
   } catch (err) {
-    error.value = err.message || 'Errore durante l\'eliminazione'
+    // Errore gestito da composable
   }
 }
 

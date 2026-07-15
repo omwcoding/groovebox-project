@@ -127,3 +127,18 @@ def update_album_cover(album_id, filename):
     conn = get_db()
     with conn:
         conn.execute("UPDATE ALBUM SET coverPath = ? WHERE id_album = ?", (filename, album_id))
+
+
+def search_albums_local(query, limit=10):
+    """Cerca gli album nel database locale in base al titolo o al nome dell'artista."""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT DISTINCT al.* 
+           FROM ALBUM al
+           LEFT JOIN ALBUM_ARTIST aa ON al.id_album = aa.id_album
+           LEFT JOIN ARTIST ar ON aa.id_artist = ar.id_artist
+           WHERE al.title LIKE ? OR ar.name LIKE ?
+           LIMIT ?""",
+        (f"%{query}%", f"%{query}%", limit)
+    ).fetchall()
+    return [enrich_album(r) for r in rows]

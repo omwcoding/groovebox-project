@@ -14,7 +14,8 @@ from dal.user_dal import (
     get_all_collectors,
     update_user_profile,
     delete_user_and_keep_albums,
-    get_user_public_profile
+    get_user_public_profile,
+    get_user_stats
 )
 from core.errors import BadRequestError, ForbiddenError, NotFoundError, ConflictError
 
@@ -123,13 +124,9 @@ def get_user(user_id):
     if not user or user["role"] != "collector":
         raise NotFoundError("Utente non trovato")
 
-    conn = get_db()
-    copies_count = conn.execute("SELECT COUNT(*) FROM PHYSICAL_COPY WHERE id_user = ?", (user_id,)).fetchone()[0]
-    albums_count = conn.execute("SELECT COUNT(*) FROM ALBUM WHERE id_user = ?", (user_id,)).fetchone()[0]
-
+    stats = get_user_stats(user_id)
     user_dict = dict(user)
-    user_dict["copies_count"] = copies_count
-    user_dict["albums_count"] = albums_count
+    user_dict.update(stats)
 
     return jsonify({
         "status": "success",
