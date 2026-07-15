@@ -6,12 +6,11 @@ dei singoli utenti (aggiunta, modifica, rimozione e svuotamento).
 """
 
 from flask import Blueprint, request, jsonify, g, current_app
-from core.auth import token_required
+from core.auth import token_required, require_role
 from dal.copy_dal import (
     get_user_copies,
     find_copy_by_id_and_user,
     insert_copy,
-    create_copy_cascade,
     update_copy_data,
     delete_copy_by_id,
     delete_all_copies_by_user
@@ -25,10 +24,9 @@ bp = Blueprint("copies", __name__, url_prefix="/api/copies")
 
 @bp.route("", methods=["GET"])
 @token_required
+@require_role("collector")
 def get_my_copies():
     """Restituisce l'elenco di tutte le copie fisiche appartenenti all'utente corrente."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Accesso riservato ai Collector")
 
     copies = get_user_copies(g.current_user["id_user"])
     return jsonify({
@@ -39,10 +37,9 @@ def get_my_copies():
 
 @bp.route("/<int:copy_id>", methods=["GET"])
 @token_required
+@require_role("collector")
 def get_copy(copy_id):
     """Restituisce il dettaglio di una singola copia fisica di proprietà dell'utente."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Accesso riservato ai Collector")
 
     copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
     if not copy:
@@ -53,10 +50,9 @@ def get_copy(copy_id):
 
 @bp.route("", methods=["POST"])
 @token_required
+@require_role("collector")
 def create_copy():
     """Aggiunge una nuova copia fisica alla collezione dell'utente."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Accesso riservato ai Collector")
 
     data = request.get_json()
     validate_json_payload(data, ["id_album", "format", "condition"])
@@ -87,68 +83,14 @@ def create_copy():
     }), 201
 
 
-@bp.route("/cascade", methods=["POST"])
-@token_required
-def create_copy_cascade_route():
-    """Registra una copia a cascata, creando l'album e/o l'artista qualora non esistano."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Accesso riservato ai Collector")
 
-    data = request.get_json()
-    validate_json_payload(data, ["title", "artist_ids", "format", "condition"])
-
-    title = data["title"].strip()
-    artist_ids = data["artist_ids"]
-    if not isinstance(artist_ids, list) or not artist_ids:
-        raise BadRequestError("Almeno un artista deve essere associato all'album")
-        
-    format_val = data["format"].strip()
-    condition = data["condition"].strip()
-
-    release_year = data.get("releaseYear")
-    if release_year:
-        try:
-            release_year = int(release_year)
-        except ValueError:
-            release_year = None
-    else:
-        release_year = None
-
-    genre = (data.get("genre") or "").strip() or None
-    if genre and genre not in current_app.config["ALLOWED_GENRES"]:
-        raise BadRequestError(f"Genere musicale '{genre}' non valido o non consentito")
-
-    personal_notes = data.get("personalNotes")
-    if isinstance(personal_notes, str):
-        personal_notes = personal_notes.strip() or None
-    else:
-        personal_notes = None
-
-    copy_id = create_copy_cascade(
-        title=title,
-        artist_ids=artist_ids,
-        release_year=release_year,
-        genre=genre,
-        format_val=format_val,
-        condition=condition,
-        personal_notes=personal_notes,
-        user_id=g.current_user["id_user"]
-    )
-    copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
-    
-    return jsonify({
-        "status": "success",
-        "message": "Copia fisica aggiunta alla collezione con successo (creazione a cascata)",
-        "data": copy
-    }), 201
 
 
 @bp.route("/<int:copy_id>", methods=["PUT"])
 @token_required
+@require_role("collector")
 def update_copy(copy_id):
     """Aggiorna le informazioni relative a una copia fisica nella libreria."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Accesso riservato ai Collector")
 
     copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
     if not copy:
@@ -181,10 +123,9 @@ def update_copy(copy_id):
 
 @bp.route("/<int:copy_id>", methods=["DELETE"])
 @token_required
+@require_role("collector")
 def delete_copy(copy_id):
     """Rimuove una copia fisica dalla collezione personale dell'utente."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Accesso riservato ai Collector")
 
     copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
     if not copy:
@@ -199,10 +140,9 @@ def delete_copy(copy_id):
 
 @bp.route("/clear", methods=["DELETE"])
 @token_required
+@require_role("collector")
 def clear_copies():
     """Elimina l'intera collezione di copie fisiche dell'utente loggato."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Accesso riservato ai Collector")
 
     delete_all_copies_by_user(g.current_user["id_user"])
     return jsonify({

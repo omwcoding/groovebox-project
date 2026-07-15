@@ -9,7 +9,7 @@ l'utente autenticato nell'oggetto globale g.current_user.
 from functools import wraps
 from flask import request, g, current_app
 import jwt
-from core.errors import UnauthorizedError
+from core.errors import UnauthorizedError, ForbiddenError
 from dal.user_dal import get_user_by_id
 
 
@@ -51,4 +51,24 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
+
+
+def require_role(*roles):
+    """
+    Decoratore per limitare l'accesso alle rotte in base al ruolo dell'utente.
+    Deve essere applicato sotto (dopo) @token_required.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if not hasattr(g, "current_user") or g.current_user is None:
+                raise UnauthorizedError("Autenticazione richiesta")
+
+            user_role = g.current_user.get("role")
+            if user_role not in roles:
+                raise ForbiddenError("Accesso non consentito per questo ruolo")
+
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
 

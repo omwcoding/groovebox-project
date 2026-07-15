@@ -57,50 +57,7 @@ def insert_copy(id_album, format_val, condition, personal_notes, user_id):
         copy_id = cursor.lastrowid
     return copy_id
 
-def create_copy_cascade(title, artist_ids, release_year, genre, format_val, condition, personal_notes, user_id):
-    """
-    Esegue la registrazione di una copia fisica a cascata: se l'album specificato 
-    non esiste, lo inserisce a catalogo associando gli artisti e creando infine la copia.
-    """
-    conn = get_db()
-    added_date = datetime.date.today().isoformat()
-    with conn:
-        first_artist_id = artist_ids[0] if artist_ids else None
-        
-        album = None
-        if first_artist_id:
-            album = conn.execute(
-                """SELECT al.id_album 
-                   FROM ALBUM al 
-                   JOIN ALBUM_ARTIST aa ON al.id_album = aa.id_album 
-                   WHERE LOWER(al.title) = LOWER(?) AND aa.id_artist = ?""", 
-                (title.strip(), first_artist_id)
-            ).fetchone()
 
-        if album:
-            album_id = album["id_album"]
-        else:
-            cursor = conn.execute(
-                """INSERT INTO ALBUM (title, releaseYear, genre, coverPath, id_user) 
-                   VALUES (?, ?, ?, NULL, ?)""", 
-                (title.strip(), release_year, genre, user_id)
-            )
-            album_id = cursor.lastrowid
-            
-            for artist_id in artist_ids:
-                conn.execute(
-                    "INSERT OR IGNORE INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)", 
-                    (album_id, artist_id)
-                )
-
-        cursor = conn.execute(
-            """INSERT INTO PHYSICAL_COPY (format, condition, addedDate, personalNotes, id_user, id_album) 
-               VALUES (?, ?, ?, ?, ?, ?)""", 
-            (format_val.strip(), condition.strip(), added_date, personal_notes, user_id, album_id)
-        )
-        copy_id = cursor.lastrowid
-        
-        return copy_id
 
 def update_copy_data(copy_id, fields, values):
     """

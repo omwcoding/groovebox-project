@@ -9,6 +9,7 @@ import requests
 import os
 import json
 import datetime
+import re
 from core.config import Config
 from core.database import get_db
 
@@ -138,7 +139,6 @@ def get_itunes_cover_url(artist, album):
     if not artist or not album:
         return None
         
-    import re
     def clean(s):
         if not s:
             return ""

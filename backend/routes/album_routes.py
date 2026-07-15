@@ -7,7 +7,7 @@ e per l'upload/recupero delle copertine (immagini).
 
 from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
 from werkzeug.utils import secure_filename
-from core.auth import token_required
+from core.auth import token_required, require_role
 from dal.album_dal import (
     get_all_albums,
     find_album_by_id,
@@ -51,10 +51,9 @@ def get_album(album_id):
 
 @bp.route("", methods=["POST"])
 @token_required
+@require_role("collector")
 def create_album():
     """Registra un nuovo album nel catalogo globale (autorizzato solo per ruolo 'collector')."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Solo i Collector possono inserire nuovi album")
 
     data = request.get_json()
     validate_json_payload(data, ["title"])
@@ -83,10 +82,9 @@ def create_album():
 
 @bp.route("/<int:album_id>", methods=["PUT"])
 @token_required
+@require_role("administrator")
 def update_album(album_id):
     """Aggiorna le informazioni di un album a catalogo (autorizzato solo per ruolo 'administrator')."""
-    if g.current_user["role"] != "administrator":
-        raise ForbiddenError("Solo gli amministratori possono modificare gli album")
 
     album = find_album_by_id(album_id)
     if not album:
@@ -124,10 +122,9 @@ def update_album(album_id):
 
 @bp.route("/<int:album_id>", methods=["DELETE"])
 @token_required
+@require_role("administrator")
 def delete_album(album_id):
     """Elimina definitivamente un album dal catalogo (autorizzato solo per ruolo 'administrator')."""
-    if g.current_user["role"] != "administrator":
-        raise ForbiddenError("Solo gli amministratori possono eliminare gli album")
 
     album = find_album_by_id(album_id)
     if not album:
@@ -156,6 +153,7 @@ def delete_album(album_id):
 
 @bp.route("/<int:album_id>/cover", methods=["POST"])
 @token_required
+@require_role("collector", "administrator")
 def upload_cover(album_id):
     """Carica o sostituisce l'immagine di copertina per l'album specificato."""
     album = find_album_by_id(album_id)
@@ -165,8 +163,6 @@ def upload_cover(album_id):
     role = g.current_user["role"]
     if role == "collector" and album["id_user"] != g.current_user["id_user"]:
         raise ForbiddenError("Non autorizzato ad aggiornare la copertina di questo album")
-    if role not in ("collector", "administrator"):
-        raise ForbiddenError("Non autorizzato")
 
     if "file" not in request.files:
         raise BadRequestError("Nessun file fornito nella richiesta")

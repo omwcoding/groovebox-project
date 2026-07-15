@@ -7,7 +7,7 @@ e per le operazioni di moderazione sui Collector da parte degli amministratori.
 
 from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
-from core.auth import token_required
+from core.auth import token_required, require_role
 from core.database import get_db
 from dal.user_dal import (
     get_user_by_id,
@@ -33,10 +33,9 @@ def get_my_profile():
 
 @bp.route("/me", methods=["PUT"])
 @token_required
+@require_role("collector")
 def update_my_profile():
     """Consente all'utente (solo Collector) di aggiornare i propri dati anagrafici o la password."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Solo i Collector possono modificare il proprio profilo")
 
     data = request.get_json()
     if not data:
@@ -87,10 +86,9 @@ def update_my_profile():
 
 @bp.route("/me", methods=["DELETE"])
 @token_required
+@require_role("collector")
 def delete_my_account():
     """Consente ad un Collector di eliminare permanentemente il proprio account."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Solo i Collector possono eliminare il proprio account")
 
     user_id = g.current_user["id_user"]
     delete_user_and_keep_albums(user_id)
@@ -103,10 +101,9 @@ def delete_my_account():
 
 @bp.route("", methods=["GET"])
 @token_required
+@require_role("administrator")
 def get_all_users():
     """Restituisce l'elenco completo di tutti i Collector registrati (solo Admin)."""
-    if g.current_user["role"] != "administrator":
-        raise ForbiddenError("Accesso riservato agli amministratori")
 
     users = get_all_collectors()
     return jsonify({
@@ -117,10 +114,9 @@ def get_all_users():
 
 @bp.route("/<int:user_id>", methods=["GET"])
 @token_required
+@require_role("administrator")
 def get_user(user_id):
     """Restituisce i dettagli anagrafici e le metriche di un singolo Collector (solo Admin)."""
-    if g.current_user["role"] != "administrator":
-        raise ForbiddenError("Accesso riservato agli amministratori")
 
     user = get_user_by_id(user_id)
 
@@ -143,10 +139,9 @@ def get_user(user_id):
 
 @bp.route("/<int:user_id>", methods=["DELETE"])
 @token_required
+@require_role("administrator")
 def delete_user(user_id):
     """Elimina definitivamente un Collector dalla piattaforma (solo Admin)."""
-    if g.current_user["role"] != "administrator":
-        raise ForbiddenError("Accesso riservato agli amministratori")
 
     user = get_user_by_id(user_id)
 
@@ -190,11 +185,10 @@ def get_shared_profile(username):
 
 @bp.route("/me/public-profile", methods=["PUT"])
 @token_required
+@require_role("collector")
 def update_public_profile():
     """Aggiorna le impostazioni del profilo pubblico: toggle is_public e bio.
     Riservato ai Collector."""
-    if g.current_user["role"] != "collector":
-        raise ForbiddenError("Solo i Collector possono configurare il profilo pubblico")
 
     data = request.get_json()
     if data is None:

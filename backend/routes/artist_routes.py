@@ -7,7 +7,7 @@ e per la consultazione della relativa discografia.
 
 from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
 import os
-from core.auth import token_required
+from core.auth import token_required, require_role
 from dal.artist_dal import (
     get_all_artists,
     find_artist_by_id,
@@ -70,10 +70,9 @@ def create_artist():
 
 @bp.route("/<int:artist_id>", methods=["PUT"])
 @token_required
+@require_role("administrator")
 def update_artist(artist_id):
     """Aggiorna il nome di un artista (autorizzato solo per ruolo 'administrator')."""
-    if g.current_user["role"] != "administrator":
-        raise ForbiddenError("Solo gli amministratori possono modificare gli artisti")
 
     artist = find_artist_by_id(artist_id)
     if not artist:
@@ -92,10 +91,9 @@ def update_artist(artist_id):
 
 @bp.route("/<int:artist_id>", methods=["DELETE"])
 @token_required
+@require_role("administrator")
 def delete_artist(artist_id):
     """Elimina un artista dal catalogo globale (autorizzato solo per ruolo 'administrator')."""
-    if g.current_user["role"] != "administrator":
-        raise ForbiddenError("Solo gli amministratori possono eliminare gli artisti")
 
     artist = find_artist_by_id(artist_id)
     if not artist:
