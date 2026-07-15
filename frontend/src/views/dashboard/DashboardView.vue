@@ -1,6 +1,6 @@
 <!--
-GrooveBox - Pagina Home della Dashboard Interna
-===============================================
+Mint - Pagina Home della Dashboard Interna
+=========================================
 Funge da pannello di smistamento per gli utenti autenticati, esponendo collegamenti rapidi 
 differenziati in base al ruolo dell'utente (Collector o Administrator).
 -->
@@ -20,7 +20,7 @@ const authStore = useAuthStore()
         Ciao, {{ authStore.user?.name }}
       </h1>
       <p class="text-white/40 text-lg font-medium">
-        {{ authStore.isAdmin ? 'Pannello di controllo GrooveBox' : 'Esplora e gestisci il tuo archivio musicale.' }}
+        {{ authStore.isAdmin ? 'Pannello di controllo Mint' : 'Esplora e gestisci il tuo archivio musicale.' }}
       </p>
     </div>
 

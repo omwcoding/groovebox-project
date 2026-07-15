@@ -15,7 +15,7 @@ import BackButton from '@/components/BackButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import DetailField from '@/components/DetailField.vue'
-import { GENRE_OPTIONS } from '@/constants/music'
+import { GENRE_OPTIONS, FORMAT_OPTIONS as formatOptions, CONDITION_OPTIONS as conditionOptions } from '@/constants/music'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,6 +100,49 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const showAddCopyModal = ref(false)
+const format = ref('Vinile')
+const condition = ref('Nuovo')
+const personalNotes = ref('')
+const actionLoading = ref(false)
+const successMessage = ref('')
+
+async function addToWishlist() {
+  actionLoading.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    await api.post('/wishlist', {
+      id_album: album.value.id_album
+    })
+    successMessage.value = 'Album aggiunto alla Wishlist!'
+  } catch (err) {
+    error.value = err.message || "Errore durante l'aggiunta alla wishlist"
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function addToCollection() {
+  actionLoading.value = true
+  error.value = ''
+  successMessage.value = ''
+  try {
+    await api.post('/copies', {
+      id_album: album.value.id_album,
+      format: format.value,
+      condition: condition.value,
+      personalNotes: personalNotes.value.trim() || null
+    })
+    successMessage.value = 'Disco aggiunto al Vault!'
+    showAddCopyModal.value = false
+  } catch (err) {
+    error.value = err.message || "Errore durante l'aggiunta al Vault"
+  } finally {
+    actionLoading.value = false
+  }
+}
 
 function startEdit() {
   form.value = {
@@ -200,6 +243,14 @@ async function handleDelete() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
                   Discogs
                 </a>
+                <a 
+                  :href="`https://open.spotify.com/search/${encodeURIComponent(album.title + ' ' + (album.artists?.[0]?.name || ''))}`" 
+                  target="_blank" 
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12a15.3 15.3 0 0 1 7.2-2.2"/><path d="M7.3 15.2a15.7 15.7 0 0 1 9.4-3.3"/><path d="M9 9a14.8 14.8 0 0 1 5.3-1.1"/></svg>
+                  Spotify
+                </a>
               </div>
               <div v-if="album.artists?.length" class="flex flex-wrap gap-2 mb-6">
                 <RouterLink
@@ -249,14 +300,30 @@ async function handleDelete() {
             </div>
           </div>
 
-          <div class="mt-12 pt-6 border-t border-white/5">
+          <div class="mt-12 pt-6 border-t border-white/5 space-y-4">
+            <div v-if="successMessage" class="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-semibold rounded-2xl text-center">
+              {{ successMessage }}
+            </div>
+
             <!-- Azione Collector: aggiungi alla collezione -->
-            <div v-if="authStore.isCollector">
-              <RouterLink :to="{ path: '/collection', query: { addAlbum: album.id_album } }"
-                class="apple-button apple-button-primary w-full flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                Aggiungi alla mia collezione
-              </RouterLink>
+            <div v-if="authStore.isCollector" class="flex flex-col sm:flex-row gap-3">
+              <button 
+                @click="showAddCopyModal = true"
+                :disabled="actionLoading"
+                class="apple-button apple-button-primary flex-1 flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
+                Aggiungi al Vault
+              </button>
+              
+              <button 
+                @click="addToWishlist"
+                :disabled="actionLoading"
+                class="apple-button apple-button-secondary flex-1 flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                Aggiungi alla Wishlist
+              </button>
             </div>
 
             <!-- Azioni Admin -->
@@ -387,6 +454,51 @@ async function handleDelete() {
           </button>
         </div>
       </form>
+    <!-- Modale Aggiungi al Vault -->
+    <div v-if="showAddCopyModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4">
+      <div @click="showAddCopyModal = false" class="absolute inset-0 bg-black/60 backdrop-blur-md"></div>
+      <div class="relative glass-panel w-full max-w-md rounded-apple-3xl shadow-2xl border border-white/10 overflow-hidden z-10 flex flex-col text-left">
+        <div class="p-6 border-b border-white/5 flex items-center justify-between">
+          <h3 class="text-xl font-bold">Aggiungi al Vault</h3>
+          <button @click="showAddCopyModal = false" class="text-white/40 hover:text-white rounded-full w-8 h-8 flex items-center justify-center bg-white/5">✕</button>
+        </div>
+
+        <form @submit.prevent="addToCollection" class="p-6 space-y-5">
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Formato</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                v-for="opt in formatOptions"
+                :key="opt"
+                type="button"
+                @click="format = opt"
+                :class="format === opt ? 'bg-brand-secondary/20 border-brand-secondary text-white' : 'bg-white/5 border-white/5 text-white/60'"
+                class="py-2 border rounded-xl text-xs font-bold transition-all"
+              >
+                {{ opt }}
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Condizione</label>
+            <select v-model="condition" class="apple-input">
+              <option v-for="c in conditionOptions" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
+            <textarea v-model="personalNotes" rows="2" placeholder="Note d'acquisto, edizione..." class="apple-input resize-none"></textarea>
+          </div>
+
+          <div class="flex gap-3 pt-4 border-t border-white/5">
+            <button type="submit" class="apple-button apple-button-primary flex-grow" :disabled="actionLoading">Aggiungi</button>
+            <button type="button" @click="showAddCopyModal = false" class="apple-button apple-button-secondary">Annulla</button>
+          </div>
+        </form>
+      </div>
+    </div>
     </div>
   </div>
 </template>

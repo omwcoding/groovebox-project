@@ -20,15 +20,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Ripristina la sessione utente precedentemente salvata nel browser.
   function loadFromStorage() {
-    const savedToken = localStorage.getItem('groovebox_token')
-    const savedUser = localStorage.getItem('groovebox_user')
+    const savedToken = localStorage.getItem('mint_token')
+    const savedUser = localStorage.getItem('mint_user')
     if (savedToken && savedUser) {
       try {
         token.value = savedToken
         user.value = JSON.parse(savedUser)
       } catch (_) {
-        localStorage.removeItem('groovebox_token')
-        localStorage.removeItem('groovebox_user')
+        localStorage.removeItem('mint_token')
+        localStorage.removeItem('mint_user')
       }
     }
   }
@@ -38,8 +38,8 @@ export const useAuthStore = defineStore('auth', () => {
     const response = await api.post('/auth/login', { username, password })
     token.value = response.data.token
     user.value = response.data.user
-    localStorage.setItem('groovebox_token', token.value)
-    localStorage.setItem('groovebox_user', JSON.stringify(user.value))
+    localStorage.setItem('mint_token', token.value)
+    localStorage.setItem('mint_user', JSON.stringify(user.value))
     return response
   }
 
@@ -53,14 +53,14 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     user.value = null
     token.value = null
-    localStorage.removeItem('groovebox_token')
-    localStorage.removeItem('groovebox_user')
+    localStorage.removeItem('mint_token')
+    localStorage.removeItem('mint_user')
   }
 
   // Sincronizza le informazioni utente aggiornate nello store e nello storage locale.
   function updateUser(updatedUser) {
     user.value = { ...user.value, ...updatedUser }
-    localStorage.setItem('groovebox_user', JSON.stringify(user.value))
+    localStorage.setItem('mint_user', JSON.stringify(user.value))
   }
 
   loadFromStorage()

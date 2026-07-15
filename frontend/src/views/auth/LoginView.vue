@@ -1,6 +1,6 @@
 <!--
-GrooveBox - Pagina Login
-========================
+Mint - Pagina Login
+==================
 Consente l'accesso alla piattaforma per gli utenti registrati tramite 
 l'inserimento di username e password.
 -->
@@ -54,9 +54,9 @@ async function handleLogin() {
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-brand-secondary"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
         </RouterLink>
         <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
-          Bentornato su GrooveBox
+          Bentornato su Mint
         </h1>
-        <p class="text-white/30 text-sm font-medium mt-1">Accedi per gestire il tuo caveau musicale</p>
+        <p class="text-white/30 text-sm font-medium mt-1">Accedi per gestire il tuo vault musicale</p>
       </div>
 
       <!-- Card -->

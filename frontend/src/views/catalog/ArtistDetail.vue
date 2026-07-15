@@ -88,50 +88,60 @@ const filteredAlbums = computed(() => {
     <div v-else-if="artist" class="glass-panel p-8 rounded-apple-2xl shadow-2xl border border-white/10 relative">
       <ErrorMessage v-if="error" :message="error" />
 
-      <!-- Header artista -->
-      <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-white/5">
-        <div class="w-20 h-20 bg-white/5 border border-white/5 rounded-full flex items-center justify-center overflow-hidden shrink-0">
-          <img v-if="artist.image_path" :src="`/api/artists/${artist.id_artist}/image`" class="w-full h-full object-cover" />
-          <span v-else class="text-4xl">&#127908;</span>
+      <!-- Banner/Hero Artista -->
+      <div class="relative h-64 md:h-80 rounded-t-apple-2xl overflow-hidden -mx-8 -mt-8 flex items-end mb-6">
+        <!-- Blurred background cover -->
+        <div class="absolute inset-0 bg-cover bg-center filter blur-md opacity-30 scale-105" 
+             :style="artist.image_path ? { backgroundImage: `url(/api/artists/${artist.id_artist}/image)` } : { backgroundColor: '#1e1b4b' }">
         </div>
+        <!-- Gradient overlay -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent"></div>
         
-        <div class="min-w-0 flex-grow text-center sm:text-left space-y-1">
-          <div v-if="!editing" class="space-y-2">
-            <div class="flex items-center gap-3 justify-center sm:justify-start flex-wrap">
-              <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
-                {{ artist.name }}
-              </h1>
-              <a 
-                v-if="artist.discogs_id" 
-                :href="`https://www.discogs.com/artist/${artist.discogs_id}`" 
-                target="_blank" 
-                class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white rounded-full text-[10px] font-bold tracking-wider uppercase transition-all"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
-                Discogs
-              </a>
-            </div>
-            <p class="text-white/40 text-sm font-semibold tracking-tight">
-              {{ artist.albums?.length || 0 }} album associati nel catalogo
-            </p>
+        <!-- Info Overlay -->
+        <div class="relative z-10 p-6 md:p-8 flex flex-col sm:flex-row items-center sm:items-end gap-6 w-full">
+          <div class="w-24 h-24 md:w-32 md:h-32 rounded-2xl border border-white/20 overflow-hidden shadow-2xl shrink-0 bg-white/5 flex items-center justify-center text-4xl">
+            <img v-if="artist.image_path" :src="`/api/artists/${artist.id_artist}/image`" class="w-full h-full object-cover" />
+            <span v-else>&#127908;</span>
           </div>
           
-          <form v-else @submit.prevent="handleSave" class="flex flex-col sm:flex-row gap-3 pt-2">
-            <input v-model="editName" type="text" required class="apple-input" />
-            <div class="flex gap-2">
-              <button type="submit" class="apple-button apple-button-primary py-2.5">
-                Salva
-              </button>
-              <button type="button" @click="editing = false" class="apple-button apple-button-secondary py-2.5">
-                Annulla
-              </button>
+          <div class="min-w-0 flex-grow text-center sm:text-left space-y-1">
+            <div v-if="!editing" class="space-y-2">
+              <div class="flex items-center gap-3 justify-center sm:justify-start flex-wrap">
+                <h1 class="text-3xl md:text-5xl font-black tracking-tight text-white drop-shadow-md">
+                  {{ artist.name }}
+                </h1>
+                <a 
+                  v-if="artist.discogs_id" 
+                  :href="`https://www.discogs.com/artist/${artist.discogs_id}`" 
+                  target="_blank" 
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/10 hover:bg-white/20 border border-white/10 text-white/70 hover:text-white rounded-full text-[10px] font-bold tracking-wider uppercase transition-all shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                  Discogs
+                </a>
+              </div>
+              <p class="text-white/60 text-sm font-semibold tracking-tight">
+                {{ artist.albums?.length || 0 }} album associati nel catalogo
+              </p>
             </div>
-          </form>
+            
+            <form v-else @submit.prevent="handleSave" class="flex flex-col sm:flex-row gap-3 pt-2">
+              <input v-model="editName" type="text" required class="apple-input bg-black/40 border-white/20 text-white placeholder-white/30" />
+              <div class="flex gap-2">
+                <button type="submit" class="apple-button apple-button-primary py-2.5">
+                  Salva
+                </button>
+                <button type="button" @click="editing = false" class="apple-button apple-button-secondary py-2.5 bg-black/20 hover:bg-black/40 border-white/10 text-white">
+                  Annulla
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 
       <!-- Azioni Admin -->
-      <div v-if="authStore.isAdmin && !editing" class="flex gap-3 pt-6">
+      <div v-if="authStore.isAdmin && !editing" class="flex gap-3 mb-6 pb-6 border-b border-white/5">
         <button @click="startEdit"
           class="apple-button apple-button-primary py-2 text-sm">
           Modifica Artista
@@ -180,8 +190,9 @@ const filteredAlbums = computed(() => {
             :to="`/albums/${album.id_album}`"
             class="group p-4 bg-white/5 border border-white/5 hover:border-brand-secondary/30 rounded-2xl transition-all flex items-center gap-4 hover:shadow-lg hover:shadow-brand-secondary/5"
           >
-            <div class="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform duration-300">
-              &#127925;
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden shrink-0 bg-white/5 group-hover:scale-105 transition-transform duration-300">
+              <img v-if="album.coverPath" :src="`/api/albums/${album.id_album}/cover`" class="w-full h-full object-cover" />
+              <span v-else class="text-xl">&#127925;</span>
             </div>
             <div class="min-w-0 flex-grow">
               <p class="font-bold group-hover:text-brand-secondary transition-colors truncate">{{ album.title }}</p>

@@ -6,7 +6,7 @@ delle credenziali e dei dati personali, nonchè lo svuotamento della collezione 
 -->
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/stores/api'
@@ -120,6 +120,24 @@ async function handleClearCollection() {
     loading.value = false
   }
 }
+
+const copied = ref(false)
+
+const shareUrl = computed(() => {
+  const base = window.location.origin
+  return `${base}/share/${authStore.user?.username}`
+})
+
+async function copyShareUrl() {
+  try {
+    await navigator.clipboard.writeText(shareUrl.value)
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 2000)
+  } catch (_) {
+  }
+}
 </script>
 
 <template>
@@ -195,6 +213,26 @@ async function handleClearCollection() {
           >
             Elimina account
           </button>
+        </div>
+
+        <!-- Sezione Condivisione Vault per Collector -->
+        <div v-if="authStore.isCollector" class="mt-8 pt-6 border-t border-white/5 space-y-3">
+          <span class="text-[10px] font-bold uppercase tracking-widest text-white/30 block">Condividi il tuo Vault</span>
+          <p class="text-xs text-white/50">Consenti ad altri utenti di esplorare la tua collezione in sola lettura con questo link pubblico:</p>
+          <div class="flex items-center gap-2">
+            <input 
+              type="text" 
+              readonly 
+              :value="shareUrl" 
+              class="apple-input !py-2 text-xs !bg-white/[0.02] flex-grow select-all font-mono" 
+            />
+            <button 
+              @click="copyShareUrl" 
+              class="apple-button apple-button-primary !py-2.5 px-4 text-xs font-bold whitespace-nowrap"
+            >
+              {{ copied ? 'Copiato!' : 'Copia Link' }}
+            </button>
+          </div>
         </div>
       </div>
 

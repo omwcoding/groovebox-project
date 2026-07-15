@@ -56,6 +56,50 @@ def search_artist_route():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@bp.route("/search/unified", methods=["GET"])
+@token_required
+def search_unified_route():
+    """Ricerca unificata (locale + Discogs)."""
+    query = request.args.get("q", "").strip()
+    if not query:
+        raise BadRequestError("Parametro di ricerca 'q' mancante")
+    
+    conn = get_db()
+    local_rows = conn.execute(
+        """SELECT DISTINCT al.* 
+           FROM ALBUM al
+           LEFT JOIN ALBUM_ARTIST aa ON al.id_album = aa.id_album
+           LEFT JOIN ARTIST ar ON aa.id_artist = ar.id_artist
+           WHERE al.title LIKE ? OR ar.name LIKE ?
+           LIMIT 10""",
+        (f"%{query}%", f"%{query}%")
+    ).fetchall()
+    
+    local_results = []
+    local_discogs_ids = set()
+    for row in local_rows:
+        enriched = enrich_album(row)
+        if enriched:
+            enriched["source"] = "local"
+            local_results.append(enriched)
+            if enriched.get("discogs_id"):
+                local_discogs_ids.add(enriched["discogs_id"])
+                
+    discogs_results = []
+    try:
+        discogs_raw = search_releases(query, limit=10)
+        for r in discogs_raw:
+            if r.get("discogs_id") not in local_discogs_ids:
+                r["source"] = "discogs"
+                discogs_results.append(r)
+    except Exception:
+        pass
+        
+    return jsonify({
+        "status": "success",
+        "data": local_results + discogs_results
+    })
+
 @bp.route("/import/album", methods=["POST"])
 @token_required
 def import_album_route():

@@ -8,7 +8,7 @@
 const API_BASE = '/api'
 
 async function request(endpoint, options = {}) {
-  const token = localStorage.getItem('groovebox_token')
+  const token = localStorage.getItem('mint_token')
 
   const isFormData = options.body instanceof FormData
   const headers = {
@@ -32,8 +32,8 @@ async function request(endpoint, options = {}) {
       const authStore = useAuthStore()
       authStore.logout()
     } catch (_) {
-      localStorage.removeItem('groovebox_token')
-      localStorage.removeItem('groovebox_user')
+      localStorage.removeItem('mint_token')
+      localStorage.removeItem('mint_user')
     }
     window.location.href = '/login'
     return

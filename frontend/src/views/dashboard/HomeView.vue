@@ -1,6 +1,6 @@
 <!--
-GrooveBox - Pagina Landing Pubblica
-===================================
+Mint - Pagina Landing Pubblica
+=============================
 Pagina di benvenuto principale accessibile ai visitatori non autenticati.
 Presenta brevemente gli obiettivi dell'applicazione e indirizza verso le pagine di accesso o registrazione.
 -->
@@ -21,7 +21,7 @@ import { RouterLink } from 'vue-router'
         <div class="bg-brand-secondary/20 p-1.5 rounded-lg">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-brand-secondary"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
         </div>
-        <span class="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">GrooveBox</span>
+        <span class="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">Mint</span>
       </div>
     </header>
 
@@ -31,7 +31,7 @@ import { RouterLink } from 'vue-router'
         La tua musica,<br />collezionata con cura.
       </h1>
       <p class="text-white/40 text-lg md:text-xl font-medium max-w-2xl mb-12 leading-relaxed">
-        GrooveBox è il caveau digitale per la tua collezione musicale. 
+        Mint è il vault digitale per la tua collezione musicale. 
         Consulta il catalogo della community, aggiungi i tuoi album e tieni traccia della tua collezione personale.
       </p>
       <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
@@ -53,7 +53,7 @@ import { RouterLink } from 'vue-router'
     <!-- Minimal Footer -->
     <footer class="border-t border-white/5 py-8 px-6 opacity-30 hover:opacity-75 transition-opacity duration-700 z-10">
       <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-        <p class="text-xs tracking-tight">GrooveBox. Progettato per collezionisti di musica.</p>
+        <p class="text-xs tracking-tight">Mint. Progettato per collezionisti di musica.</p>
         <div class="flex gap-6 text-xs font-semibold">
           <span class="text-slate-500">Omar Balde.</span>
         </div>

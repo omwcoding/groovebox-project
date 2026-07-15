@@ -7,7 +7,38 @@ il recupero dei dettagli delle release (inclusa la tracklist) e la mappatura dei
 
 import requests
 import os
+import json
+import datetime
 from core.config import Config
+from core.database import get_db
+
+def _get_cached_response(key, max_age_hours):
+    try:
+        conn = get_db()
+        row = conn.execute(
+            "SELECT response_json, cached_at FROM DISCOGS_CACHE WHERE cache_key = ?",
+            (key,)
+        ).fetchone()
+        if row:
+            cached_at = datetime.datetime.fromisoformat(row["cached_at"])
+            age = (datetime.datetime.now() - cached_at).total_seconds() / 3600
+            if age <= max_age_hours:
+                return json.loads(row["response_json"])
+    except Exception:
+        pass
+    return None
+
+def _set_cached_response(key, data):
+    try:
+        conn = get_db()
+        with conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO DISCOGS_CACHE (cache_key, response_json, cached_at)
+                   VALUES (?, ?, ?)""",
+                (key, json.dumps(data), datetime.datetime.now().isoformat())
+            )
+    except Exception:
+        pass
 
 def _get_headers():
     """Genera gli header di autenticazione per le richieste a Discogs."""
@@ -28,6 +59,11 @@ def search_releases(query, limit=10):
     Cerca release/album sul database di Discogs.
     Ritorna una lista strutturata con id, titolo, anno, generi e immagine di copertina (thumbnail).
     """
+    cache_key = f"search:album:{query}:{limit}"
+    cached = _get_cached_response(cache_key, 1)
+    if cached is not None:
+        return cached
+
     url = "https://api.discogs.com/database/search"
     params = {
         "q": query,
@@ -60,12 +96,18 @@ def search_releases(query, limit=10):
             "thumb": r.get("thumb")
         })
         
+    _set_cached_response(cache_key, formatted_results)
     return formatted_results
 
 def search_artists(query, limit=10):
     """
     Cerca artisti sul database di Discogs.
     """
+    cache_key = f"search:artist:{query}:{limit}"
+    cached = _get_cached_response(cache_key, 1)
+    if cached is not None:
+        return cached
+
     url = "https://api.discogs.com/database/search"
     params = {
         "q": query,
@@ -85,6 +127,7 @@ def search_artists(query, limit=10):
             "thumb": r.get("thumb")
         })
         
+    _set_cached_response(cache_key, formatted_results)
     return formatted_results
 
 def get_itunes_cover_url(artist, album):
@@ -142,6 +185,11 @@ def get_release(release_id):
     Recupera i dettagli completi di una singola release tramite ID Discogs.
     Inclusi artisti, tracklist, anno di uscita ed immagini di copertina primarie.
     """
+    cache_key = f"release:{release_id}"
+    cached = _get_cached_response(cache_key, 24)
+    if cached is not None:
+        return cached
+
     url = f"https://api.discogs.com/releases/{release_id}"
     response = requests.get(url, headers=_get_headers())
     response.raise_for_status()
@@ -177,7 +225,7 @@ def get_release(release_id):
                     cover_url = m_prim[0].get("uri") if m_prim else m_images[0].get("uri")
         except Exception:
             pass
-
+ 
     # 4. Fallback finale sulla thumbnail
     if not cover_url:
         cover_url = data.get("thumb")
@@ -211,7 +259,7 @@ def get_release(release_id):
         released_str = data.get("released", "")
         if len(released_str) >= 4 and released_str[:4].isdigit():
             release_year = int(released_str[:4])
-
+ 
     # Etichetta e numero di catalogo
     label_name = None
     catno = None
@@ -219,18 +267,18 @@ def get_release(release_id):
     if labels:
         label_name = clean_artist_name(labels[0].get("name", ""))
         catno = labels[0].get("catno")
-
+ 
     # Codice a barre
     barcode = None
     for ident in data.get("identifiers", []):
         if ident.get("type") == "Barcode":
             barcode = ident.get("value", "").strip().replace(" ", "")
             break
-
+ 
     # Paese
     country = data.get("country")
             
-    return {
+    result = {
         "discogs_id": data.get("id"),
         "title": clean_title(data.get("title")),
         "release_year": release_year,
@@ -243,12 +291,20 @@ def get_release(release_id):
         "barcode": barcode,
         "country": country
     }
+    
+    _set_cached_response(cache_key, result)
+    return result
 
 def get_artist(artist_id):
     """
     Recupera le informazioni dettagliate di un artista tramite ID Discogs.
     Inclusi biografia e foto del profilo.
     """
+    cache_key = f"artist:{artist_id}"
+    cached = _get_cached_response(cache_key, 24)
+    if cached is not None:
+        return cached
+
     url = f"https://api.discogs.com/artists/{artist_id}"
     response = requests.get(url, headers=_get_headers())
     response.raise_for_status()
@@ -264,12 +320,15 @@ def get_artist(artist_id):
         else:
             photo_url = images[0].get("uri")
             
-    return {
+    result = {
         "discogs_id": data.get("id"),
         "name": clean_artist_name(data.get("name", "")),
         "biography": data.get("profile", ""),
         "photo_url": photo_url
     }
+    
+    _set_cached_response(cache_key, result)
+    return result
 
 def download_discogs_image(url, filepath):
     """

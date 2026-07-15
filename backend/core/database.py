@@ -99,6 +99,25 @@ CREATE TABLE IF NOT EXISTS PHYSICAL_COPY (
     FOREIGN KEY (id_user)  REFERENCES USER(id_user) ON DELETE CASCADE,
     FOREIGN KEY (id_album) REFERENCES ALBUM(id_album) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS DISCOGS_CACHE (
+    cache_key       VARCHAR(255)    PRIMARY KEY,
+    response_json   TEXT            NOT NULL,
+    cached_at       TEXT            NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS WISHLIST (
+    id_wishlist     INTEGER     PRIMARY KEY AUTOINCREMENT,
+    id_user         INTEGER     NOT NULL,
+    id_album        INTEGER     DEFAULT NULL,
+    discogs_id      INTEGER,
+    title           VARCHAR(100),
+    artist_name     VARCHAR(100),
+    cover_url       VARCHAR(255),
+    addedDate       TEXT        NOT NULL,
+    FOREIGN KEY (id_user) REFERENCES USER(id_user) ON DELETE CASCADE,
+    FOREIGN KEY (id_album) REFERENCES ALBUM(id_album) ON DELETE SET NULL
+);
 """
 
 

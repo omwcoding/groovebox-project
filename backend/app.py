@@ -41,6 +41,7 @@ def create_app():
     from routes.copy_routes import bp as copy_bp
     from routes.stats_routes import bp as stats_bp
     from routes.discogs_routes import bp as discogs_bp
+    from routes.wishlist_routes import bp as wishlist_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
@@ -49,11 +50,12 @@ def create_app():
     app.register_blueprint(copy_bp)
     app.register_blueprint(stats_bp)
     app.register_blueprint(discogs_bp)
+    app.register_blueprint(wishlist_bp)
 
     @app.route("/api/health", methods=["GET"])
     def health_check():
         """Verifica lo stato di operatività del backend."""
-        return {"status": "success", "message": "GrooveBox backend is running!"}
+        return {"status": "success", "message": "Mint backend is running!"}
 
     @app.teardown_appcontext
     def close_db(error):

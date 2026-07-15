@@ -17,12 +17,14 @@ const AlbumCatalog = () => import('@/views/catalog/AlbumCatalog.vue')
 const AlbumDetail = () => import('@/views/catalog/AlbumDetail.vue')
 const ArtistCatalog = () => import('@/views/catalog/ArtistCatalog.vue')
 const ArtistDetail = () => import('@/views/catalog/ArtistDetail.vue')
-const CollectionView = () => import('@/views/collection/CollectionView.vue')
-const CopyDetail = () => import('@/views/collection/CopyDetail.vue')
+const VaultView = () => import('@/views/vault/VaultView.vue')
+const VaultDetail = () => import('@/views/vault/VaultDetail.vue')
 const UserList = () => import('@/views/admin/UserList.vue')
 const UserDetail = () => import('@/views/admin/UserDetail.vue')
 const ProfileView = () => import('@/views/dashboard/ProfileView.vue')
 const StatsView = () => import('@/views/admin/StatsView.vue')
+const WishlistView = () => import('@/views/wishlist/WishlistView.vue')
+const ProfileShareView = () => import('@/views/vault/ProfileShareView.vue')
 
 const routes = [
   {
@@ -56,10 +58,14 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/albums',
-    name: 'albums',
+    path: '/search',
+    name: 'search',
     component: AlbumCatalog,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/albums',
+    redirect: '/search'
   },
   {
     path: '/albums/:id',
@@ -80,16 +86,35 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/collection',
-    name: 'collection',
-    component: CollectionView,
+    path: '/vault',
+    name: 'vault',
+    component: VaultView,
     meta: { requiresAuth: true, role: 'collector' }
   },
   {
-    path: '/collection/:id',
-    name: 'copy-detail',
-    component: CopyDetail,
+    path: '/wishlist',
+    name: 'wishlist',
+    component: WishlistView,
     meta: { requiresAuth: true, role: 'collector' }
+  },
+  {
+    path: '/vault/:id',
+    name: 'vault-detail',
+    component: VaultDetail,
+    meta: { requiresAuth: true, role: 'collector' }
+  },
+  {
+    path: '/share/:username',
+    name: 'profile-share',
+    component: ProfileShareView
+  },
+  {
+    path: '/collection',
+    redirect: '/vault'
+  },
+  {
+    path: '/collection/:id',
+    redirect: to => `/vault/${to.params.id}`
   },
   {
     path: '/users',

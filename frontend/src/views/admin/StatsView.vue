@@ -1,6 +1,6 @@
 <!--
-GrooveBox - Dashboard Statistiche Piattaforma (Amministrazione)
-===============================================================
+Mint - Dashboard Statistiche Piattaforma (Amministrazione)
+=========================================================
 Fornisce metriche aggregate sui dati inseriti a sistema, classifiche dei collezionisti
 e grafici per la distribuzione dei supporti fisici. Accessibile solo agli amministratori.
 -->
@@ -49,7 +49,7 @@ const donutSlices = computed(() => {
 
 async function handleExportStats() {
   try {
-    const token = localStorage.getItem('groovebox_token')
+    const token = localStorage.getItem('mint_token')
     const headers = {}
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
@@ -70,7 +70,7 @@ async function handleExportStats() {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'statistiche_groovebox.json'
+    a.download = 'statistiche_mint.json'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -96,7 +96,7 @@ onMounted(async () => {
   <div class="space-y-8 animate-fade-in">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-      <PageHeader title="Statistiche Piattaforma" subtitle="Monitora l'utilizzo, la distribuzione e la crescita di GrooveBox." />
+      <PageHeader title="Statistiche Piattaforma" subtitle="Monitora l'utilizzo, la distribuzione e la crescita di Mint." />
       
       <!-- Tab Selector & Export Button -->
       <div v-if="stats" class="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0">

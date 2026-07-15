@@ -1,8 +1,8 @@
 <!--
-GrooveBox - Pagina Dettaglio Copia Fisica
-=========================================
-Mostra le informazioni di dettaglio e le note personali relative ad una copia fisica 
-posseduta dal collezionista. Permette la modifica dello stato o la rimozione dalla collezione.
+Mint - Pagina Dettaglio Copia Fisica (Vault Detail)
+===================================================
+Mostra le informazioni dettagliate, il formato, lo stato e le note personali di una copia fisica nel Vault.
+Consente la modifica delle note, del formato, delle condizioni o la rimozione dal Vault.
 -->
 
 <script setup>
@@ -30,7 +30,7 @@ onMounted(async () => {
     const res = await api.get(`/copies/${route.params.id}`)
     copy.value = res.data
   } catch (err) {
-    error.value = err.message || 'Copia non trovata'
+    error.value = err.message || 'Copia non trovata nel Vault'
   } finally {
     loading.value = false
   }
@@ -60,14 +60,15 @@ async function handleSave() {
 }
 
 async function handleDelete() {
-  if (!confirm('Rimuovere questa copia dalla collezione?')) return
+  if (!confirm('Rimuovere questo disco dal Vault?')) return
   try {
     await api.delete(`/copies/${copy.value.id_copy}`)
-    router.push('/collection')
+    router.push('/vault')
   } catch (err) {
     error.value = err.message || 'Errore durante l\'eliminazione'
   }
 }
+
 const getConditionBadgeClass = (cond) => {
   if (!cond) return ''
   switch (cond) {
@@ -99,7 +100,7 @@ function formatDate(dateStr) {
 <template>
   <div class="space-y-6 animate-fade-in max-w-4xl mx-auto">
     <!-- Back button -->
-    <BackButton to="/collection" label="Torna alla collezione" />
+    <BackButton to="/vault" label="Torna al Vault" />
 
     <LoadingSpinner v-if="loading" />
     
@@ -115,7 +116,7 @@ function formatDate(dateStr) {
           <img v-if="copy.coverPath"
             :src="`/api/albums/${copy.id_album}/cover`"
             :alt="copy.album_title"
-            class="w-full h-full object-cover"
+            class="w-full h-full object-cover animate-fade-in"
           />
           <svg v-else xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-15"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
         </div>
@@ -150,7 +151,7 @@ function formatDate(dateStr) {
 
             <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/5 text-sm">
               <DetailField label="Genere" :value="copy.genre" />
-              <DetailField label="Registrato il" :value="formatDate(copy.addedDate)" />
+              <DetailField label="Aggiunto al Vault il" :value="formatDate(copy.addedDate)" />
             </div>
 
             <div v-if="copy.personalNotes" class="pt-6 border-t border-white/5 space-y-2">
@@ -169,7 +170,7 @@ function formatDate(dateStr) {
             </button>
             <button @click="handleDelete"
               class="apple-button apple-button-secondary w-full sm:flex-1 !text-brand-accent hover:!bg-brand-accent/10 hover:!border-brand-accent/25">
-              Rimuovi Copia
+              Rimuovi dal Vault
             </button>
           </div>
         </div>
@@ -207,7 +208,7 @@ function formatDate(dateStr) {
         
         <div class="space-y-2">
           <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
-          <textarea v-model="form.personalNotes" rows="3" class="apple-input resize-none"></textarea>
+          <textarea v-model="form.personalNotes" rows="3" class="apple-input resize-none" placeholder="Inserisci note su questa copia..."></textarea>
         </div>
         
         <div class="flex gap-3 pt-4 border-t border-white/5">

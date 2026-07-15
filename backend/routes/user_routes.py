@@ -161,3 +161,28 @@ def delete_user(user_id):
         "status": "success",
         "message": "Utente eliminato con successo"
     })
+
+@bp.route("/share/<username>", methods=["GET"])
+def get_shared_profile(username):
+    """Restituisce il profilo pubblico e le copie fisiche (Vault) di un utente tramite username."""
+    conn = get_db()
+    user_row = conn.execute(
+        "SELECT id_user, username, name, surname FROM USER WHERE username = ? AND role = 'collector'",
+        (username,)
+    ).fetchone()
+    
+    if not user_row:
+        raise NotFoundError("Utente o profilo condiviso non trovato")
+        
+    user_data = dict(user_row)
+    
+    from dal.copy_dal import get_user_copies
+    copies = get_user_copies(user_data["id_user"])
+    
+    return jsonify({
+        "status": "success",
+        "data": {
+            "user": user_data,
+            "copies": copies
+        }
+    })

@@ -110,6 +110,11 @@ def update_copy_data(copy_id, fields, values):
     esclusivamente identificatori di colonna statici definiti dall'applicazione, 
     mentre i dati dinamici devono essere passati tramite l'argomento 'values'.
     """
+    ALLOWED_COPY_FIELDS = {'format = ?', 'condition = ?', 'personalNotes = ?'}
+    for f in fields:
+        if f.strip() not in ALLOWED_COPY_FIELDS:
+            raise ValueError(f"Campo non consentito: {f}")
+
     conn = get_db()
     with conn:
         query = f"UPDATE PHYSICAL_COPY SET {', '.join(fields)} WHERE id_copy = ?"

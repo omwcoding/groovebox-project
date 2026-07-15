@@ -1,6 +1,6 @@
 <!--
-GrooveBox - Pagina Registrazione
-================================
+Mint - Pagina Registrazione
+==========================
 Consente la registrazione sulla piattaforma di un nuovo utente con ruolo 'collector',
 richiedendo i dati anagrafici e le credenziali di accesso.
 -->
@@ -87,7 +87,7 @@ async function handleRegister() {
         <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
           Crea il tuo profilo
         </h1>
-        <p class="text-white/30 text-sm font-medium mt-1">Unisciti alla community di collezionisti di GrooveBox</p>
+        <p class="text-white/30 text-sm font-medium mt-1">Unisciti a Mint e inizia a catalogare la tua musica</p>
       </div>
 
       <!-- Card -->

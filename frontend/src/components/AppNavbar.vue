@@ -1,6 +1,6 @@
 <!--
-GrooveBox - Componente AppNavbar
-================================
+Mint - Componente AppNavbar
+==========================
 Navbar dell'applicazione con gestione responsive. Adatta le voci di menu
 visibili in base al ruolo dell'utente autenticato (Collector o Administrator).
 -->
@@ -51,7 +51,7 @@ function isActive(path) {
           <div class="bg-brand-secondary/20 p-1.5 rounded-lg group-hover:rotate-12 transition-transform duration-300 shadow-md">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-brand-secondary"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
           </div>
-          <span class="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">GrooveBox</span>
+          <span class="bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">Mint</span>
         </RouterLink>
 
         <!-- Menu di navigazione desktop -->
@@ -66,11 +66,20 @@ function isActive(path) {
           
           <RouterLink
             v-if="authStore.isCollector"
-            to="/collection"
+            to="/vault"
             class="px-4 py-2 rounded-full transition-all duration-300"
-            :class="isActive('/collection') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
+            :class="isActive('/vault') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
           >
-            Libreria
+            Vault
+          </RouterLink>
+
+          <RouterLink
+            v-if="authStore.isCollector"
+            to="/wishlist"
+            class="px-4 py-2 rounded-full transition-all duration-300"
+            :class="isActive('/wishlist') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
+          >
+            Wishlist
           </RouterLink>
 
           <RouterLink
@@ -83,11 +92,11 @@ function isActive(path) {
           </RouterLink>
 
           <RouterLink
-            to="/albums"
+            to="/search"
             class="px-4 py-2 rounded-full transition-all duration-300"
-            :class="isActive('/albums') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
+            :class="isActive('/search') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
           >
-            Album
+            Cerca
           </RouterLink>
 
           <RouterLink
@@ -159,11 +168,20 @@ function isActive(path) {
         </RouterLink>
         <RouterLink 
           v-if="authStore.isCollector"
-          to="/collection" @click="mobileMenuOpen = false" 
+          to="/vault" @click="mobileMenuOpen = false" 
           class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
-          :class="isActive('/collection') ? 'bg-white/10 text-white' : 'text-white/60'"
+          :class="isActive('/vault') ? 'bg-white/10 text-white' : 'text-white/60'"
         >
-          La mia collezione
+          Il mio Vault
+        </RouterLink>
+
+        <RouterLink 
+          v-if="authStore.isCollector"
+          to="/wishlist" @click="mobileMenuOpen = false" 
+          class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
+          :class="isActive('/wishlist') ? 'bg-white/10 text-white' : 'text-white/60'"
+        >
+          Wishlist
         </RouterLink>
         <RouterLink 
           v-if="authStore.isAdmin"
@@ -174,11 +192,11 @@ function isActive(path) {
           Gestione utenti
         </RouterLink>
         <RouterLink 
-          to="/albums" @click="mobileMenuOpen = false" 
+          to="/search" @click="mobileMenuOpen = false" 
           class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
-          :class="isActive('/albums') ? 'bg-white/10 text-white' : 'text-white/60'"
+          :class="isActive('/search') ? 'bg-white/10 text-white' : 'text-white/60'"
         >
-          Catalogo album
+          Cerca musica
         </RouterLink>
         <RouterLink 
           v-if="authStore.isAdmin"
