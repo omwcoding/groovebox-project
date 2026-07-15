@@ -61,7 +61,7 @@ def create_album():
 
     title = data["title"].strip()
     release_year = data.get("releaseYear")
-    genre = data.get("genre", "").strip() or None
+    genre = (data.get("genre") or "").strip() or None
     artist_ids = data.get("artist_ids", [])
 
 

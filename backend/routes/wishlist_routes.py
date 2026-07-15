@@ -87,7 +87,7 @@ def promote_wishlist_route(wishlist_id):
     
     format_val = data["format"].strip()
     condition = data["condition"].strip()
-    personal_notes = data.get("personalNotes", "").strip() or None
+    personal_notes = (data.get("personalNotes") or "").strip() or None
     
     conn = get_db()
     
@@ -176,7 +176,7 @@ def promote_wishlist_route(wishlist_id):
         condition=condition,
         personal_notes=personal_notes,
         user_id=g.current_user["id_user"],
-        album_id=id_album
+        id_album=id_album
     )
     
     # 3. Elimina elemento dalla wishlist

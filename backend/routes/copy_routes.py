@@ -114,7 +114,7 @@ def create_copy_cascade_route():
     else:
         release_year = None
 
-    genre = data.get("genre", "").strip() or None
+    genre = (data.get("genre") or "").strip() or None
     if genre and genre not in current_app.config["ALLOWED_GENRES"]:
         raise BadRequestError(f"Genere musicale '{genre}' non valido o non consentito")
 
