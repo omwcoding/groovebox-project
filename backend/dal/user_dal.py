@@ -11,7 +11,7 @@ def get_user_by_id(user_id):
     """Cerca un utente per identificativo univoco, escludendo l'hash della password."""
     conn = get_db()
     return conn.execute(
-        "SELECT id_user, username, name, surname, email, role "
+        "SELECT id_user, username, name, surname, email, role, is_public, bio, avatar_path "
         "FROM USER WHERE id_user = ?",
         (user_id,)
     ).fetchone()
@@ -68,3 +68,15 @@ def delete_user_and_keep_albums(user_id):
         conn.execute("UPDATE ALBUM SET id_user = NULL WHERE id_user = ?", (user_id,))
         conn.execute("DELETE FROM USER WHERE id_user = ?", (user_id,))
 
+
+def get_user_public_profile(username):
+    """
+    Recupera il profilo pubblico di un collector tramite username.
+    Ritorna None se l'utente non esiste, non è un collector, o ha is_public = 0.
+    """
+    conn = get_db()
+    return conn.execute(
+        "SELECT id_user, username, name, surname, bio, avatar_path "
+        "FROM USER WHERE username = ? AND role = 'collector' AND is_public = 1",
+        (username,)
+    ).fetchone()

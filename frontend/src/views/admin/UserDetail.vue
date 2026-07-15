@@ -60,7 +60,8 @@ async function handleDelete() {
 
       <!-- Header Profilo -->
       <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-white/5">
-        <div class="w-20 h-20 bg-brand-secondary/15 border border-brand-secondary/20 rounded-full flex items-center justify-center text-[28px] font-bold text-brand-secondary shrink-0">
+        <img v-if="user.avatar_path" :src="`/api/users/${user.id_user}/avatar`" class="w-20 h-20 rounded-full object-cover border border-brand-secondary/20 shrink-0" />
+        <div v-else class="w-20 h-20 bg-brand-secondary/15 border border-brand-secondary/20 rounded-full flex items-center justify-center text-[28px] font-bold text-brand-secondary shrink-0">
           {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
         </div>
         

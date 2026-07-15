@@ -80,7 +80,8 @@ onMounted(async () => {
                   class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
                 <td class="px-6 py-4">
                   <RouterLink :to="`/users/${user.id_user}`" class="flex items-center gap-3 group">
-                    <div class="w-10 h-10 rounded-full bg-brand-secondary/20 flex items-center justify-center text-xs font-bold text-brand-secondary shrink-0 group-hover:scale-105 transition-transform">
+                    <img v-if="user.avatar_path" :src="`/api/users/${user.id_user}/avatar`" class="w-10 h-10 rounded-full object-cover shrink-0 group-hover:scale-105 transition-transform" />
+                    <div v-else class="w-10 h-10 rounded-full bg-brand-secondary/20 flex items-center justify-center text-xs font-bold text-brand-secondary shrink-0 group-hover:scale-105 transition-transform">
                       {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
                     </div>
                     <div>

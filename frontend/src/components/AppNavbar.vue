@@ -125,7 +125,8 @@ function isActive(path) {
           to="/profile"
           class="flex items-center gap-2 px-3.5 py-1.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10 transition-all"
         >
-          <span class="w-5 h-5 rounded-full bg-brand-secondary/20 flex items-center justify-center text-[10px] font-bold text-brand-secondary">
+          <img v-if="authStore.user?.avatar_path" :src="`/api/users/${authStore.user?.id_user}/avatar`" class="w-5 h-5 rounded-full object-cover" />
+          <span v-else class="w-5 h-5 rounded-full bg-brand-secondary/20 flex items-center justify-center text-[10px] font-bold text-brand-secondary">
             {{ authStore.user?.name?.charAt(0) }}{{ authStore.user?.surname?.charAt(0) }}
           </span>
           <span class="text-xs font-semibold text-white/80 tracking-wide uppercase">{{ authStore.user?.username }}</span>
@@ -217,7 +218,8 @@ function isActive(path) {
         <hr class="border-white/5 my-1" />
         <div class="flex items-center justify-between px-4 py-2.5">
           <RouterLink to="/profile" @click="mobileMenuOpen = false" class="flex items-center gap-2">
-            <span class="w-6 h-6 rounded-full bg-brand-secondary/20 flex items-center justify-center text-[10px] font-bold text-brand-secondary">
+            <img v-if="authStore.user?.avatar_path" :src="`/api/users/${authStore.user?.id_user}/avatar`" class="w-6 h-6 rounded-full object-cover" />
+            <span v-else class="w-6 h-6 rounded-full bg-brand-secondary/20 flex items-center justify-center text-[10px] font-bold text-brand-secondary">
               {{ authStore.user?.name?.charAt(0) }}
             </span>
             <span class="text-sm font-semibold text-white/70">{{ authStore.user?.username }}</span>

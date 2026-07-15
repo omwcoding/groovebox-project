@@ -9,7 +9,7 @@ from flask import Blueprint, request, jsonify, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import datetime
-from dal.user_dal import insert_collector, get_user_by_username
+from dal.user_dal import insert_collector, get_user_by_username, update_user_profile
 from utils.validators import validate_json_payload
 from core.errors import ConflictError, UnauthorizedError, BadRequestError
 
@@ -19,23 +19,55 @@ bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 @bp.route("/register", methods=["POST"])
 def register():
     """Registra un nuovo utente nel sistema con il ruolo di 'collector'."""
-    data = request.get_json()
-    validate_json_payload(data, ["username", "name", "surname", "email", "password"])
+    avatar_file = None
+    if request.content_type and "multipart/form-data" in request.content_type:
+        username = request.form.get("username", "").strip()
+        name = request.form.get("name", "").strip()
+        surname = request.form.get("surname", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        avatar_file = request.files.get("avatar")
+    else:
+        data = request.get_json()
+        validate_json_payload(data, ["username", "name", "surname", "email", "password"])
+        username = data["username"].strip()
+        name = data["name"].strip()
+        surname = data["surname"].strip()
+        email = data["email"].strip()
+        password = data["password"]
 
-    username = data["username"].strip()
-    name = data["name"].strip()
-    surname = data["surname"].strip()
-    email = data["email"].strip()
-    password = data["password"]
+    if not username or not name or not surname or not email or not password:
+        raise BadRequestError("Tutti i campi sono obbligatori")
 
     if len(password) < 6:
         raise BadRequestError("La password deve essere di almeno 6 caratteri")
 
     password_hash = generate_password_hash(password)
 
+    avatar_filename = None
+    if avatar_file:
+        from werkzeug.utils import secure_filename
+        import os
+        import uuid
+        safe_original = secure_filename(avatar_file.filename)
+        if safe_original and "." in safe_original:
+            ext = safe_original.rsplit(".", 1)[1].lower()
+            if ext in current_app.config["ALLOWED_EXTENSIONS"]:
+                avatar_filename = f"avatar_reg_{uuid.uuid4().hex[:8]}.{ext}"
+                upload_dir = current_app.config["AVATARS_FOLDER"]
+                avatar_file.save(os.path.join(upload_dir, avatar_filename))
+
     try:
         user_id = insert_collector(username, name, surname, email, password_hash)
+        if avatar_filename:
+            update_user_profile(user_id, ["avatar_path = ?"], [avatar_filename])
     except Exception as e:
+        # Rimuovi il file se l'inserimento nel database fallisce
+        if avatar_filename:
+            try:
+                os.remove(os.path.join(current_app.config["AVATARS_FOLDER"], avatar_filename))
+            except Exception:
+                pass
         error_msg = str(e).lower()
         if "unique" in error_msg and "username" in error_msg:
             raise ConflictError("Username gia' in uso")
@@ -90,7 +122,10 @@ def login():
                 "name": user["name"],
                 "surname": user["surname"],
                 "email": user["email"],
-                "role": user["role"]
+                "role": user["role"],
+                "is_public": user["is_public"],
+                "bio": user["bio"],
+                "avatar_path": user["avatar_path"]
             }
         }
     })

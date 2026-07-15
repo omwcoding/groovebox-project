@@ -50,7 +50,10 @@ CREATE TABLE IF NOT EXISTS USER (
     email           VARCHAR(100)    NOT NULL UNIQUE,
     passwordHash    VARCHAR(255)    NOT NULL,
     role            VARCHAR(20)     NOT NULL DEFAULT 'collector'
-                                    CHECK (role IN ('collector', 'administrator'))
+                                    CHECK (role IN ('collector', 'administrator')),
+    is_public       BOOLEAN         NOT NULL DEFAULT 0,
+    bio             TEXT,
+    avatar_path     VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS ALBUM (
@@ -202,6 +205,28 @@ def init_db():
             print("[MIGRATION] Aggiunta colonna image_path a ARTIST")
         except Exception as e:
             print(f"[MIGRATION WARNING] Errore migrazione image_path su ARTIST: {e}")
+
+    # Verifica colonne USER per profilo pubblico
+    cursor.execute("PRAGMA table_info(USER)")
+    user_cols = [row[1] for row in cursor.fetchall()]
+    if "is_public" not in user_cols:
+        try:
+            cursor.execute("ALTER TABLE USER ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT 0;")
+            print("[MIGRATION] Aggiunta colonna is_public a USER")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione is_public su USER: {e}")
+    if "bio" not in user_cols:
+        try:
+            cursor.execute("ALTER TABLE USER ADD COLUMN bio TEXT;")
+            print("[MIGRATION] Aggiunta colonna bio a USER")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione bio su USER: {e}")
+    if "avatar_path" not in user_cols:
+        try:
+            cursor.execute("ALTER TABLE USER ADD COLUMN avatar_path VARCHAR(255);")
+            print("[MIGRATION] Aggiunta colonna avatar_path a USER")
+        except Exception as e:
+            print(f"[MIGRATION WARNING] Errore migrazione avatar_path su USER: {e}")
 
     # Verifica se la tabella ALBUM ha il CHECK constraint
     cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='ALBUM'")

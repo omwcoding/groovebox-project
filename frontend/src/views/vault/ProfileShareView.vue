@@ -66,18 +66,23 @@ onMounted(async () => {
     <template v-else-if="user">
       <!-- Header Profilo Condiviso -->
       <div class="flex flex-col sm:flex-row sm:items-center gap-6 p-6 border border-white/10 rounded-apple-3xl bg-white/[0.02]">
-        <div class="w-16 h-16 rounded-full bg-brand-secondary/20 border border-brand-secondary/40 flex items-center justify-center text-xl font-extrabold text-brand-secondary shrink-0">
+        <img v-if="user.avatar_path" :src="`/api/users/${user.id_user}/avatar`" class="w-16 h-16 rounded-full object-cover border border-brand-secondary/40 shrink-0" />
+        <div v-else class="w-16 h-16 rounded-full bg-brand-secondary/20 border border-brand-secondary/40 flex items-center justify-center text-xl font-extrabold text-brand-secondary shrink-0">
           {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
         </div>
         <div class="space-y-1">
           <h1 class="text-3xl font-extrabold tracking-tight text-white/90">
-            Il Vault di {{ user.username  }}
+            Il Vault di {{ user.username }}
           </h1>
           <p class="text-sm text-white/40 font-medium">
             Profilo pubblico (@{{ user.username }}) &middot; {{ copies.length }} dischi custoditi.
           </p>
+          <p v-if="user.bio" class="text-sm text-white/60 italic pt-1 max-w-lg leading-relaxed">
+            "{{ user.bio }}"
+          </p>
         </div>
       </div>
+
 
       <!-- Filtri e Toggle -->
       <div class="flex flex-col md:flex-row items-center gap-4 py-4 border-y border-white/5 justify-between">

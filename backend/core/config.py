@@ -31,6 +31,7 @@ class Config:
     UPLOAD_FOLDER = os.path.join(BACKEND_DIR, "uploads")
     COVERS_FOLDER = os.path.join(UPLOAD_FOLDER, "covers")
     ARTISTS_FOLDER = os.path.join(UPLOAD_FOLDER, "artists")
+    AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, "avatars")
     
     # Vincoli di validazione per il formato dei file e dei generi musicali del catalogo
     ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}

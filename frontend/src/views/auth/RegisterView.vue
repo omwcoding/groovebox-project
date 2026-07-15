@@ -2,7 +2,7 @@
 Mint - Pagina Registrazione
 ==========================
 Consente la registrazione sulla piattaforma di un nuovo utente con ruolo 'collector',
-richiedendo i dati anagrafici e le credenziali di accesso.
+richiedendo i dati anagrafici, le credenziali di accesso ed un avatar opzionale.
 -->
 
 <script setup>
@@ -23,6 +23,22 @@ const form = ref({
 })
 const error = ref('')
 const loading = ref(false)
+
+const avatarInput = ref(null)
+const avatarFile = ref(null)
+const avatarPreview = ref(null)
+
+function triggerAvatarSelect() {
+  avatarInput.value.click()
+}
+
+function handleAvatarChange(e) {
+  const file = e.target.files[0]
+  if (file) {
+    avatarFile.value = file
+    avatarPreview.value = URL.createObjectURL(file)
+  }
+}
 
 async function handleRegister() {
   error.value = ''
@@ -55,15 +71,19 @@ async function handleRegister() {
   loading.value = true
 
   try {
-    await authStore.register({
-      username: form.value.username,
-      name: form.value.name,
-      surname: form.value.surname,
-      email: form.value.email,
-      password: form.value.password
-    })
+    const formData = new FormData()
+    formData.append('username', form.value.username.trim())
+    formData.append('name', form.value.name.trim())
+    formData.append('surname', form.value.surname.trim())
+    formData.append('email', form.value.email.trim())
+    formData.append('password', form.value.password)
+    if (avatarFile.value) {
+      formData.append('avatar', avatarFile.value)
+    }
+
+    await authStore.register(formData)
     // Dopo la registrazione, login automatico
-    await authStore.login(form.value.username, form.value.password)
+    await authStore.login(form.value.username.trim(), form.value.password)
     router.push('/dashboard')
   } catch (err) {
     error.value = err.message || 'Errore durante la registrazione'
@@ -102,6 +122,32 @@ async function handleRegister() {
           class="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-2xl px-4 py-3"
         >
           {{ error }}
+        </div>
+
+        <!-- Avatar Upload -->
+        <div class="flex flex-col items-center gap-3 pb-2">
+          <span class="text-[10px] font-bold uppercase tracking-widest text-white/30">
+            Foto Profilo (Opzionale)
+          </span>
+          <div class="relative group cursor-pointer" @click="triggerAvatarSelect">
+            <div class="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative shadow-inner group-hover:border-white/20 transition-colors">
+              <img v-if="avatarPreview" :src="avatarPreview" class="w-full h-full object-cover" />
+              <div v-else class="flex flex-col items-center gap-1 text-white/30 group-hover:scale-105 transition-transform duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span class="text-[9px] font-bold uppercase tracking-widest text-white/20">Sfoglia</span>
+              </div>
+            </div>
+            <input 
+              ref="avatarInput" 
+              type="file" 
+              accept="image/*" 
+              class="hidden" 
+              @change="handleAvatarChange" 
+            />
+          </div>
+          <span v-if="avatarFile" class="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+            {{ avatarFile.name }}
+          </span>
         </div>
 
         <!-- Username -->
