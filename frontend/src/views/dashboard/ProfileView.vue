@@ -7,13 +7,14 @@ pubblico. Gestisce lo svuotamento della collezione e la cancellazione dell'accou
 -->
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/stores/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const editing = ref(false)
 const loading = ref(false)
@@ -36,6 +37,17 @@ const form = ref({
 
 onMounted(() => {
   resetForm()
+  if (route.query.edit === 'true') {
+    editing.value = true
+  }
+})
+
+watch(() => route.query.edit, (newVal) => {
+  if (newVal === 'true') {
+    editing.value = true
+  } else {
+    editing.value = false
+  }
 })
 
 function resetForm() {
@@ -51,6 +63,9 @@ function resetForm() {
   editing.value = false
   message.value = ''
   error.value = ''
+  if (route.query.edit) {
+    router.replace('/profile')
+  }
 }
 
 async function handleSave() {
@@ -99,6 +114,9 @@ async function handleSave() {
     form.value.currentPassword = ''
     form.value.password = ''
     form.value.confirmPassword = ''
+    if (route.query.edit) {
+      router.replace('/profile')
+    }
   } catch (err) {
     error.value = err.message || 'Errore durante l\'aggiornamento'
   } finally {

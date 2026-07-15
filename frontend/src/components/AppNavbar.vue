@@ -15,17 +15,26 @@ const route = useRoute()
 const router = useRouter()
 const mobileMenuOpen = ref(false)
 const scrolled = ref(false)
+const dropdownOpen = ref(false)
 
 const handleScroll = () => {
   scrolled.value = window.scrollY > 20
 }
 
+function handleOutsideClick() {
+  if (dropdownOpen.value) {
+    dropdownOpen.value = false
+  }
+}
+
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
+  window.addEventListener('click', handleOutsideClick)
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('click', handleOutsideClick)
 })
 
 function handleLogout() {
@@ -36,11 +45,20 @@ function handleLogout() {
 function isActive(path) {
   return route.path === path || route.path.startsWith(path + '/')
 }
+
+function toggleDropdown(e) {
+  e.stopPropagation()
+  dropdownOpen.value = !dropdownOpen.value
+}
+
+function closeDropdown() {
+  dropdownOpen.value = false
+}
 </script>
 
 <template>
   <header 
-    class="fixed top-6 left-1/2 -translate-x-1/2 w-[92%] max-w-5xl z-[100] transition-all duration-500"
+    class="fixed top-6 left-1/2 -translate-x-1/2 w-[92%] max-w-5xl z-[9999] transition-all duration-500"
     :class="{ 'top-3 w-[95%]': scrolled }"
   >
     <div class="glass-panel rounded-3xl md:rounded-full px-6 py-3 flex items-center justify-between shadow-2xl">
@@ -120,23 +138,51 @@ function isActive(path) {
       </div>
 
       <!-- Azioni utente desktop -->
-      <div class="hidden md:flex items-center gap-4">
-        <RouterLink
-          to="/profile"
-          class="flex items-center gap-2 px-3.5 py-1.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10 transition-all"
+      <div class="hidden md:flex items-center gap-4 relative">
+        <button
+          @click="toggleDropdown"
+          class="flex items-center gap-2 px-3.5 py-1.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10 transition-all select-none cursor-pointer"
         >
           <img v-if="authStore.user?.avatar_path" :src="`/api/users/${authStore.user?.id_user}/avatar`" class="w-5 h-5 rounded-full object-cover" />
           <span v-else class="w-5 h-5 rounded-full bg-brand-secondary/20 flex items-center justify-center text-[10px] font-bold text-brand-secondary">
             {{ authStore.user?.name?.charAt(0) }}{{ authStore.user?.surname?.charAt(0) }}
           </span>
           <span class="text-xs font-semibold text-white/80 tracking-wide uppercase">{{ authStore.user?.username }}</span>
-        </RouterLink>
-        <button
-          @click="handleLogout"
-          class="text-xs font-bold text-white/40 hover:text-brand-accent transition-colors uppercase tracking-widest"
-        >
-          Esci
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-white/40 transition-transform duration-300" :class="{ 'rotate-180': dropdownOpen }"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
+
+        <!-- Dropdown Menu -->
+        <transition name="fade">
+          <div 
+            v-if="dropdownOpen"
+            class="absolute right-0 top-full mt-2 w-48 glass-panel !bg-brand-background/90 rounded-2xl py-2 border border-white/15 shadow-2xl z-[110]"
+          >
+            <RouterLink
+              to="/profile"
+              @click="closeDropdown"
+              class="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-50"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Il mio Profilo
+            </RouterLink>
+            <RouterLink
+              to="/profile?edit=true"
+              @click="closeDropdown"
+              class="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/5 transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-50"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              Modifica Profilo
+            </RouterLink>
+            <hr class="border-white/5 my-1" />
+            <button
+              @click="handleLogout(); closeDropdown()"
+              class="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-brand-accent hover:bg-brand-accent/5 transition-all text-left cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-70"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Esci
+            </button>
+          </div>
+        </transition>
       </div>
 
       <!-- Toggle menu responsive per dispositivi mobile -->
