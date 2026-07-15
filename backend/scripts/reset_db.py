@@ -27,6 +27,26 @@ def reset_database():
     else:
         print("[INFO] Nessun file di database preesistente trovato. Verrà creato da zero.")
 
+    # Pulisce le cartelle degli upload delle immagini (mantenendo le cartelle intatte)
+    covers_dir = os.path.join(backend_dir, "uploads", "covers")
+    artists_dir = os.path.join(backend_dir, "uploads", "artists")
+    
+    for folder, label in [(covers_dir, "copertine"), (artists_dir, "foto artisti")]:
+        if os.path.exists(folder):
+            deleted_count = 0
+            for filename in os.listdir(folder):
+                file_path = os.path.join(folder, filename)
+                # Salta cartelle o file di configurazione nascosti (come .gitkeep)
+                if filename.startswith(".") or os.path.isdir(file_path):
+                    continue
+                try:
+                    os.remove(file_path)
+                    deleted_count += 1
+                except Exception as e:
+                    print(f"[WARNING] Impossibile rimuovere il file {file_path}: {e}")
+            if deleted_count > 0:
+                print(f"[OK] Pulite {deleted_count} {label} dalla cartella degli upload.")
+
     # 2. Inizializza il database ricreando lo schema DDL ed eseguendo il seed di base (admin e test)
     print("\n-> Inizializzazione dello schema del database e degli utenti base in corso...")
     try:

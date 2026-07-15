@@ -85,6 +85,56 @@ def clean_title(title):
             return parts[0]
     return title.strip()
 
+def get_itunes_cover_url(artist, album):
+    """
+    Interroga l'API pubblica di iTunes per trovare la copertina dell'album.
+    Valida il risultato e ritorna l'URL dell'artwork a 600x600 o None se non trovato.
+    """
+    if not artist or not album:
+        return None
+        
+    import re
+    def clean(s):
+        if not s:
+            return ""
+        return re.sub(r'[^a-z0-9]', '', s.lower())
+        
+    url = "https://itunes.apple.com/search"
+    params = {
+        "term": f"{artist} {album}",
+        "media": "music",
+        "entity": "album",
+        "limit": 5
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+            
+            c_sought_artist = clean(artist)
+            c_sought_album = clean(album)
+            
+            for r in results:
+                r_artist = r.get("artistName", "")
+                r_album = r.get("collectionName", "")
+                
+                c_result_artist = clean(r_artist)
+                c_result_album = clean(r_album)
+                
+                # Verifica corrispondenza autore e album
+                artist_match = c_sought_artist in c_result_artist or c_result_artist in c_sought_artist
+                album_match = c_sought_album in c_result_album or c_result_album in c_sought_album
+                
+                if artist_match and album_match:
+                    artwork_url = r.get("artworkUrl100")
+                    if artwork_url:
+                        return artwork_url.replace("100x100bb", "1000x1000bb")
+    except Exception:
+        pass
+    return None
+
 def map_genre(genres, styles):
     terms = []
     if genres:
@@ -215,14 +265,32 @@ def fetch_real_albums_and_covers(target_count=120):
                             
                     country = data.get("country")
                     
-                    cover_url = None
-                    images = data.get("images", [])
-                    if images:
-                        primary_images = [img for img in images if img.get("type") == "primary"]
-                        if primary_images:
-                            cover_url = primary_images[0].get("uri")
-                        else:
-                            cover_url = images[0].get("uri")
+                    # 1. Tenta iTunes prima
+                    cover_url = get_itunes_cover_url(discogs_artist_name, title)
+                    
+                    # 2. Se manca, tenta la copertina specifica della Release (per supportare copertine deluxe/alternative)
+                    if not cover_url:
+                        images = data.get("images", [])
+                        if images:
+                            primary_images = [img for img in images if img.get("type") == "primary"]
+                            cover_url = primary_images[0].get("uri") if primary_images else images[0].get("uri")
+                            
+                    # 3. Se manca, tenta la Master Release di Discogs
+                    if not cover_url and data.get("master_id"):
+                        master_id = data.get("master_id")
+                        try:
+                            master_url = f"https://api.discogs.com/masters/{master_id}"
+                            m_res = requests.get(master_url, headers=headers, timeout=5)
+                            if m_res.status_code == 200:
+                                m_data = m_res.json()
+                                m_images = m_data.get("images", [])
+                                if m_images:
+                                    m_prim = [img for img in m_images if img.get("type") == "primary"]
+                                    cover_url = m_prim[0].get("uri") if m_prim else m_images[0].get("uri")
+                        except Exception:
+                            pass
+                            
+                    # 4. Fallback finale sulla thumbnail
                     if not cover_url:
                         cover_url = data.get("thumb")
                         
@@ -462,53 +530,8 @@ def main():
                 )
                 album_artist_relations.append((album_id, artist_id))
             
-        # Sistemiamo le relazioni in ALBUM_ARTIST per arrivare a ESATTAMENTE 22
-        current_relations_count = len(album_artist_relations)
-        
-        if current_relations_count < 22:
-            needed = 22 - current_relations_count
-            print(f"   [i] Relazioni attuali: {current_relations_count}. Aggiunta di {needed} collaborazioni per raggiungere 22...")
-            
-            candidate_albums = list(album_ids)
-            random.shuffle(candidate_albums)
-            
-            for album_id in candidate_albums:
-                if needed <= 0:
-                    break
-                existing_aids = [r[1] for r in album_artist_relations if r[0] == album_id]
-                available_aids = [aid for aid in all_artist_ids if aid not in existing_aids]
-                if available_aids:
-                    sec_artist_id = random.choice(available_aids)
-                    cursor.execute(
-                        "INSERT INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)",
-                        (album_id, sec_artist_id)
-                    )
-                    album_artist_relations.append((album_id, sec_artist_id))
-                    needed -= 1
-                    
-        elif current_relations_count > 22:
-            excess = current_relations_count - 22
-            print(f"   [i] Relazioni attuali: {current_relations_count}. Rimozione di {excess} relazioni extra per rientrare nel target di 22...")
-            
-            album_counts = {}
-            for album_id, _ in album_artist_relations:
-                album_counts[album_id] = album_counts.get(album_id, 0) + 1
-                
-            for rel in list(album_artist_relations):
-                if excess <= 0:
-                    break
-                album_id, artist_id = rel
-                if album_counts[album_id] > 1:
-                    cursor.execute(
-                        "DELETE FROM ALBUM_ARTIST WHERE id_album = ? AND id_artist = ?",
-                        (album_id, artist_id)
-                    )
-                    album_artist_relations.remove(rel)
-                    album_counts[album_id] -= 1
-                    excess -= 1
-
         print(f"   [OK] Inseriti {len(album_ids)} Album nel DB.")
-        print(f"   [OK] Create {len(album_artist_relations)} relazioni in ALBUM_ARTIST (target esatto: 22).")
+        print(f"   [OK] Create {len(album_artist_relations)} relazioni reali in ALBUM_ARTIST.")
 
         # 5. Genera esattamente 30 Copie Fisiche
         print("-> Generazione di 30 Copie Fisiche per le collezioni private...")
@@ -540,7 +563,7 @@ def main():
         print(f"- Utenti totali nel DB: {len(user_ids)} (target: 5)")
         print(f"- Artisti totali nel DB: {len(all_artist_ids)} (target: 10)")
         print(f"- Album inseriti a catalogo: {len(album_ids)} (target: 20)")
-        print(f"- Relazioni Album-Artista inserite: {len(album_artist_relations)} (target: 22)")
+        print(f"- Relazioni Album-Artista inserite: {len(album_artist_relations)}")
         print(f"- Copie fisiche totali distribuite: 30 (target: 30)")
         print("====================================================")
         

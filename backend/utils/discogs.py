@@ -87,6 +87,56 @@ def search_artists(query, limit=10):
         
     return formatted_results
 
+def get_itunes_cover_url(artist, album):
+    """
+    Interroga l'API pubblica di iTunes per trovare la copertina dell'album.
+    Valida il risultato e ritorna l'URL dell'artwork a 600x600 o None se non trovato.
+    """
+    if not artist or not album:
+        return None
+        
+    import re
+    def clean(s):
+        if not s:
+            return ""
+        return re.sub(r'[^a-z0-9]', '', s.lower())
+        
+    url = "https://itunes.apple.com/search"
+    params = {
+        "term": f"{artist} {album}",
+        "media": "music",
+        "entity": "album",
+        "limit": 5
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+            
+            c_sought_artist = clean(artist)
+            c_sought_album = clean(album)
+            
+            for r in results:
+                r_artist = r.get("artistName", "")
+                r_album = r.get("collectionName", "")
+                
+                c_result_artist = clean(r_artist)
+                c_result_album = clean(r_album)
+                
+                # Verifica corrispondenza autore e album
+                artist_match = c_sought_artist in c_result_artist or c_result_artist in c_sought_artist
+                album_match = c_sought_album in c_result_album or c_result_album in c_sought_album
+                
+                if artist_match and album_match:
+                    artwork_url = r.get("artworkUrl100")
+                    if artwork_url:
+                        return artwork_url.replace("100x100bb", "1000x1000bb")
+    except Exception:
+        pass
+    return None
+
 def get_release(release_id):
     """
     Recupera i dettagli completi di una singola release tramite ID Discogs.
@@ -97,17 +147,38 @@ def get_release(release_id):
     response.raise_for_status()
     data = response.json()
     
-    # Estrae l'immagine di copertina primaria se disponibile
-    cover_url = None
-    images = data.get("images", [])
-    if images:
-        primary_images = [img for img in images if img.get("type") == "primary"]
-        if primary_images:
-            cover_url = primary_images[0].get("uri")
-        else:
-            cover_url = images[0].get("uri")
-            
-    # Se non c'è nelle images, proviamo la thumbnail principale
+    # 1. Estrae l'artista primario e il titolo pulito per cercare su iTunes
+    title = clean_title(data.get("title", ""))
+    artists_data = data.get("artists", [])
+    primary_artist = ""
+    if artists_data:
+        primary_artist = clean_artist_name(artists_data[0].get("name", ""))
+        
+    cover_url = get_itunes_cover_url(primary_artist, title)
+    
+    # 2. Se iTunes non la trova, proviamo la copertina specifica della Release (per supportare copertine deluxe/alternative)
+    if not cover_url:
+        images = data.get("images", [])
+        if images:
+            primary_images = [img for img in images if img.get("type") == "primary"]
+            cover_url = primary_images[0].get("uri") if primary_images else images[0].get("uri")
+    
+    # 3. Se la Release specifica non ha immagini, proviamo la Master Release di Discogs
+    if not cover_url and data.get("master_id"):
+        master_id = data.get("master_id")
+        try:
+            master_url = f"https://api.discogs.com/masters/{master_id}"
+            m_res = requests.get(master_url, headers=_get_headers(), timeout=5)
+            if m_res.status_code == 200:
+                m_data = m_res.json()
+                m_images = m_data.get("images", [])
+                if m_images:
+                    m_prim = [img for img in m_images if img.get("type") == "primary"]
+                    cover_url = m_prim[0].get("uri") if m_prim else m_images[0].get("uri")
+        except Exception:
+            pass
+
+    # 4. Fallback finale sulla thumbnail
     if not cover_url:
         cover_url = data.get("thumb")
         
