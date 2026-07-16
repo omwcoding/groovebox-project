@@ -30,10 +30,7 @@ def create_app():
     init_db()
     seed_db()
 
-    # Crea le cartelle per gli upload se non esistono
-    os.makedirs(app.config["COVERS_FOLDER"], exist_ok=True)
-    os.makedirs(app.config["ARTISTS_FOLDER"], exist_ok=True)
-    os.makedirs(app.config["AVATARS_FOLDER"], exist_ok=True)
+
 
     from routes.auth_routes import bp as auth_bp
     from routes.user_routes import bp as user_bp

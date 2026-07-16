@@ -5,29 +5,17 @@ import json
 import re
 import time
 import requests
-import sqlite3
+import sys
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # backend/scripts/
-BACKEND_DIR = os.path.dirname(BASE_DIR)
-load_dotenv(os.path.join(BACKEND_DIR, ".env"))
-DATABASE_PATH = os.path.join(BACKEND_DIR, "instance", "groovebox.db")
-COVERS_DIR = os.path.join(BACKEND_DIR, "uploads", "covers")
-ARTISTS_DIR = os.path.join(BACKEND_DIR, "uploads", "artists")
+# Aggiunge la cartella padre (backend/) al path di sistema per consentire l'importazione dei moduli di backend
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# ====================================================
-# CONFIGURAZIONE DEL SEED (Modificabile al volo)
-# ====================================================
-NUM_COLLECTORS = 3       # Numero di utenti collezionisti fittizi da creare (oltre ad admin e test)
-NUM_COPIES = 10          # Numero totale di copie fisiche da distribuire tra le collezioni
+from core.database import get_db
+from utils.storage import upload_file
 
 # ID reali di release Discogs da importare per il seeding
-# 1. Daft Punk - Discovery (169648)
-# 2. Tyler, The Creator - Call Me If You Get Lost: The Estate Sale (28058949)
-# 3. Pino Daniele - Un Uomo In Blues (2229728)
-# 4. The Cure - Disintegration (14677130)
-# 5. Pink Floyd - The Dark Side of the Moon (19719631)
 SEED_RELEASES = [169648, 28058949, 2229728, 14677130, 19719631]
 
 # Liste semplificate per i dati fittizi degli utenti
@@ -41,6 +29,9 @@ NOTES_POOL = [
     "Ristampa audiophile 180g", "Edizione speciale per il Record Store Day", "Copia promozionale",
     "Nessuna nota", None
 ]
+
+NUM_COLLECTORS = 3       # Numero di utenti collezionisti fittizi da creare (oltre ad admin e test)
+NUM_COPIES = 10          # Numero totale di copie fisiche da distribuire tra le collezioni
 
 def clean_artist_name(name):
     if not name:
@@ -103,16 +94,13 @@ def get_itunes_cover_url(artist, album):
     return None
 
 def main():
-    if not os.path.exists(DATABASE_PATH):
-        print(f"[!] Errore: File database '{DATABASE_PATH}' non trovato.")
-        return
-
     print("====================================================")
-    print("GrooveBox - Popolamento Database (Clean Real Data Seed)")
+    print("GrooveBox - Popolamento Database PostgreSQL su Supabase")
     print("====================================================")
     
-    key = os.environ.get("DISCOGS_CONSUMER_KEY")
-    secret = os.environ.get("DISCOGS_CONSUMER_SECRET")
+    from core.config import Config
+    key = Config.DISCOGS_CONSUMER_KEY
+    secret = Config.DISCOGS_CONSUMER_SECRET
     if not key or not secret:
         print("[!] Errore: Credenziali Discogs non impostate nel file .env!")
         return
@@ -122,47 +110,52 @@ def main():
         "Authorization": f"Discogs key={key.strip()}, secret={secret.strip()}"
     }
     
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    cursor = conn.cursor()
+    conn = get_db()
     
     try:
         # 1. Pulisci dati esistenti
         print("-> Pulizia delle tabelle (esclusi utenti di default)...")
-        cursor.execute("DELETE FROM PHYSICAL_COPY")
-        cursor.execute("DELETE FROM ALBUM_ARTIST")
-        cursor.execute("DELETE FROM ALBUM")
-        cursor.execute("DELETE FROM ARTIST")
-        cursor.execute("DELETE FROM USER WHERE id_user > 2")
-        conn.commit()
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute("DELETE FROM physical_copies;")
+                cursor.execute("DELETE FROM album_artists;")
+                cursor.execute("DELETE FROM albums;")
+                cursor.execute("DELETE FROM artists;")
+                cursor.execute("DELETE FROM users WHERE username NOT IN ('admin', 'test');")
         
         # 2. Genera utenti collezionisti fittizi
         print(f"-> Generazione di {NUM_COLLECTORS} collezionisti...")
         password_hash = generate_password_hash("password123")
-        user_ids = [1, 2] # admin (1) e test (2) preesistenti
+        
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id_user FROM users WHERE username IN ('admin', 'test');")
+                user_ids = [row["id_user"] for row in cursor.fetchall()]
         used_usernames = {"admin", "test"}
         
-        for _ in range(NUM_COLLECTORS):
-            name = random.choice(FIRST_NAMES)
-            surname = random.choice(SURNAMES)
-            username = f"{name.lower()}.{surname.lower()}"
-            if username in used_usernames:
-                username = f"{username}{random.randint(10, 99)}"
-            used_usernames.add(username)
-            email = f"{username}@email.com"
-            
-            cursor.execute(
-                """INSERT INTO USER (username, name, surname, email, passwordHash, role)
-                   VALUES (?, ?, ?, ?, ?, 'collector')""",
-                (username, name, surname, email, password_hash)
-            )
-            user_ids.append(cursor.lastrowid)
+        with conn:
+            with conn.cursor() as cursor:
+                for _ in range(NUM_COLLECTORS):
+                    name = random.choice(FIRST_NAMES)
+                    surname = random.choice(SURNAMES)
+                    username = f"{name.lower()}.{surname.lower()}"
+                    if username in used_usernames:
+                        username = f"{username}{random.randint(10, 99)}"
+                    used_usernames.add(username)
+                    email = f"{username}@email.com"
+                    
+                    cursor.execute(
+                        """INSERT INTO users (username, name, surname, email, password_hash, role)
+                           VALUES (%s, %s, %s, %s, %s, 'collector') RETURNING id_user;""",
+                        (username, name, surname, email, password_hash)
+                    )
+                    row = cursor.fetchone()
+                    if row:
+                        user_ids.append(row["id_user"])
         print(f"   [OK] Utenti totali nel DB: {len(user_ids)}")
         
         # 3. Importa gli album reali dal set di release ID hardcoded
         print(f"-> Importazione di {len(SEED_RELEASES)} album reali da Discogs...")
-        os.makedirs(COVERS_DIR, exist_ok=True)
-        os.makedirs(ARTISTS_DIR, exist_ok=True)
         
         artist_id_map = {}
         album_ids = []
@@ -243,22 +236,24 @@ def main():
                 if cover_url:
                     ext = "png" if ".png" in cover_url.lower() else "webp" if ".webp" in cover_url.lower() else "jpg"
                     cover_filename = f"album_discogs_{release_id}.{ext}"
-                    filepath = os.path.join(COVERS_DIR, cover_filename)
-                    if not os.path.exists(filepath):
-                        img_res = requests.get(cover_url, headers=headers, timeout=5)
-                        if img_res.status_code == 200:
-                            with open(filepath, "wb") as f:
-                                f.write(img_res.content)
-                        else:
-                            cover_filename = None
+                    img_res = requests.get(cover_url, headers=headers, timeout=5)
+                    if img_res.status_code == 200:
+                        mime = f"image/{ext}" if ext != "jpg" else "image/jpeg"
+                        upload_file("covers", cover_filename, img_res.content, mime)
+                    else:
+                        cover_filename = None
                 
                 creator_id = random.choice(user_ids)
-                cursor.execute(
-                    """INSERT INTO ALBUM (title, releaseYear, genre, coverPath, id_user, discogs_id, tracklist, label, catno, barcode, country)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (title, year, genre, cover_filename, creator_id, release_id, json.dumps(tracklist) if tracklist else None, label_name, catno, barcode, country)
-                )
-                album_id = cursor.lastrowid
+                with conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute(
+                            """INSERT INTO albums (title, release_year, genre, cover_path, id_user, discogs_id, tracklist, label, catno, barcode, country)
+                               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id_album;""",
+                            (title, year, genre, cover_filename, creator_id, release_id, json.dumps(tracklist) if tracklist else None, label_name, catno, barcode, country)
+                        )
+                        row = cursor.fetchone()
+                        album_id = row["id_album"] if row else None
+                
                 album_ids.append(album_id)
                 
                 associated_artist_ids = []
@@ -286,31 +281,33 @@ def main():
                                     
                                 if art_photo_url:
                                     photo_filename = f"artist_discogs_{discogs_art_id}.jpg"
-                                    filepath = os.path.join(ARTISTS_DIR, photo_filename)
-                                    if not os.path.exists(filepath):
-                                        img_res = requests.get(art_photo_url, headers=headers, timeout=5)
-                                        if img_res.status_code == 200:
-                                            with open(filepath, "wb") as f:
-                                                f.write(img_res.content)
-                                        else:
-                                            photo_filename = None
+                                    img_res = requests.get(art_photo_url, headers=headers, timeout=5)
+                                    if img_res.status_code == 200:
+                                        upload_file("artists", photo_filename, img_res.content, "image/jpeg")
+                                    else:
+                                        photo_filename = None
                         except Exception as e:
                             print(f"         [!] Errore artista {art_name}: {e}")
-                            
-                        cursor.execute(
-                            "INSERT INTO ARTIST (name, discogs_id, biography, image_path) VALUES (?, ?, ?, ?)",
-                            (art_name, discogs_art_id, bio, photo_filename)
-                        )
-                        artist_id_map[art_name] = cursor.lastrowid
+                        
+                        with conn:
+                            with conn.cursor() as cursor:
+                                cursor.execute(
+                                    "INSERT INTO artists (name, discogs_id, biography, image_path) VALUES (%s, %s, %s, %s) RETURNING id_artist;",
+                                    (art_name, discogs_art_id, bio, photo_filename)
+                                )
+                                row_art = cursor.fetchone()
+                                artist_id_map[art_name] = row_art["id_artist"] if row_art else None
                         
                     associated_artist_ids.append(artist_id_map[art_name])
                 
-                for artist_id in associated_artist_ids:
-                    cursor.execute(
-                        "INSERT INTO ALBUM_ARTIST (id_album, id_artist) VALUES (?, ?)",
-                        (album_id, artist_id)
-                    )
-                    album_artist_relations.append((album_id, artist_id))
+                with conn:
+                    with conn.cursor() as cursor:
+                        for artist_id in associated_artist_ids:
+                            cursor.execute(
+                                "INSERT INTO album_artists (id_album, id_artist) VALUES (%s, %s);",
+                                (album_id, artist_id)
+                            )
+                            album_artist_relations.append((album_id, artist_id))
                     
                 print(f"      [OK] Elaborato: {title} - {primary_artist_name}")
                 
@@ -321,22 +318,23 @@ def main():
         print(f"-> Generazione di {NUM_COPIES} copie fisiche...")
         today = datetime.date.today()
         
-        for _ in range(NUM_COPIES):
-            album_id = random.choice(album_ids)
-            user_id = random.choice(user_ids)
-            fmt = random.choice(FORMATS)
-            cond = random.choice(CONDITIONS)
-            days_ago = random.randint(0, 365)
-            added_date = (today - datetime.timedelta(days=days_ago)).isoformat()
-            notes = random.choice(NOTES_POOL)
+        with conn:
+            with conn.cursor() as cursor:
+                for _ in range(NUM_COPIES):
+                    album_id = random.choice(album_ids)
+                    user_id = random.choice(user_ids)
+                    fmt = random.choice(FORMATS)
+                    cond = random.choice(CONDITIONS)
+                    days_ago = random.randint(0, 365)
+                    added_date = (today - datetime.timedelta(days=days_ago)).isoformat()
+                    notes = random.choice(NOTES_POOL)
+                    
+                    cursor.execute(
+                        """INSERT INTO physical_copies (format, condition, added_date, personal_notes, id_user, id_album)
+                           VALUES (%s, %s, %s, %s, %s, %s);""",
+                        (fmt, cond, added_date, notes, user_id, album_id)
+                    )
             
-            cursor.execute(
-                """INSERT INTO PHYSICAL_COPY (format, condition, addedDate, personalNotes, id_user, id_album)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (fmt, cond, added_date, notes, user_id, album_id)
-            )
-            
-        conn.commit()
         print("\n====================================================")
         print("POPOLAMENTO COMPLETATO CON SUCCESSO!")
         print("====================================================")
@@ -348,10 +346,7 @@ def main():
         print("====================================================")
         
     except Exception as e:
-        conn.rollback()
         print(f"\n[!] ERRORE DURANTE IL SEEDING: {e}")
-    finally:
-        conn.close()
 
 if __name__ == "__main__":
     main()

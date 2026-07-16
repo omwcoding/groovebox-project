@@ -16,15 +16,20 @@ from core.database import get_db
 def _get_cached_response(key, max_age_hours):
     try:
         conn = get_db()
-        row = conn.execute(
-            "SELECT response_json, cached_at FROM DISCOGS_CACHE WHERE cache_key = ?",
-            (key,)
-        ).fetchone()
-        if row:
-            cached_at = datetime.datetime.fromisoformat(row["cached_at"])
-            age = (datetime.datetime.now() - cached_at).total_seconds() / 3600
-            if age <= max_age_hours:
-                return json.loads(row["response_json"])
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT response_json, cached_at FROM discogs_cache WHERE cache_key = %s;",
+                (key,)
+            )
+            row = cursor.fetchone()
+            if row:
+                cached_at = datetime.datetime.fromisoformat(row["cached_at"])
+                age = (datetime.datetime.now() - cached_at).total_seconds() / 3600
+                if age <= max_age_hours:
+                    return json.loads(row["response_json"])
+        finally:
+            cursor.close()
     except Exception:
         pass
     return None
@@ -33,11 +38,14 @@ def _set_cached_response(key, data):
     try:
         conn = get_db()
         with conn:
-            conn.execute(
-                """INSERT OR REPLACE INTO DISCOGS_CACHE (cache_key, response_json, cached_at)
-                   VALUES (?, ?, ?)""",
-                (key, json.dumps(data), datetime.datetime.now().isoformat())
-            )
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """INSERT INTO discogs_cache (cache_key, response_json, cached_at)
+                       VALUES (%s, %s, %s)
+                       ON CONFLICT (cache_key) 
+                       DO UPDATE SET response_json = EXCLUDED.response_json, cached_at = EXCLUDED.cached_at;""",
+                    (key, json.dumps(data), datetime.datetime.now().isoformat())
+                )
     except Exception:
         pass
 

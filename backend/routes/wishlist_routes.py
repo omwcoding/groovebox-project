@@ -80,7 +80,7 @@ def promote_wishlist_route(wishlist_id):
     
     format_val = data["format"].strip()
     condition = data["condition"].strip()
-    personal_notes = (data.get("personalNotes") or "").strip() or None
+    personal_notes = (data.get("personal_notes") or "").strip() or None
     
     # 1. Se l'album non è nel DB locale, importalo ora da Discogs
     id_album = item["id_album"]

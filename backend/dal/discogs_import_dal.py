@@ -1,10 +1,11 @@
 """
 GrooveBox - Data Access Layer per Importazione da Discogs
 ========================================================
-Fornisce la logica centralizzata per importare album dal database Discogs.
+Fornisce la logica centralizzata per importare album dal database Discogs nel database PostgreSQL e Supabase Storage.
 """
 
 import os
+import tempfile
 from flask import current_app
 from core.database import get_db
 from utils.discogs import (
@@ -12,6 +13,7 @@ from utils.discogs import (
     get_artist,
     download_discogs_image
 )
+from utils.storage import upload_file
 from dal.album_dal import insert_album
 from dal.artist_dal import (
     find_artist_by_discogs_id,
@@ -23,15 +25,17 @@ from dal.artist_dal import (
 def import_album_from_discogs(discogs_id: int, user_id: int) -> tuple[int, bool]:
     """
     Importa un album da Discogs nel catalogo globale.
-    Crea automaticamente l'artista/i se non presenti e ne scarica biografia/foto.
+    Crea automaticamente l'artista/i se non presenti e ne carica biografia/foto.
     Scarica la copertina e salva la tracklist.
     Ritorna la tupla: (album_id, was_existing)
     """
     conn = get_db()
-    existing_album = conn.execute(
-        "SELECT id_album FROM ALBUM WHERE discogs_id = ?",
-        (discogs_id,)
-    ).fetchone()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id_album FROM albums WHERE discogs_id = %s;", (discogs_id,))
+        existing_album = cursor.fetchone()
+    finally:
+        cursor.close()
     
     if existing_album:
         return existing_album["id_album"], True
@@ -64,11 +68,16 @@ def import_album_from_discogs(discogs_id: int, user_id: int) -> tuple[int, bool]
                     photo_filename = None
                     
                     if photo_url:
-                        photo_ext = "jpg"
-                        photo_filename = f"artist_discogs_{art_discogs_id}.{photo_ext}"
-                        dest = os.path.join(current_app.config["ARTISTS_FOLDER"], photo_filename)
-                        if not os.path.exists(dest):
-                            download_discogs_image(photo_url, dest)
+                        photo_filename = f"artist_discogs_{art_discogs_id}.jpg"
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                            tmp_path = tmp.name
+                        try:
+                            if download_discogs_image(photo_url, tmp_path):
+                                with open(tmp_path, "rb") as f:
+                                    upload_file("artists", photo_filename, f.read(), "image/jpeg")
+                        finally:
+                            if os.path.exists(tmp_path):
+                                os.remove(tmp_path)
                         
                     update_artist_discogs_info(art_id, art_discogs_id, bio, photo_filename)
                 except Exception as ex:
@@ -85,11 +94,16 @@ def import_album_from_discogs(discogs_id: int, user_id: int) -> tuple[int, bool]
                 photo_filename = None
                 
                 if photo_url:
-                    photo_ext = "jpg"
-                    photo_filename = f"artist_discogs_{art_discogs_id}.{photo_ext}"
-                    dest = os.path.join(current_app.config["ARTISTS_FOLDER"], photo_filename)
-                    if not os.path.exists(dest):
-                        download_discogs_image(photo_url, dest)
+                    photo_filename = f"artist_discogs_{art_discogs_id}.jpg"
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                        tmp_path = tmp.name
+                    try:
+                        if download_discogs_image(photo_url, tmp_path):
+                            with open(tmp_path, "rb") as f:
+                                upload_file("artists", photo_filename, f.read(), "image/jpeg")
+                    finally:
+                        if os.path.exists(tmp_path):
+                            os.remove(tmp_path)
                     
                 art_id = insert_artist(art_name, art_discogs_id, bio, photo_filename)
                 local_artist_ids.append(art_id)
@@ -113,7 +127,6 @@ def import_album_from_discogs(discogs_id: int, user_id: int) -> tuple[int, bool]
     cover_url = release_info["cover_url"]
     if cover_url:
         try:
-            # Riconosci l'estensione, di solito jpg o png da Discogs
             ext = "jpg"
             if ".png" in cover_url.lower():
                 ext = "png"
@@ -121,9 +134,16 @@ def import_album_from_discogs(discogs_id: int, user_id: int) -> tuple[int, bool]
                 ext = "webp"
                 
             cover_filename = f"album_discogs_{discogs_id}.{ext}"
-            dest_cover = os.path.join(current_app.config["COVERS_FOLDER"], cover_filename)
-            if not os.path.exists(dest_cover):
-                download_discogs_image(cover_url, dest_cover)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
+                tmp_path = tmp.name
+            try:
+                if download_discogs_image(cover_url, tmp_path):
+                    with open(tmp_path, "rb") as f:
+                        mime = f"image/{'png' if ext == 'png' else 'jpeg'}"
+                        upload_file("covers", cover_filename, f.read(), mime)
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
         except Exception as e:
             current_app.logger.warning(f"Impossibile scaricare copertina da Discogs: {e}")
 

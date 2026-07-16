@@ -62,7 +62,7 @@ const shelves = computed(() => {
               class="absolute inset-0 z-20 transition-all duration-500 transform group-hover/item:-translate-x-3 md:group-hover/item:-translate-x-5 shadow-2xl border border-white/10 rounded-xl overflow-hidden bg-zinc-900"
             >
               <img 
-                v-if="copy.coverPath" 
+                v-if="copy.cover_path" 
                 :src="`/api/albums/${copy.id_album}/cover`" 
                 :alt="copy.album_title" 
                 class="w-full h-full object-cover" 

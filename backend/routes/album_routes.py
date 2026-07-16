@@ -2,11 +2,12 @@
 GrooveBox - Route Blueprint per Album
 =====================================
 Definisce gli endpoint per le operazioni CRUD sul catalogo degli album 
-e per l'upload/recupero delle copertine (immagini).
+e per l'upload/recupero delle copertine (immagini) da Supabase Storage.
 """
 
-from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
+from flask import Blueprint, request, jsonify, g, redirect, current_app
 from werkzeug.utils import secure_filename
+from core.database import get_db
 from core.auth import token_required, require_role
 from dal.album_dal import (
     get_all_albums,
@@ -18,8 +19,8 @@ from dal.album_dal import (
 )
 from dal.artist_dal import find_artist_by_id
 from utils.validators import validate_json_payload
+from utils.storage import upload_file, delete_file, get_public_url
 from core.errors import BadRequestError, ForbiddenError, NotFoundError
-import os
 import uuid
 
 bp = Blueprint("albums", __name__, url_prefix="/api/albums")
@@ -59,11 +60,9 @@ def create_album():
     validate_json_payload(data, ["title"])
 
     title = data["title"].strip()
-    release_year = data.get("releaseYear")
+    release_year = data.get("release_year")
     genre = (data.get("genre") or "").strip() or None
     artist_ids = data.get("artist_ids", [])
-
-
 
     for aid in artist_ids:
         artist = find_artist_by_id(aid)
@@ -96,12 +95,12 @@ def update_album(album_id):
 
     fields = []
     values = []
-    for col in ["title", "releaseYear", "genre"]:
+    for col in ["title", "release_year", "genre"]:
         if col in data:
             val = data[col]
             if col == "genre" and val:
                 val = val.strip() or None
-            fields.append(f"{col} = ?")
+            fields.append(f"{col} = %s")
             values.append(val.strip() if isinstance(val, str) else val)
 
     artist_ids = None
@@ -132,18 +131,19 @@ def delete_album(album_id):
 
     delete_album_by_id(album_id)
 
-    # Rimuovi la copertina dal disco se nessun altro album la usa
-    cover_path = album.get("coverPath")
+    # Rimuovi la copertina dal bucket se nessun altro album la usa
+    cover_path = album.get("cover_path")
     if cover_path:
         conn = get_db()
-        count = conn.execute("SELECT COUNT(*) FROM ALBUM WHERE coverPath = ?", (cover_path,)).fetchone()[0]
-        if count == 0:
-            filepath = os.path.join(current_app.config["COVERS_FOLDER"], cover_path)
-            if os.path.exists(filepath):
-                try:
-                    os.remove(filepath)
-                except Exception as e:
-                    current_app.logger.warning(f"Errore rimozione copertina {filepath}: {e}")
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT COUNT(*) AS total FROM albums WHERE cover_path = %s;", (cover_path,))
+            row = cursor.fetchone()
+            count = row["total"] if row else 0
+            if count == 0:
+                delete_file("covers", cover_path)
+        finally:
+            cursor.close()
 
     return jsonify({
         "status": "success",
@@ -172,32 +172,27 @@ def upload_cover(album_id):
     if not safe_original or not _allowed(safe_original):
         raise BadRequestError("Formato copertina non supportato (ammessi: jpg, png, webp)")
 
-    upload_dir = current_app.config["COVERS_FOLDER"]
-    os.makedirs(upload_dir, exist_ok=True)
-
     ext = safe_original.rsplit(".", 1)[1].lower()
     filename = f"album_{album_id}_{uuid.uuid4().hex[:8]}.{ext}"
-    file.save(os.path.join(upload_dir, filename))
+    
+    file_bytes = file.read()
+    if not upload_file("covers", filename, file_bytes, file.mimetype):
+        raise BadRequestError("Errore durante il caricamento della copertina su Supabase Storage")
 
-    old = album.get("coverPath")
+    old = album.get("cover_path")
     if old and old != filename:
-        old_path = os.path.join(upload_dir, old)
-        if os.path.exists(old_path):
-            try:
-                os.remove(old_path)
-            except Exception as e:
-                current_app.logger.warning(f"Impossibile rimuovere la vecchia copertina {old_path}: {e}")
+        delete_file("covers", old)
 
     update_album_cover(album_id, filename)
-    return jsonify({"status": "success", "coverPath": filename}), 200
+    return jsonify({"status": "success", "cover_path": filename}), 200
 
 
 @bp.route("/<int:album_id>/cover", methods=["GET"])
 def get_cover(album_id):
     """Serve il file immagine della copertina associato all'album."""
     album = find_album_by_id(album_id)
-    if not album or not album.get("coverPath"):
+    if not album or not album.get("cover_path"):
         raise NotFoundError("Copertina non trovata")
         
-    upload_dir = current_app.config["COVERS_FOLDER"]
-    return send_from_directory(upload_dir, album["coverPath"])
+    url = get_public_url("covers", album["cover_path"])
+    return redirect(url)

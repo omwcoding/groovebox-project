@@ -28,7 +28,7 @@ const {
 
 const copy = ref(null)
 const editing = ref(false)
-const form = ref({ format: '', condition: '', personalNotes: '' })
+const form = ref({ format: '', condition: '', personal_notes: '' })
 
 onMounted(async () => {
   try {
@@ -42,7 +42,7 @@ function startEdit() {
   form.value = {
     format: copy.value.format,
     condition: copy.value.condition,
-    personalNotes: copy.value.personalNotes || ''
+    personal_notes: copy.value.personal_notes || ''
   }
   editing.value = true
 }
@@ -52,7 +52,7 @@ async function handleSave() {
     copy.value = await updateCopy(copy.value.id_copy, {
       format: form.value.format,
       condition: form.value.condition,
-      personalNotes: form.value.personalNotes || null
+      personal_notes: form.value.personal_notes || null
     })
     editing.value = false
   } catch (err) {
@@ -114,7 +114,7 @@ function formatDate(dateStr) {
       <div v-if="!editing" class="flex flex-col md:flex-row">
         <!-- Left Side: Cover Art -->
         <div class="w-full md:w-1/2 aspect-square bg-white/5 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative overflow-hidden">
-          <img v-if="copy.coverPath"
+          <img v-if="copy.cover_path"
             :src="`/api/albums/${copy.id_album}/cover`"
             :alt="copy.album_title"
             class="w-full h-full object-cover animate-fade-in"
@@ -152,13 +152,13 @@ function formatDate(dateStr) {
 
             <div class="grid grid-cols-2 gap-6 pt-6 border-t border-white/5 text-sm">
               <DetailField label="Genere" :value="copy.genre" />
-              <DetailField label="Aggiunto al Vault il" :value="formatDate(copy.addedDate)" />
+              <DetailField label="Aggiunto al Vault il" :value="formatDate(copy.added_date)" />
             </div>
 
-            <div v-if="copy.personalNotes" class="pt-6 border-t border-white/5 space-y-2">
+            <div v-if="copy.personal_notes" class="pt-6 border-t border-white/5 space-y-2">
               <DetailField label="Note personali">
                 <p class="text-sm text-white/60 leading-relaxed italic bg-white/5 border border-white/5 rounded-2xl p-4">
-                  "{{ copy.personalNotes }}"
+                  "{{ copy.personal_notes }}"
                 </p>
               </DetailField>
             </div>
@@ -209,7 +209,7 @@ function formatDate(dateStr) {
         
         <div class="space-y-2">
           <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
-          <textarea v-model="form.personalNotes" rows="3" class="apple-input resize-none" placeholder="Inserisci note su questa copia..."></textarea>
+          <textarea v-model="form.personal_notes" rows="3" class="apple-input resize-none" placeholder="Inserisci note su questa copia..."></textarea>
         </div>
         
         <div class="flex gap-3 pt-4 border-t border-white/5">

@@ -21,17 +21,22 @@ class Config:
     if not SECRET_KEY:
         raise RuntimeError("La variabile d'ambiente SECRET_KEY non è impostata nel file .env!")
 
-    DATABASE_PATH = os.path.join(BACKEND_DIR, "instance", "groovebox.db")
-    
+    # Configurazione Database e API Supabase
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    if not DATABASE_URL:
+        raise RuntimeError("La variabile d'ambiente DATABASE_URL non è impostata nel file .env!")
+        
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    if not SUPABASE_URL:
+        raise RuntimeError("La variabile d'ambiente SUPABASE_URL non è impostata nel file .env!")
+        
+    SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
+    if not SUPABASE_ANON_KEY:
+        raise RuntimeError("La variabile d'ambiente SUPABASE_ANON_KEY non è impostata nel file .env!")
+
     # Credenziali Discogs
     DISCOGS_CONSUMER_KEY = os.environ.get("DISCOGS_CONSUMER_KEY")
     DISCOGS_CONSUMER_SECRET = os.environ.get("DISCOGS_CONSUMER_SECRET")
-    
-    # Percorsi per la memorizzazione degli upload fisici (es. copertine degli album)
-    UPLOAD_FOLDER = os.path.join(BACKEND_DIR, "uploads")
-    COVERS_FOLDER = os.path.join(UPLOAD_FOLDER, "covers")
-    ARTISTS_FOLDER = os.path.join(UPLOAD_FOLDER, "artists")
-    AVATARS_FOLDER = os.path.join(UPLOAD_FOLDER, "avatars")
     
     # Vincoli di validazione per il formato dei file e dei generi musicali del catalogo
     ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}

@@ -191,14 +191,14 @@ const filteredAlbums = computed(() => {
             class="group p-4 bg-white/5 border border-white/5 hover:border-brand-secondary/30 rounded-2xl transition-all flex items-center gap-4 hover:shadow-lg hover:shadow-brand-secondary/5"
           >
             <div class="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden shrink-0 bg-white/5 group-hover:scale-105 transition-transform duration-300">
-              <img v-if="album.coverPath" :src="`/api/albums/${album.id_album}/cover`" class="w-full h-full object-cover" />
+              <img v-if="album.cover_path" :src="`/api/albums/${album.id_album}/cover`" class="w-full h-full object-cover" />
               <span v-else class="text-xl">&#127925;</span>
             </div>
             <div class="min-w-0 flex-grow">
               <p class="font-bold group-hover:text-brand-secondary transition-colors truncate">{{ album.title }}</p>
               <div class="flex gap-2 text-xs text-white/30 font-semibold uppercase tracking-wider mt-0.5">
-                <span v-if="album.releaseYear">{{ album.releaseYear }}</span>
-                <span v-if="album.releaseYear && album.genre">&middot;</span>
+                <span v-if="album.release_year">{{ album.release_year }}</span>
+                <span v-if="album.release_year && album.genre">&middot;</span>
                 <span v-if="album.genre" class="truncate">{{ album.genre }}</span>
               </div>
             </div>

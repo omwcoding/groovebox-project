@@ -27,7 +27,7 @@ const editing = ref(false)
 const error = ref('')
 const allArtists = ref([])
 
-const form = ref({ title: '', releaseYear: '', genre: '', artist_ids: [] })
+const form = ref({ title: '', release_year: '', genre: '', artist_ids: [] })
 const coverFile = ref(null)
 const coverPreview = ref(null)
 
@@ -104,7 +104,7 @@ onMounted(async () => {
 const showAddCopyModal = ref(false)
 const format = ref('Vinile')
 const condition = ref('Nuovo')
-const personalNotes = ref('')
+const personal_notes = ref('')
 const actionLoading = ref(false)
 const successMessage = ref('')
 
@@ -133,7 +133,7 @@ async function addToCollection() {
       id_album: album.value.id_album,
       format: format.value,
       condition: condition.value,
-      personalNotes: personalNotes.value.trim() || null
+      personal_notes: personal_notes.value.trim() || null
     })
     successMessage.value = 'Disco aggiunto al Vault!'
     showAddCopyModal.value = false
@@ -147,7 +147,7 @@ async function addToCollection() {
 function startEdit() {
   form.value = {
     title: album.value.title,
-    releaseYear: album.value.releaseYear || '',
+    release_year: album.value.release_year || '',
     genre: album.value.genre || '',
     artist_ids: album.value.artists?.map(a => a.id_artist) || []
   }
@@ -168,7 +168,7 @@ async function handleSave() {
   try {
     const payload = {
       title: form.value.title,
-      releaseYear: form.value.releaseYear ? parseInt(form.value.releaseYear) : null,
+      release_year: form.value.release_year ? parseInt(form.value.release_year) : null,
       genre: form.value.genre || null,
       artist_ids: form.value.artist_ids
     }
@@ -181,7 +181,7 @@ async function handleSave() {
       fd.append('file', coverFile.value)
       try {
         const coverRes = await api.post(`/albums/${album.value.id_album}/cover`, fd)
-        updatedAlbum.coverPath = coverRes.coverPath
+        updatedAlbum.cover_path = coverRes.cover_path
       } catch (_) { /* cover non bloccante */ }
     }
 
@@ -220,7 +220,7 @@ async function handleDelete() {
       <div v-if="!editing" class="flex flex-col md:flex-row">
         <!-- Cover Art -->
         <div class="w-full md:w-1/2 aspect-square bg-white/5 flex items-center justify-center border-b md:border-b-0 md:border-r border-white/5 relative overflow-hidden">
-          <img v-if="album.coverPath"
+          <img v-if="album.cover_path"
             :src="`/api/albums/${album.id_album}/cover`"
             :alt="album.title"
             class="w-full h-full object-cover"
@@ -265,7 +265,7 @@ async function handleDelete() {
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-6 border-t border-white/5">
-              <DetailField label="Anno di uscita" :value="album.releaseYear" />
+              <DetailField label="Anno di uscita" :value="album.release_year" />
               <DetailField label="Genere" :value="album.genre" />
               <DetailField label="Paese di stampa" :value="album.country" />
               <DetailField label="Etichetta" :value="album.label" />
@@ -354,7 +354,7 @@ async function handleDelete() {
           <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Copertina</label>
           <label class="flex items-center gap-4 cursor-pointer group">
             <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0 group-hover:border-white/20 transition-colors">
-              <img v-if="coverPreview || album.coverPath" :src="coverPreview || `/api/albums/${album.id_album}/cover`" class="w-full h-full object-cover" />
+              <img v-if="coverPreview || album.cover_path" :src="coverPreview || `/api/albums/${album.id_album}/cover`" class="w-full h-full object-cover" />
               <svg v-else xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" class="opacity-20"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             </div>
             <div class="space-y-1">
@@ -370,7 +370,7 @@ async function handleDelete() {
         <div class="grid grid-cols-2 gap-6">
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Anno</label>
-            <input v-model="form.releaseYear" type="number" min="1900" max="2026" class="apple-input" />
+            <input v-model="form.release_year" type="number" min="1900" max="2026" class="apple-input" />
           </div>
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Genere</label>
@@ -489,7 +489,7 @@ async function handleDelete() {
 
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
-            <textarea v-model="personalNotes" rows="2" placeholder="Note d'acquisto, edizione..." class="apple-input resize-none"></textarea>
+            <textarea v-model="personal_notes" rows="2" placeholder="Note d'acquisto, edizione..." class="apple-input resize-none"></textarea>
           </div>
 
           <div class="flex gap-3 pt-4 border-t border-white/5">

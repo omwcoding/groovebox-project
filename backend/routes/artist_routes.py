@@ -2,11 +2,11 @@
 GrooveBox - Route Blueprint per Artisti
 =======================================
 Definisce gli endpoint per le operazioni CRUD sul catalogo degli artisti
-e per la consultazione della relativa discografia.
+e per la consultazione della relativa discografia da Supabase Storage.
 """
 
-from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
-import os
+from flask import Blueprint, request, jsonify, g, redirect, current_app
+from core.database import get_db
 from core.auth import token_required, require_role
 from dal.artist_dal import (
     get_all_artists,
@@ -17,6 +17,7 @@ from dal.artist_dal import (
     delete_artist_by_id
 )
 from utils.validators import validate_json_payload
+from utils.storage import delete_file, get_public_url
 from core.errors import ForbiddenError, NotFoundError
 
 bp = Blueprint("artists", __name__, url_prefix="/api/artists")
@@ -101,18 +102,19 @@ def delete_artist(artist_id):
 
     delete_artist_by_id(artist_id)
 
-    # Rimuovi la foto dal disco se nessun altro artista la usa
+    # Rimuovi la foto dal bucket se nessun altro artista la usa
     image_path = dict(artist).get("image_path")
     if image_path:
         conn = get_db()
-        count = conn.execute("SELECT COUNT(*) FROM ARTIST WHERE image_path = ?", (image_path,)).fetchone()[0]
-        if count == 0:
-            filepath = os.path.join(current_app.config["ARTISTS_FOLDER"], image_path)
-            if os.path.exists(filepath):
-                try:
-                    os.remove(filepath)
-                except Exception as e:
-                    current_app.logger.warning(f"Errore rimozione foto artista {filepath}: {e}")
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT COUNT(*) AS total FROM artists WHERE image_path = %s;", (image_path,))
+            row = cursor.fetchone()
+            count = row["total"] if row else 0
+            if count == 0:
+                delete_file("artists", image_path)
+        finally:
+            cursor.close()
 
     return jsonify({
         "status": "success",
@@ -127,5 +129,5 @@ def get_artist_image(artist_id):
     if not artist or not dict(artist).get("image_path"):
         raise NotFoundError("Foto dell'artista non trovata")
         
-    upload_dir = current_app.config["ARTISTS_FOLDER"]
-    return send_from_directory(upload_dir, dict(artist)["image_path"])
+    url = get_public_url("artists", dict(artist)["image_path"])
+    return redirect(url)

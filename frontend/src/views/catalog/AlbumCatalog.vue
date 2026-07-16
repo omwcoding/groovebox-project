@@ -33,7 +33,7 @@ const importLoading = ref(false)
 
 const form = ref({
   title: '',
-  releaseYear: '',
+  release_year: '',
   genre: '',
   artist_ids: []
 })
@@ -108,7 +108,7 @@ function handleCoverPick(e) {
 }
 
 function resetForm() {
-  form.value = { title: '', releaseYear: '', genre: '', artist_ids: [] }
+  form.value = { title: '', release_year: '', genre: '', artist_ids: [] }
   coverFile.value = null
   coverPreview.value = null
   formError.value = ''
@@ -128,7 +128,7 @@ async function handleCreateManual() {
   try {
     const payload = {
       title: form.value.title,
-      releaseYear: form.value.releaseYear ? parseInt(form.value.releaseYear) : null,
+      release_year: form.value.release_year ? parseInt(form.value.release_year) : null,
       genre: form.value.genre || null,
       artist_ids: form.value.artist_ids
     }
@@ -140,7 +140,7 @@ async function handleCreateManual() {
       fd.append('file', coverFile.value)
       try {
         const coverRes = await api.post(`/albums/${newAlbum.id_album}/cover`, fd)
-        newAlbum.coverPath = coverRes.coverPath
+        newAlbum.cover_path = coverRes.cover_path
       } catch (_) {}
     }
 
@@ -255,7 +255,7 @@ function toggleArtist(id) {
         >
           <!-- Copertina -->
           <div class="w-20 h-20 bg-white/5 rounded-xl overflow-hidden shrink-0 flex items-center justify-center relative shadow-md">
-            <img v-if="album.thumb || album.coverPath" :src="album.coverPath ? `/api/albums/${album.id_album}/cover` : album.thumb" class="w-full h-full object-cover" />
+            <img v-if="album.thumb || album.cover_path" :src="album.cover_path ? `/api/albums/${album.id_album}/cover` : album.thumb" class="w-full h-full object-cover" />
             <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-15"><circle cx="12" cy="12" r="10"/><path d="M6 12c0-1.7.7-3.2 1.8-4.2"/><circle cx="12" cy="12" r="2"/><path d="M18 12c0 1.7-.7 3.2-1.8 4.2"/></svg>
           </div>
           <!-- Info -->
@@ -291,9 +291,9 @@ function toggleArtist(id) {
           :idAlbum="album.id_album"
           :title="album.title"
           :artists="album.artists"
-          :coverPath="album.coverPath"
+          :cover_path="album.cover_path"
           :genre="album.genre"
-          :releaseYear="album.releaseYear"
+          :release_year="album.release_year"
           :to="`/albums/${album.id_album}`"
           :index="index"
         />
@@ -324,7 +324,7 @@ function toggleArtist(id) {
               </div>
               <div class="space-y-2">
                 <label for="album-year" class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Anno di uscita</label>
-                <input id="album-year" v-model="form.releaseYear" type="number" min="1900" max="2026" placeholder="Es. 1969" class="apple-input" />
+                <input id="album-year" v-model="form.release_year" type="number" min="1900" max="2026" placeholder="Es. 1969" class="apple-input" />
               </div>
             </div>
             <div class="space-y-2">

@@ -24,11 +24,12 @@ from dal.artist_dal import (
 )
 from dal.discogs_import_dal import import_album_from_discogs
 from core.database import get_db
+from utils.storage import upload_file
 import os
 import uuid
+import tempfile
 
 bp = Blueprint("discogs", __name__, url_prefix="/api/discogs")
-
 
 
 @bp.route("/search/artist", methods=["GET"])
@@ -44,6 +45,7 @@ def search_artist_route():
         return jsonify({"status": "success", "data": results})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 @bp.route("/search/unified", methods=["GET"])
 @token_required
@@ -79,6 +81,7 @@ def search_unified_route():
         "data": local_results + discogs_results
     })
 
+
 @bp.route("/import/album", methods=["POST"])
 @token_required
 @require_role("collector", "administrator")
@@ -101,13 +104,18 @@ def import_album_route():
         return jsonify({"status": "error", "message": str(e)}), 500
 
     conn = get_db()
-    album_row = conn.execute(
-        "SELECT al.*, us.username AS creator_username "
-        "FROM ALBUM al "
-        "LEFT JOIN USER us ON al.id_user = us.id_user "
-        "WHERE al.id_album = ?",
-        (album_id,)
-    ).fetchone()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT al.*, us.username AS creator_username "
+            "FROM albums al "
+            "LEFT JOIN users us ON al.id_user = us.id_user "
+            "WHERE al.id_album = %s;",
+            (album_id,)
+        )
+        album_row = cursor.fetchone()
+    finally:
+        cursor.close()
 
     if was_existing:
         return jsonify({
@@ -121,6 +129,7 @@ def import_album_route():
             "message": "Album importato con successo da Discogs",
             "data": enrich_album(album_row)
         }), 201
+
 
 @bp.route("/import/artist", methods=["POST"])
 @token_required
@@ -157,11 +166,16 @@ def import_artist_route():
         # Se ha una nuova foto ed era vuoto o vogliamo scaricarlo
         if photo_url and not photo_filename:
             try:
-                photo_ext = "jpg"
-                photo_filename = f"artist_discogs_{discogs_id}.{photo_ext}"
-                dest = os.path.join(current_app.config["ARTISTS_FOLDER"], photo_filename)
-                if not os.path.exists(dest):
-                    download_discogs_image(photo_url, dest)
+                photo_filename = f"artist_discogs_{discogs_id}.jpg"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                    tmp_path = tmp.name
+                try:
+                    if download_discogs_image(photo_url, tmp_path):
+                        with open(tmp_path, "rb") as f:
+                            upload_file("artists", photo_filename, f.read(), "image/jpeg")
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
             except Exception as e:
                 current_app.logger.warning(f"Impossibile scaricare foto artista: {e}")
                 
@@ -169,7 +183,12 @@ def import_artist_route():
         
         # Recupera aggiornato
         conn = get_db()
-        updated = conn.execute("SELECT * FROM ARTIST WHERE id_artist = ?", (art_id,)).fetchone()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM artists WHERE id_artist = %s;", (art_id,))
+            updated = cursor.fetchone()
+        finally:
+            cursor.close()
         return jsonify({
             "status": "success",
             "message": "Artista aggiornato con successo con dati Discogs",
@@ -184,18 +203,28 @@ def import_artist_route():
         
         if photo_url and not photo_filename:
             try:
-                photo_ext = "jpg"
-                photo_filename = f"artist_discogs_{discogs_id}.{photo_ext}"
-                dest = os.path.join(current_app.config["ARTISTS_FOLDER"], photo_filename)
-                if not os.path.exists(dest):
-                    download_discogs_image(photo_url, dest)
+                photo_filename = f"artist_discogs_{discogs_id}.jpg"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                    tmp_path = tmp.name
+                try:
+                    if download_discogs_image(photo_url, tmp_path):
+                        with open(tmp_path, "rb") as f:
+                            upload_file("artists", photo_filename, f.read(), "image/jpeg")
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
             except Exception as e:
                 current_app.logger.warning(f"Impossibile scaricare foto artista: {e}")
                 
         update_artist_discogs_info(art_id, discogs_id, bio, photo_filename)
         
         conn = get_db()
-        updated = conn.execute("SELECT * FROM ARTIST WHERE id_artist = ?", (art_id,)).fetchone()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM artists WHERE id_artist = %s;", (art_id,))
+            updated = cursor.fetchone()
+        finally:
+            cursor.close()
         return jsonify({
             "status": "success",
             "message": "Artista collegato ed aggiornato con successo con dati Discogs",
@@ -205,18 +234,28 @@ def import_artist_route():
     # Altrimenti crea un nuovo record
     if photo_url:
         try:
-            photo_ext = "jpg"
-            photo_filename = f"artist_discogs_{discogs_id}.{photo_ext}"
-            dest = os.path.join(current_app.config["ARTISTS_FOLDER"], photo_filename)
-            if not os.path.exists(dest):
-                download_discogs_image(photo_url, dest)
+            photo_filename = f"artist_discogs_{discogs_id}.jpg"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                tmp_path = tmp.name
+            try:
+                if download_discogs_image(photo_url, tmp_path):
+                    with open(tmp_path, "rb") as f:
+                        upload_file("artists", photo_filename, f.read(), "image/jpeg")
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
         except Exception as e:
             current_app.logger.warning(f"Impossibile scaricare foto artista: {e}")
             
     art_id = insert_artist(art_details["name"], discogs_id, bio, photo_filename)
     
     conn = get_db()
-    new_art = conn.execute("SELECT * FROM ARTIST WHERE id_artist = ?", (art_id,)).fetchone()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM artists WHERE id_artist = %s;", (art_id,))
+        new_art = cursor.fetchone()
+    finally:
+        cursor.close()
     return jsonify({
         "status": "success",
         "message": "Artista importato con successo da Discogs",
