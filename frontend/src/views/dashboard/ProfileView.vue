@@ -130,7 +130,7 @@ async function handleDeleteAccount() {
   }
   try {
     await api.delete('/users/me')
-    authStore.logout()
+    await authStore.logout()
     router.push('/')
   } catch (err) {
     error.value = err.message || 'Errore durante l\'eliminazione'

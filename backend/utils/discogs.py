@@ -355,7 +355,6 @@ def clean_artist_name(name):
     """
     if not name:
         return ""
-    import re
     # Rimuove cose come " (2)" o " (15)" in coda al nome dell'artista
     return re.sub(r'\s*\(\d+\)$', '', name).strip()
 
@@ -390,7 +389,6 @@ def clean_title(title):
     if " = " in title:
         parts = [p.strip() for p in title.split(" = ")]
         if len(parts) >= 2:
-            import re
             # Pattern per caratteri cirillici, cinesi, giapponesi, coreani
             non_latin_pattern = re.compile(r'[\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\u0400-\u04ff\u1100-\u11ff\uac00-\ud7af]')
             has_non_latin_0 = bool(non_latin_pattern.search(parts[0]))

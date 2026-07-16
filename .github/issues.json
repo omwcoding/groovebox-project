@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "title": "Deepen the Discogs Import module",
+    "status": "resolved",
+    "description": "Encapsulate entire Discogs release import pipeline (caching, artist lookup/creation, cover downloading, insertion) into a single cohesive DAL function `import_album_from_discogs`."
+  },
+  {
+    "id": 2,
+    "title": "Collapse the role-enforcement seam",
+    "status": "resolved",
+    "description": "Introduce `@require_role` decorator in `core/auth.py` and apply to routes, removing repeated inline role checks."
+  },
+  {
+    "id": 3,
+    "title": "Move unified search SQL into the album DAL",
+    "status": "resolved",
+    "description": "Move the local database query in `search_unified_route` out of the route and into `search_albums_local` in `album_dal.py`."
+  },
+  {
+    "id": 4,
+    "title": "Wishlist promote logic cleanup",
+    "status": "resolved",
+    "description": "Clean up wishlist promotion logic, removing duplicate imports and database check code."
+  },
+  {
+    "id": 5,
+    "title": "Push user stats counts into the user DAL",
+    "status": "resolved",
+    "description": "Encapsulate COUNT query logic for user physical copies and albums inside a new DAL function `get_user_stats` in `user_dal.py`."
+  },
+  {
+    "id": 6,
+    "title": "Extract a useVault composable",
+    "status": "resolved",
+    "description": "Extract `useVault` composable on the frontend to centralize state, loading, error, search, and filtering, removing duplications in views."
+  },
+  {
+    "id": 7,
+    "title": "CORS wildcard and SQL f-string risks",
+    "status": "resolved",
+    "description": "Restrict CORS wildcards to specified origin list, and replace dynamic SQL update queries with static, parameterized ones."
+  },
+  {
+    "id": 8,
+    "title": "Deepen Wishlist Promote logic and clean inline import",
+    "status": "open",
+    "description": "Wishlist promotion logic is currently placed in `wishlist_routes.py`. It should be encapsulated in a DAL function `promote_wishlist_item` in `wishlist_dal.py`. Additionally, the inline import of `get_album_artists` in `wishlist_dal.py` can be moved to the top of the file."
+  }
+]

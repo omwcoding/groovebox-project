@@ -24,7 +24,7 @@ def create_app():
     app.config.from_object(Config)
 
     # Abilitazione delle chiamate Cross-Origin Resource Sharing per le rotte API
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*": {"origins": app.config["ALLOWED_ORIGINS"]}}, supports_credentials=True)
 
     # Bootstrap e seeding dei dati iniziali del database
     init_db()

@@ -41,3 +41,6 @@ class Config:
         "Soul / R&B / Funk", "Reggae / Dub", "Folk / Acoustic",
         "Classical", "Soundtrack / OST", "World / Altro"
     }
+
+    # Domini abilitati per CORS (separati da virgola, fallback per sviluppo locale)
+    ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")

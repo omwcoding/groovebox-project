@@ -1,5 +1,6 @@
 from core.database import get_db
 import datetime
+from dal.album_dal import get_album_artists
 
 def get_user_wishlist(user_id):
     """Recupera la wishlist di un utente, arricchita con dettagli dell'album se presenti localmente."""
@@ -17,7 +18,6 @@ def get_user_wishlist(user_id):
     for r in rows:
         item = dict(r)
         if item["id_album"]:
-            from dal.album_dal import get_album_artists
             artists = get_album_artists(item["id_album"])
             item["artists"] = [dict(a) for a in artists]
         else:

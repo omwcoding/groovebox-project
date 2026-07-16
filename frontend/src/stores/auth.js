@@ -12,22 +12,18 @@ import { api } from './api'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
-  const token = ref(null)
 
-  const isAuthenticated = computed(() => !!token.value)
+  const isAuthenticated = computed(() => !!user.value)
   const isAdmin = computed(() => user.value?.role === 'administrator')
   const isCollector = computed(() => user.value?.role === 'collector')
 
   // Ripristina la sessione utente precedentemente salvata nel browser.
   function loadFromStorage() {
-    const savedToken = localStorage.getItem('mint_token')
     const savedUser = localStorage.getItem('mint_user')
-    if (savedToken && savedUser) {
+    if (savedUser) {
       try {
-        token.value = savedToken
         user.value = JSON.parse(savedUser)
       } catch (_) {
-        localStorage.removeItem('mint_token')
         localStorage.removeItem('mint_user')
       }
     }
@@ -36,9 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Invia le credenziali per ottenere un token ed inizializzare la sessione.
   async function login(username, password) {
     const response = await api.post('/auth/login', { username, password })
-    token.value = response.data.token
     user.value = response.data.user
-    localStorage.setItem('mint_token', token.value)
     localStorage.setItem('mint_user', JSON.stringify(user.value))
     return response
   }
@@ -50,11 +44,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Termina la sessione utente eliminando i token locali.
-  function logout() {
-    user.value = null
-    token.value = null
-    localStorage.removeItem('mint_token')
-    localStorage.removeItem('mint_user')
+  async function logout() {
+    try {
+      await api.post('/auth/logout')
+    } catch (_) {
+      // Ignora errori di logout se sessione già scaduta
+    } finally {
+      user.value = null
+      localStorage.removeItem('mint_user')
+    }
   }
 
   // Sincronizza le informazioni utente aggiornate nello store e nello storage locale.

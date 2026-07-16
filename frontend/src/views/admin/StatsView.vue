@@ -49,17 +49,12 @@ const donutSlices = computed(() => {
 
 async function handleExportStats() {
   try {
-    const token = localStorage.getItem('mint_token')
-    const headers = {}
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-    const res = await fetch('/api/stats/export', { headers })
+    const res = await fetch('/api/stats/export', { credentials: 'include' })
     if (res.status === 401) {
       // Token scaduto: replica il comportamento del layer api.js
       const { useAuthStore } = await import('@/stores/auth')
       const authStore = useAuthStore()
-      authStore.logout()
+      await authStore.logout()
       window.location.href = '/login'
       return
     }

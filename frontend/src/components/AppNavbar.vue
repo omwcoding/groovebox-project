@@ -37,8 +37,8 @@ onUnmounted(() => {
   window.removeEventListener('click', handleOutsideClick)
 })
 
-function handleLogout() {
-  authStore.logout()
+async function handleLogout() {
+  await authStore.logout()
   router.push('/login')
 }
 

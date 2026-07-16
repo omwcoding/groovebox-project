@@ -59,23 +59,16 @@ def insert_copy(id_album, format_val, condition, personal_notes, user_id):
 
 
 
-def update_copy_data(copy_id, fields, values):
-    """
-    Aggiorna i dati della copia fisica specificata.
-    
-    Per prevenire vulnerabilità SQL Injection, l'argomento 'fields' deve contenere 
-    esclusivamente identificatori di colonna statici definiti dall'applicazione, 
-    mentre i dati dinamici devono essere passati tramite l'argomento 'values'.
-    """
-    ALLOWED_COPY_FIELDS = {'format = ?', 'condition = ?', 'personalNotes = ?'}
-    for f in fields:
-        if f.strip() not in ALLOWED_COPY_FIELDS:
-            raise ValueError(f"Campo non consentito: {f}")
-
+def update_copy_data(copy_id, format_val, condition, personal_notes):
+    """Aggiorna le informazioni di una copia fisica nel database."""
     conn = get_db()
     with conn:
-        query = f"UPDATE PHYSICAL_COPY SET {', '.join(fields)} WHERE id_copy = ?"
-        conn.execute(query, values + [copy_id])
+        conn.execute(
+            """UPDATE PHYSICAL_COPY 
+               SET format = ?, condition = ?, personalNotes = ? 
+               WHERE id_copy = ?""",
+            (format_val.strip(), condition.strip(), personal_notes, copy_id)
+        )
 
 def delete_copy_by_id(copy_id):
     """Elimina una copia fisica a partire dal suo identificativo univoco."""

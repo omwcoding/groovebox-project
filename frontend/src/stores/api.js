@@ -8,20 +8,15 @@
 const API_BASE = '/api'
 
 async function request(endpoint, options = {}) {
-  const token = localStorage.getItem('mint_token')
-
   const isFormData = options.body instanceof FormData
   const headers = {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers
   }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
+    credentials: 'include',
     headers
   })
 
@@ -30,9 +25,8 @@ async function request(endpoint, options = {}) {
     try {
       const { useAuthStore } = await import('@/stores/auth')
       const authStore = useAuthStore()
-      authStore.logout()
+      await authStore.logout()
     } catch (_) {
-      localStorage.removeItem('mint_token')
       localStorage.removeItem('mint_user')
     }
     window.location.href = '/login'

@@ -111,11 +111,10 @@ def login():
         algorithm="HS256"
     )
 
-    return jsonify({
+    response = jsonify({
         "status": "success",
         "message": "Login effettuato con successo",
         "data": {
-            "token": token,
             "user": {
                 "id_user": user["id_user"],
                 "username": user["username"],
@@ -129,3 +128,23 @@ def login():
             }
         }
     })
+    response.set_cookie(
+        key="token",
+        value=token,
+        httponly=True,
+        secure=False,  # False per sviluppo locale su http
+        samesite="Lax",
+        max_age=24 * 3600
+    )
+    return response
+
+
+@bp.route("/logout", methods=["POST"])
+def logout():
+    """Effettua il logout dell'utente eliminando il cookie di sessione."""
+    response = jsonify({
+        "status": "success",
+        "message": "Logout effettuato con successo"
+    })
+    response.delete_cookie("token", samesite="Lax")
+    return response

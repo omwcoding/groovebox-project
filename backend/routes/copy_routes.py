@@ -100,18 +100,19 @@ def update_copy(copy_id):
     if not data:
         raise BadRequestError("Nessun dato fornito nella richiesta")
 
-    fields = []
-    values = []
-    for col in ["format", "condition", "personalNotes"]:
-        if col in data:
-            fields.append(f"{col} = ?")
-            val = data[col]
-            values.append(val.strip() if isinstance(val, str) and val else val)
+    # Merge existing values with request data
+    new_format = data.get("format", copy["format"])
+    new_condition = data.get("condition", copy["condition"])
+    new_notes = data.get("personalNotes") if "personalNotes" in data else copy["personalNotes"]
 
-    if not fields:
-        raise BadRequestError("Nessun campo valido da aggiornare")
+    if isinstance(new_format, str):
+        new_format = new_format.strip()
+    if isinstance(new_condition, str):
+        new_condition = new_condition.strip()
+    if isinstance(new_notes, str):
+        new_notes = new_notes.strip() or None
 
-    update_copy_data(copy_id, fields, values)
+    update_copy_data(copy_id, new_format, new_condition, new_notes)
     updated_copy = find_copy_by_id_and_user(copy_id, g.current_user["id_user"])
     
     return jsonify({
