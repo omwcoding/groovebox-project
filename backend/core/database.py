@@ -1,5 +1,5 @@
 """
-GrooveBox - Configurazione e Connessione Database PostgreSQL (Supabase)
+Mint - Configurazione e Connessione Database PostgreSQL (Supabase)
 =============================================================================
 Gestisce la connessione al database remoto PostgreSQL fornito da Supabase.
 Lo schema viene creato esternamente tramite il SQL Editor di Supabase.
@@ -65,8 +65,8 @@ def seed_db():
             (
                 "admin",
                 "Admin",
-                "GrooveBox",
-                "admin@groovebox.local",
+                "Mint",
+                "admin@mint.local",
                 generate_password_hash("admin"),
                 "administrator"
             )

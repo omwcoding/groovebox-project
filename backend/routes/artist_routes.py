@@ -1,5 +1,5 @@
 """
-GrooveBox - Route Blueprint per Artisti
+Mint - Route Blueprint per Artisti
 =======================================
 Definisce gli endpoint per le operazioni CRUD sul catalogo degli artisti
 e per la consultazione della relativa discografia da Supabase Storage.

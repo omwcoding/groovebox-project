@@ -1,5 +1,5 @@
 """
-GrooveBox - Middleware di Autenticazione JWT
+Mint - Middleware di Autenticazione JWT
 ===========================================
 Fornisce il decoratore `@token_required` per proteggere le rotte dell'API.
 Valida il token JWT presente nell'header HTTP Authorization e inserisce

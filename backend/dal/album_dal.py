@@ -1,5 +1,5 @@
 """
-GrooveBox - Data Access Layer per Album
+Mint - Data Access Layer per Album
 =======================================
 Gestisce la persistenza e le query SQL per la tabella albums e le relazioni
 ponte associate (album_artists) nel database PostgreSQL.

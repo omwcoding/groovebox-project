@@ -1,5 +1,5 @@
 """
-GrooveBox - Configurazione Globale dell'Applicazione
+Mint - Configurazione Globale dell'Applicazione
 ===================================================
 Definisce le impostazioni ambientali, le chiavi di cifratura, i percorsi delle 
 directory di sistema e i vincoli di validazione relativi ai file e ai metadati 

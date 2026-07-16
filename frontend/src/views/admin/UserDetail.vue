@@ -1,5 +1,5 @@
 <!--
-GrooveBox - Pagina Dettaglio Utente (Amministrazione)
+Mint - Pagina Dettaglio Utente (Amministrazione)
 =====================================================
 Presenta i dettagli anagrafici e le metriche di attività di un singolo collezionista.
 Consente l'eliminazione definitiva dell'account per motivi di moderazione. Accessibile solo agli amministratori.

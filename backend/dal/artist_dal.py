@@ -1,5 +1,5 @@
 """
-GrooveBox - Data Access Layer per Artisti
+Mint - Data Access Layer per Artisti
 =========================================
 Gestisce le operazioni di persistenza, lettura e cancellazione per la 
 tabella artists e la consultazione della discografia ad essa associata nel database PostgreSQL.

@@ -1,6 +1,6 @@
-# GrooveBox Project
+# Mint Project
 
-GrooveBox è un'applicazione web universitaria progettata per i collezionisti di supporti musicali fisici (vinili, CD, cassette). L'applicazione consente agli utenti di catalogare la propria collezione privata collaborando contemporaneamente a un database musicale comunitario globale.
+Mint è un'applicazione web universitaria progettata per i collezionisti di supporti musicali fisici (vinili, CD, cassette). L'applicazione consente agli utenti di catalogare la propria collezione privata collaborando contemporaneamente a un database musicale comunitario globale.
 
 Il progetto segue rigorosamente un'architettura logica a **3 layer**:
 1. **Presentation Layer:** Vue.js 3 (Composition API), Pinia (gestione dello stato), Vue Router, Vite e Tailwind CSS v4.
@@ -18,7 +18,7 @@ Il progetto segue rigorosamente un'architettura logica a **3 layer**:
 
 ## Integrazione Discogs API
 
-GrooveBox è ora integrato con le **API di Discogs** (tramite autenticazione Consumer Key/Secret) per arricchire dinamicamente il catalogo comunitario:
+Mint è ora integrato con le **API di Discogs** (tramite autenticazione Consumer Key/Secret) per arricchire dinamicamente il catalogo comunitario:
 * **Ricerca & Importazione**: Gli utenti Collector e Admin possono cercare album e artisti direttamente su Discogs e importarli localmente con un singolo clic.
 * **Metadati Completi**: L'importazione compila automaticamente titolo, anno, generi musicali e stili, etichetta discografica, numero di catalogo, codice a barre e paese di stampa.
 * **Tracklist & Biografie**: Vengono salvate le tracklist complete dei brani ed il profilo biografico dell'artista.

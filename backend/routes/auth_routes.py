@@ -1,5 +1,5 @@
 """
-GrooveBox - Route Blueprint per Autenticazione
+Mint - Route Blueprint per Autenticazione
 ==============================================
 Fornisce gli endpoint per la registrazione dei collezionisti (Collectors)
 e per il rilascio di token di sessione JWT (autenticazione) tramite Supabase Storage.

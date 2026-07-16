@@ -1,5 +1,5 @@
 """
-GrooveBox - Utility Client per API Discogs
+Mint - Utility Client per API Discogs
 ==========================================
 Gestisce la comunicazione con l'API REST di Discogs per la ricerca di album e artisti,
 il recupero dei dettagli delle release (inclusa la tracklist) e la mappatura dei generi.
@@ -59,7 +59,7 @@ def _get_headers():
             "Imposta DISCOGS_CONSUMER_KEY e DISCOGS_CONSUMER_SECRET nel tuo file .env."
         )
     return {
-        "User-Agent": "GrooveBoxApp/1.0",
+        "User-Agent": "MintApp/1.0",
         "Authorization": f"Discogs key={key.strip()}, secret={secret.strip()}"
     }
 
@@ -257,7 +257,7 @@ def get_release(release_id):
             "name": clean_artist_name(art.get("name", ""))
         })
         
-    # Mappatura del genere relazionata ai vincoli DDL di GrooveBox
+    # Mappatura del genere relazionata ai vincoli DDL di Mint
     mapped_genre = map_genre(data.get("genres", []), data.get("styles", []))
     
     # Anno di rilascio

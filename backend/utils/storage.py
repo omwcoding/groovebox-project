@@ -1,5 +1,5 @@
 """
-GrooveBox - Client di integrazione con Supabase Storage
+Mint - Client di integrazione con Supabase Storage
 =============================================================================
 Fornisce le funzioni helper per caricare, eliminare e generare URL pubblici
 per i file multimediali (copertine, foto artisti, avatar) su Supabase Storage.

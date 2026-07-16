@@ -1,5 +1,5 @@
 /**
- * GrooveBox - Vue Router Configurazione
+ * Mint - Vue Router Configurazione
  * =====================================
  * Definisce le rotte applicative del frontend con caricamento lazy dei componenti
  * e implementa la guard di navigazione globale per il controllo degli accessi

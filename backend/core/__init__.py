@@ -1,1 +1,1 @@
-# GrooveBox Core Infrastructure Package
+# Mint Core Infrastructure Package

@@ -1,5 +1,5 @@
 """
-GrooveBox - Punto di Ingresso dell'Applicazione
+Mint - Punto di Ingresso dell'Applicazione
 ==============================================
 Inizializza l'istanza Flask, configura il middleware CORS, registra i blueprint 
 per le rotte API, gestisce il ciclo di vita del database SQLite e attiva il 

@@ -1,5 +1,5 @@
 <!--
-GrooveBox - Componente AlbumCard
+Mint - Componente AlbumCard
 ================================
 Rappresentazione visuale sintetica (scheda) di un album, utilizzata sia nel catalogo
 generale che nella collezione dell'utente. Gestisce fallback per immagini assenti

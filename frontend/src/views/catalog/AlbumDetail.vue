@@ -1,5 +1,5 @@
 <!--
-GrooveBox - Pagina Dettaglio Album
+Mint - Pagina Dettaglio Album
 ==================================
 Mostra le informazioni dettagliate di un album specifico. Consente agli amministratori
 la modifica o l'eliminazione della scheda, e ai collezionisti l'aggiunta rapida

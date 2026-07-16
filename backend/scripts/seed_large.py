@@ -95,7 +95,7 @@ def get_itunes_cover_url(artist, album):
 
 def main():
     print("====================================================")
-    print("GrooveBox - Popolamento Database PostgreSQL su Supabase")
+    print("Mint - Popolamento Database PostgreSQL su Supabase")
     print("====================================================")
     
     from core.config import Config
@@ -106,7 +106,7 @@ def main():
         return
         
     headers = {
-        "User-Agent": "GrooveBoxSeed/1.0",
+        "User-Agent": "MintSeed/1.0",
         "Authorization": f"Discogs key={key.strip()}, secret={secret.strip()}"
     }
     

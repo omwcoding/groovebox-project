@@ -1,5 +1,5 @@
 /**
- * GrooveBox - Client API Centralizzato
+ * Mint - Client API Centralizzato
  * ===================================
  * Configura le chiamate HTTP verso il backend, iniettando automaticamente il
  * token JWT di autorizzazione e gestendo centralitamente i fallimenti di sessione (HTTP 401).

@@ -1,5 +1,5 @@
 """
-GrooveBox - Route Blueprint per Statistiche e Monitoraggio
+Mint - Route Blueprint per Statistiche e Monitoraggio
 =========================================================
 Fornisce gli endpoint riservati agli amministratori per l'analisi 
 aggregata dei dati e l'esportazione dei report in formato JSON.
@@ -39,5 +39,5 @@ def export_stats():
     return Response(
         json_data,
         mimetype="application/json",
-        headers={"Content-disposition": "attachment; filename=statistiche_groovebox.json"}
+        headers={"Content-disposition": "attachment; filename=statistiche_mint.json"}
     )

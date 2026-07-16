@@ -1,1 +1,1 @@
-# GrooveBox Utility Package
+# Mint Utility Package

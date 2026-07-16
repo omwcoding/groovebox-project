@@ -1,5 +1,5 @@
 """
-GrooveBox - Data Access Layer per Utenti
+Mint - Data Access Layer per Utenti
 =========================================
 Gestisce le operazioni di lettura, scrittura, aggiornamento e rimozione
 delle anagrafiche utente (users) nel database PostgreSQL.

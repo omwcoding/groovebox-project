@@ -1,5 +1,5 @@
 <!--
-GrooveBox - Componente BackButton
+Mint - Componente BackButton
 =================================
 Pulsante di navigazione a ritroso. Permette di specificare una rotta 
 di destinazione fissa (RouterLink) o di delegare alla cronologia del browser (router.back()).

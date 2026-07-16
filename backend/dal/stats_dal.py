@@ -1,5 +1,5 @@
 """
-GrooveBox - Data Access Layer per le Statistiche
+Mint - Data Access Layer per le Statistiche
 ================================================
 Raggruppa le query SQL aggregate e analitiche utilizzate per popolare i widget 
 e la dashboard di monitoraggio amministrativo della piattaforma nel database PostgreSQL.

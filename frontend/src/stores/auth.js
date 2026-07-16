@@ -1,5 +1,5 @@
 /**
- * GrooveBox - Gestione Stato Autenticazione (Pinia)
+ * Mint - Gestione Stato Autenticazione (Pinia)
  * =================================================
  * Store centralizzato per la memorizzazione dell'utente e del token di sessione,
  * la persistenza dello stato nel localStorage e l'esposizione delle azioni

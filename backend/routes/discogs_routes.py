@@ -1,5 +1,5 @@
 """
-GrooveBox - Route Blueprint per integrazione Discogs
+Mint - Route Blueprint per integrazione Discogs
 ===================================================
 Fornisce gli endpoint per cercare album/artisti su Discogs ed importarli
 automaticamente nel catalogo locale scaricandone copertine, tracklist e dettagli.

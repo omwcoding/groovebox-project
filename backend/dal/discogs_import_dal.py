@@ -1,5 +1,5 @@
 """
-GrooveBox - Data Access Layer per Importazione da Discogs
+Mint - Data Access Layer per Importazione da Discogs
 ========================================================
 Fornisce la logica centralizzata per importare album dal database Discogs nel database PostgreSQL e Supabase Storage.
 """

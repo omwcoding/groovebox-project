@@ -1,5 +1,5 @@
 /**
- * GrooveBox - Frontend Entry Point
+ * Mint - Frontend Entry Point
  * ================================
  * Inizializza l'applicazione Vue 3, registra il gestore di stato Pinia, 
  * configura il client-side routing con Vue Router e monta l'app sul DOM.

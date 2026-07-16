@@ -10,7 +10,7 @@ from scripts.seed_large import main as run_seed
 
 def reset_database():
     print("====================================================")
-    print("GrooveBox - Ripristino e Inizializzazione Database (Supabase)")
+    print("Mint - Ripristino e Inizializzazione Database (Supabase)")
     print("====================================================")
     
     # 1. Trunca tutte le tabelle su PostgreSQL

@@ -1,5 +1,5 @@
 <!--
-GrooveBox - Pagina Catalogo Artisti
+Mint - Pagina Catalogo Artisti
 ===================================
 Visualizza l'elenco degli artisti memorizzati a catalogo e permette la creazione 
 di nuovi record tramite un'interfaccia di inserimento rapida.

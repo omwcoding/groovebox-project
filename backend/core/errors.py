@@ -1,5 +1,5 @@
 """
-GrooveBox - Gestione Centralizzata degli Errori
+Mint - Gestione Centralizzata degli Errori
 ===============================================
 Definisce le classi di eccezione specifiche per le risposte dell'API (HTTP 4xx/5xx)
 e registra gli handler globali per catturare e formattare le risposte JSON di errore.

@@ -1,5 +1,5 @@
 """
-GrooveBox - Utility di Validazione Input
+Mint - Utility di Validazione Input
 ========================================
 Fornisce funzioni helper per la validazione formale dei payload JSON ricevuti
 nelle richieste API, centralizzando i controlli sui campi obbligatori.

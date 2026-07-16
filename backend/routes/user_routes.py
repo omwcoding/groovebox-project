@@ -1,5 +1,5 @@
 """
-GrooveBox - Route Blueprint per Utenti
+Mint - Route Blueprint per Utenti
 ======================================
 Definisce le rotte per la consultazione e modifica del proprio profilo (Collector)
 e per le operazioni di moderazione sui Collector da parte degli amministratori su Supabase Storage.

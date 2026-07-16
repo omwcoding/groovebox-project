@@ -1,5 +1,5 @@
 """
-GrooveBox - Route Blueprint per Copie Fisiche
+Mint - Route Blueprint per Copie Fisiche
 ==============================================
 Fornisce gli endpoint per la gestione della libreria personale di copie fisiche
 dei singoli utenti (aggiunta, modifica, rimozione e svuotamento).

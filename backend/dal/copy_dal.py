@@ -1,5 +1,5 @@
 """
-GrooveBox - Data Access Layer per Copie Fisiche
+Mint - Data Access Layer per Copie Fisiche
 ===============================================
 Gestisce il ciclo di vita e la persistenza delle copie fisiche associate agli 
 utenti (physical_copies) nel database PostgreSQL.

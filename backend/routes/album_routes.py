@@ -1,5 +1,5 @@
 """
-GrooveBox - Route Blueprint per Album
+Mint - Route Blueprint per Album
 =====================================
 Definisce gli endpoint per le operazioni CRUD sul catalogo degli album 
 e per l'upload/recupero delle copertine (immagini) da Supabase Storage.
