@@ -22,7 +22,7 @@ const hasSearched = ref(false)
 const selectedAlbum = ref(null)
 const format = ref('Vinile')
 const condition = ref('Nuovo')
-const personalNotes = ref('')
+const personal_notes = ref('')
 
 const formError = ref('')
 const formLoading = ref(false)
@@ -55,7 +55,7 @@ function resetSelection() {
   selectedAlbum.value = null
   format.value = 'Vinile'
   condition.value = 'Nuovo'
-  personalNotes.value = ''
+  personal_notes.value = ''
   formError.value = ''
 }
 
@@ -83,7 +83,7 @@ async function handleSubmit() {
       id_album: albumId,
       format: format.value,
       condition: condition.value,
-      personalNotes: personalNotes.value.trim() || null
+      personal_notes: personal_notes.value.trim() || null
     })
 
     emit('added')
@@ -161,7 +161,7 @@ const getSourceBadgeClass = (source) => {
               >
                 <!-- Thumbnail -->
                 <div class="w-10 h-10 bg-white/5 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
-                  <img v-if="album.thumb || album.coverPath" :src="album.coverPath ? `/api/albums/${album.id_album}/cover` : album.thumb" class="w-full h-full object-cover" />
+                  <img v-if="album.thumb || album.cover_path" :src="album.cover_path ? `/api/albums/${album.id_album}/cover` : album.thumb" class="w-full h-full object-cover" />
                   <span v-else class="text-sm">&#127925;</span>
                 </div>
                 
@@ -170,7 +170,7 @@ const getSourceBadgeClass = (source) => {
                   <span class="font-bold text-sm block truncate text-white/95">{{ album.title }}</span>
                   <span class="text-xs text-white/40 block truncate mt-0.5">
                     {{ album.artist_name || album.artists?.map(a => a.name).join(', ') }}
-                    <span v-if="album.year || album.releaseYear"> &middot; {{ album.year || album.releaseYear }}</span>
+                    <span v-if="album.year || album.release_year"> &middot; {{ album.year || album.release_year }}</span>
                   </span>
                 </div>
 
@@ -191,7 +191,7 @@ const getSourceBadgeClass = (source) => {
           <!-- Album Selezionato Info Card -->
           <div class="flex items-center gap-4 p-4 border border-white/10 rounded-2xl bg-white/[0.02]">
             <div class="w-14 h-14 bg-white/5 border border-white/5 rounded-xl overflow-hidden shrink-0 flex items-center justify-center">
-              <img v-if="selectedAlbum.thumb || selectedAlbum.coverPath" :src="selectedAlbum.coverPath ? `/api/albums/${selectedAlbum.id_album}/cover` : selectedAlbum.thumb" class="w-full h-full object-cover" />
+              <img v-if="selectedAlbum.thumb || selectedAlbum.cover_path" :src="selectedAlbum.cover_path ? `/api/albums/${selectedAlbum.id_album}/cover` : selectedAlbum.thumb" class="w-full h-full object-cover" />
               <span v-else class="text-xl">&#127925;</span>
             </div>
             <div class="min-w-0 flex-grow">
@@ -252,7 +252,7 @@ const getSourceBadgeClass = (source) => {
             <div class="space-y-2">
               <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
               <textarea 
-                v-model="personalNotes" 
+                v-model="personal_notes" 
                 rows="2" 
                 placeholder="Edizione limitata, colore vinile, note d'acquisto..." 
                 class="apple-input resize-none"

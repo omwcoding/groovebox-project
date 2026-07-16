@@ -61,7 +61,7 @@ def create_copy():
     if not album:
         raise NotFoundError("Album di riferimento non trovato")
 
-    personal_notes = data.get("personalNotes")
+    personal_notes = data.get("personal_notes")
     if isinstance(personal_notes, str):
         personal_notes = personal_notes.strip() or None
     else:
@@ -83,9 +83,6 @@ def create_copy():
     }), 201
 
 
-
-
-
 @bp.route("/<int:copy_id>", methods=["PUT"])
 @token_required
 @require_role("collector")
@@ -103,7 +100,7 @@ def update_copy(copy_id):
     # Merge existing values with request data
     new_format = data.get("format", copy["format"])
     new_condition = data.get("condition", copy["condition"])
-    new_notes = data.get("personalNotes") if "personalNotes" in data else copy["personalNotes"]
+    new_notes = data.get("personal_notes") if "personal_notes" in data else copy["personal_notes"]
 
     if isinstance(new_format, str):
         new_format = new_format.strip()

@@ -28,7 +28,7 @@ const showPromoteModal = ref(false)
 const selectedItem = ref(null)
 const format = ref('Vinile')
 const condition = ref('Nuovo')
-const personalNotes = ref('')
+const personal_notes = ref('')
 const promoteLoading = ref(false)
 
 async function fetchWishlist() {
@@ -70,7 +70,7 @@ async function handleAddToWishlist(album) {
       discogs_id: album.discogs_id || null,
       title: album.title,
       artist_name: album.artist_name || album.artists?.map(a => a.name).join(', '),
-      cover_url: album.coverPath ? `/api/albums/${album.id_album}/cover` : album.thumb
+      cover_url: album.cover_path ? `/api/albums/${album.id_album}/cover` : album.thumb
     }
     await api.post('/wishlist', payload)
     
@@ -102,7 +102,7 @@ function openPromoteModal(item) {
   selectedItem.value = item
   format.value = 'Vinile'
   condition.value = 'Nuovo'
-  personalNotes.value = ''
+  personal_notes.value = ''
   showPromoteModal.value = true
 }
 
@@ -115,7 +115,7 @@ async function handlePromote() {
     await api.post(`/wishlist/${selectedItem.value.id_wishlist}/promote`, {
       format: format.value,
       condition: condition.value,
-      personalNotes: personalNotes.value.trim() || null
+      personal_notes: personal_notes.value.trim() || null
     })
     
     // Chiudi modale e ricarica
@@ -181,7 +181,7 @@ async function handlePromote() {
                 di {{ item.artists?.map(a => a.name).join(', ') || item.artist_name }}
               </p>
               <p class="text-[10px] text-white/30 mt-2">
-                Aggiunto il {{ item.addedDate }}
+                Aggiunto il {{ item.added_date }}
               </p>
             </div>
 
@@ -231,7 +231,7 @@ async function handlePromote() {
                 class="flex items-center gap-4 p-3 hover:bg-white/5 cursor-pointer transition-colors"
               >
                 <div class="w-10 h-10 bg-white/5 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
-                  <img v-if="album.thumb || album.coverPath" :src="album.coverPath ? `/api/albums/${album.id_album}/cover` : album.thumb" class="w-full h-full object-cover" />
+                  <img v-if="album.thumb || album.cover_path" :src="album.cover_path ? `/api/albums/${album.id_album}/cover` : album.thumb" class="w-full h-full object-cover" />
                   <span v-else class="text-sm">&#127925;</span>
                 </div>
                 <div class="min-w-0 flex-grow">
@@ -297,7 +297,7 @@ async function handlePromote() {
 
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-white/30 ml-1">Note personali</label>
-            <textarea v-model="personalNotes" rows="2" placeholder="Note d'acquisto, edizione..." class="apple-input resize-none"></textarea>
+            <textarea v-model="personal_notes" rows="2" placeholder="Note d'acquisto, edizione..." class="apple-input resize-none"></textarea>
           </div>
 
           <div class="flex gap-3 pt-4 border-t border-white/5">

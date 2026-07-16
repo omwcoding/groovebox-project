@@ -186,7 +186,7 @@ onMounted(async () => {
                    class="group p-4 bg-white/[0.02] border border-white/5 hover:border-brand-secondary/30 rounded-2xl flex items-center gap-4 hover:shadow-lg hover:shadow-brand-secondary/5 transition-all duration-300">
                 <div class="w-10 h-10 rounded-xl overflow-hidden bg-white/5 border border-white/5 flex items-center justify-center shrink-0">
                   <img 
-                    v-if="album.coverPath" 
+                    v-if="album.cover_path" 
                     :src="`/api/albums/${album.id_album}/cover`" 
                     :alt="album.title" 
                     class="w-full h-full object-cover" 
@@ -196,7 +196,7 @@ onMounted(async () => {
                 <div class="min-w-0 flex-grow">
                   <p class="font-bold text-white/90 group-hover:text-brand-secondary transition-colors truncate leading-tight">{{ album.title }}</p>
                   <p class="text-[10px] font-bold text-white/30 uppercase tracking-wide mt-1 truncate">
-                    {{ album.genre }} <span v-if="album.releaseYear">&middot; {{ album.releaseYear }}</span>
+                    {{ album.genre }} <span v-if="album.release_year">&middot; {{ album.release_year }}</span>
                   </p>
                 </div>
               </RouterLink>

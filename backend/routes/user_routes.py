@@ -2,10 +2,10 @@
 GrooveBox - Route Blueprint per Utenti
 ======================================
 Definisce le rotte per la consultazione e modifica del proprio profilo (Collector)
-e per le operazioni di moderazione sui Collector da parte degli amministratori.
+e per le operazioni di moderazione sui Collector da parte degli amministratori su Supabase Storage.
 """
 
-from flask import Blueprint, request, jsonify, g, send_from_directory, current_app
+from flask import Blueprint, request, jsonify, g, redirect, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from core.auth import token_required, require_role
 from core.database import get_db
@@ -17,7 +17,9 @@ from dal.user_dal import (
     get_user_public_profile,
     get_user_stats
 )
+from utils.storage import upload_file, delete_file, get_public_url
 from core.errors import BadRequestError, ForbiddenError, NotFoundError, ConflictError
+import uuid
 
 bp = Blueprint("users", __name__, url_prefix="/api/users")
 
@@ -48,7 +50,7 @@ def update_my_profile():
 
     for field in updatable:
         if field in data and data[field] is not None:
-            fields.append(f"{field} = ?")
+            fields.append(f"{field} = %s")
             values.append(data[field].strip())
 
     if "password" in data and data["password"]:
@@ -60,12 +62,17 @@ def update_my_profile():
             raise BadRequestError("La password attuale è obbligatoria per effettuare la modifica")
             
         conn = get_db()
-        db_user = conn.execute("SELECT passwordHash FROM USER WHERE id_user = ?", (g.current_user["id_user"],)).fetchone()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT password_hash FROM users WHERE id_user = %s;", (g.current_user["id_user"],))
+            db_user = cursor.fetchone()
+        finally:
+            cursor.close()
         
-        if not db_user or not check_password_hash(db_user["passwordHash"], current_password):
+        if not db_user or not check_password_hash(db_user["password_hash"], current_password):
             raise BadRequestError("La password attuale inserita non è corretta")
             
-        fields.append("passwordHash = ?")
+        fields.append("password_hash = %s")
         values.append(generate_password_hash(data["password"]))
 
     if not fields:
@@ -155,6 +162,7 @@ def delete_user(user_id):
         "message": "Utente eliminato con successo"
     })
 
+
 @bp.route("/share/<username>", methods=["GET"])
 def get_shared_profile(username):
     """Restituisce il profilo pubblico e le copie fisiche (Vault) di un utente tramite username.
@@ -195,14 +203,14 @@ def update_public_profile():
     values = []
 
     if "is_public" in data:
-        fields.append("is_public = ?")
-        values.append(1 if data["is_public"] else 0)
+        fields.append("is_public = %s")
+        values.append(True if data["is_public"] else False)
 
     if "bio" in data:
         bio = data["bio"]
         if bio is not None:
             bio = bio.strip()[:500] or None  # max 500 caratteri
-        fields.append("bio = ?")
+        fields.append("bio = %s")
         values.append(bio)
 
     if not fields:
@@ -230,9 +238,6 @@ def upload_avatar():
         raise BadRequestError("File non valido")
 
     from werkzeug.utils import secure_filename
-    import os
-    import uuid
-
     safe_original = secure_filename(file.filename)
     if not safe_original or "." not in safe_original:
         raise BadRequestError("Nome file non supportato")
@@ -241,21 +246,17 @@ def upload_avatar():
     if ext not in current_app.config["ALLOWED_EXTENSIONS"]:
         raise BadRequestError("Formato immagine non supportato (ammessi: jpg, png, webp)")
 
-    upload_dir = current_app.config["AVATARS_FOLDER"]
-    os.makedirs(upload_dir, exist_ok=True)
-
     filename = f"avatar_{g.current_user['id_user']}_{uuid.uuid4().hex[:8]}.{ext}"
-    file.save(os.path.join(upload_dir, filename))
+    
+    file_bytes = file.read()
+    if not upload_file("avatars", filename, file_bytes, file.mimetype):
+        raise BadRequestError("Errore nel caricamento dell'avatar su Supabase Storage")
 
-    # Elimina il vecchio avatar se presente
     old_avatar = g.current_user.get("avatar_path")
-    if old_avatar:
-        try:
-            os.remove(os.path.join(upload_dir, old_avatar))
-        except Exception:
-            pass
+    if old_avatar and old_avatar != filename:
+        delete_file("avatars", old_avatar)
 
-    updated_user = update_user_profile(g.current_user["id_user"], ["avatar_path = ?"], [filename])
+    updated_user = update_user_profile(g.current_user["id_user"], ["avatar_path = %s"], [filename])
     return jsonify({
         "status": "success",
         "message": "Foto profilo aggiornata con successo",
@@ -270,6 +271,5 @@ def get_avatar(user_id):
     if not user or not user["avatar_path"]:
         raise NotFoundError("Avatar non trovato")
 
-    upload_dir = current_app.config["AVATARS_FOLDER"]
-    return send_from_directory(upload_dir, user["avatar_path"])
-
+    url = get_public_url("avatars", user["avatar_path"])
+    return redirect(url)

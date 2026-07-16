@@ -22,7 +22,7 @@ defineProps({
     type: Array,
     default: () => []
   },
-  coverPath: {
+  cover_path: {
     type: String,
     default: null
   },
@@ -30,7 +30,7 @@ defineProps({
     type: String,
     default: ''
   },
-  releaseYear: {
+  release_year: {
     type: [Number, String],
     default: ''
   },
@@ -79,7 +79,7 @@ const getConditionClass = (cond) => {
   >
     <!-- Copertina o SVG di fallback -->
     <div class="w-full aspect-square rounded-apple-2xl overflow-hidden bg-white/5 relative group-hover:scale-[1.02] group-hover:shadow-2xl group-hover:shadow-brand-secondary/10 transition-all duration-500">
-      <img v-if="coverPath"
+      <img v-if="cover_path"
         :src="`/api/albums/${idAlbum}/cover`"
         :alt="title"
         class="absolute inset-0 w-full h-full object-cover"
@@ -114,8 +114,8 @@ const getConditionClass = (cond) => {
       
       <div class="flex items-center justify-between text-white/30 text-[10px] font-bold uppercase tracking-wider">
         <div class="flex items-center gap-1.5 truncate">
-          <span v-if="releaseYear">{{ releaseYear }}</span>
-          <span v-if="releaseYear && genre">&middot;</span>
+          <span v-if="release_year">{{ release_year }}</span>
+          <span v-if="release_year && genre">&middot;</span>
           <span v-if="genre" class="truncate">{{ genre }}</span>
         </div>
         <span v-if="condition" :class="[getConditionClass(condition), 'font-extrabold shrink-0 ml-2']">{{ condition }}</span>
