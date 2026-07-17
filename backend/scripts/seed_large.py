@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.database import get_db
 from utils.storage import upload_file
+from utils.discogs import get_itunes_cover_url
 
 # ID reali di release Discogs da importare per il seeding
 SEED_RELEASES = [169648, 28058949, 2229728, 14677130, 19719631]
@@ -64,34 +65,7 @@ def map_genre(genres, styles):
             unique.append(t)
     return ", ".join(unique[:2]) if unique else "Unknown"
 
-def get_itunes_cover_url(artist, album):
-    if not artist or not album:
-        return None
-    url = "https://itunes.apple.com/search"
-    params = {"term": f"{artist} {album}", "media": "music", "entity": "album", "limit": 5}
-    try:
-        res = requests.get(url, params=params, timeout=5)
-        if res.status_code == 200:
-            results = res.json().get("results", [])
-            
-            def clean(s):
-                return re.sub(r'[^a-z0-9]', '', s.lower()) if s else ""
-                
-            c_sought_artist = clean(artist)
-            c_sought_album = clean(album)
-            
-            for r in results:
-                c_res_artist = clean(r.get("artistName", ""))
-                c_res_album = clean(r.get("collectionName", ""))
-                
-                if (c_sought_artist in c_res_artist or c_res_artist in c_sought_artist) and \
-                   (c_sought_album in c_res_album or c_res_album in c_sought_album):
-                    artwork = r.get("artworkUrl100")
-                    if artwork:
-                        return artwork.replace("100x100bb", "1000x1000bb")
-    except Exception:
-        pass
-    return None
+# get_itunes_cover_url importata da utils.discogs
 
 def main():
     print("====================================================")
@@ -209,7 +183,7 @@ def main():
                 primary_artist_name = clean_artist_name(artists_data[0].get("name", "")) if artists_data else ""
                 
                 # Risoluzione copertina
-                cover_url = get_itunes_cover_url(primary_artist_name, title)
+                cover_url = get_itunes_cover_url(title, primary_artist_name)
                 
                 if not cover_url:
                     images = data.get("images", [])

@@ -11,7 +11,8 @@ from core.database import get_db
 from utils.discogs import (
     get_release,
     get_artist,
-    download_discogs_image
+    download_discogs_image,
+    get_itunes_cover_url
 )
 from utils.storage import upload_file
 from dal.album_dal import insert_album
@@ -122,9 +123,18 @@ def import_album_from_discogs(discogs_id: int, user_id: int) -> tuple[int, bool]
             art_id = insert_artist("Unknown Artist")
             local_artist_ids.append(art_id)
 
-    # Scarica la copertina
+    # Scarica la copertina (prova prima iTunes ad alta risoluzione, fall-back su Discogs)
     cover_filename = None
-    cover_url = release_info["cover_url"]
+    
+    artist_name = ""
+    if release_info.get("artists"):
+        artist_name = release_info["artists"][0].get("name", "")
+    elif release_info.get("artist_name"):
+        artist_name = release_info["artist_name"]
+        
+    itunes_cover_url = get_itunes_cover_url(release_info["title"], artist_name)
+    cover_url = itunes_cover_url or release_info["cover_url"]
+    
     if cover_url:
         try:
             ext = "jpg"
@@ -145,7 +155,7 @@ def import_album_from_discogs(discogs_id: int, user_id: int) -> tuple[int, bool]
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
         except Exception as e:
-            current_app.logger.warning(f"Impossibile scaricare copertina da Discogs: {e}")
+            current_app.logger.warning(f"Impossibile scaricare copertina (iTunes/Discogs): {e}")
 
     # Salva l'album nel DB locale
     album_id = insert_album(
