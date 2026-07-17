@@ -6,7 +6,6 @@ e per la consultazione della relativa discografia da Supabase Storage.
 """
 
 from flask import Blueprint, request, jsonify, g, redirect, current_app
-from core.database import get_db
 from core.auth import token_required, require_role
 from dal.artist_dal import (
     get_all_artists,
@@ -14,7 +13,8 @@ from dal.artist_dal import (
     get_artist_albums,
     insert_artist,
     update_artist_name,
-    delete_artist_by_id
+    delete_artist_by_id,
+    count_artists_by_image_path
 )
 from utils.validators import validate_json_payload
 from utils.storage import delete_file, get_public_url
@@ -105,16 +105,9 @@ def delete_artist(artist_id):
     # Rimuovi la foto dal bucket se nessun altro artista la usa
     image_path = dict(artist).get("image_path")
     if image_path:
-        conn = get_db()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT COUNT(*) AS total FROM artists WHERE image_path = %s;", (image_path,))
-            row = cursor.fetchone()
-            count = row["total"] if row else 0
-            if count == 0:
-                delete_file("artists", image_path)
-        finally:
-            cursor.close()
+        count = count_artists_by_image_path(image_path)
+        if count == 0:
+            delete_file("artists", image_path)
 
     return jsonify({
         "status": "success",

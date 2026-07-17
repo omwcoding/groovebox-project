@@ -7,7 +7,6 @@ e per l'upload/recupero delle copertine (immagini) da Supabase Storage.
 
 from flask import Blueprint, request, jsonify, g, redirect, current_app
 from werkzeug.utils import secure_filename
-from core.database import get_db
 from core.auth import token_required, require_role
 from dal.album_dal import (
     get_all_albums,
@@ -15,7 +14,8 @@ from dal.album_dal import (
     insert_album,
     update_album_data,
     delete_album_by_id,
-    update_album_cover
+    update_album_cover,
+    count_albums_by_cover_path
 )
 from dal.artist_dal import find_artist_by_id
 from utils.validators import validate_json_payload
@@ -134,16 +134,9 @@ def delete_album(album_id):
     # Rimuovi la copertina dal bucket se nessun altro album la usa
     cover_path = album.get("cover_path")
     if cover_path:
-        conn = get_db()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT COUNT(*) AS total FROM albums WHERE cover_path = %s;", (cover_path,))
-            row = cursor.fetchone()
-            count = row["total"] if row else 0
-            if count == 0:
-                delete_file("covers", cover_path)
-        finally:
-            cursor.close()
+        count = count_albums_by_cover_path(cover_path)
+        if count == 0:
+            delete_file("covers", cover_path)
 
     return jsonify({
         "status": "success",

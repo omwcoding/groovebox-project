@@ -163,3 +163,15 @@ def search_albums_local(query, limit=10):
         return [enrich_album(r) for r in rows]
     finally:
         cursor.close()
+
+def count_albums_by_cover_path(cover_path):
+    """Conta quanti album utilizzano un determinato percorso di copertina."""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) AS total FROM albums WHERE cover_path = %s;", (cover_path,))
+        row = cursor.fetchone()
+        return row["total"] if row else 0
+    finally:
+        cursor.close()
+

@@ -63,3 +63,35 @@ def find_wishlist_by_id_and_user(wishlist_id, user_id):
         return cursor.fetchone()
     finally:
         cursor.close()
+
+def promote_wishlist_item(wishlist_id, format_val, condition, personal_notes, user_id):
+    """
+    Promuove un elemento della wishlist a copia fisica nel Vault.
+    Se l'album non è presente localmente, lo importa prima da Discogs.
+    Rimuove l'elemento dalla wishlist al termine dell'operazione.
+    Ritorna l'id della copia fisica creata.
+    """
+    item = find_wishlist_by_id_and_user(wishlist_id, user_id)
+    if not item:
+        raise ValueError("Elemento non trovato in wishlist")
+
+    id_album = item["id_album"]
+    if not id_album and item["discogs_id"]:
+        from dal.discogs_import_dal import import_album_from_discogs
+        id_album, _ = import_album_from_discogs(item["discogs_id"], user_id)
+
+    if not id_album:
+        raise ValueError("Impossibile promuovere elemento senza album locale valido")
+
+    from dal.copy_dal import insert_copy
+    copy_id = insert_copy(
+        id_album=id_album,
+        format_val=format_val,
+        condition=condition,
+        personal_notes=personal_notes,
+        user_id=user_id
+    )
+
+    delete_from_wishlist(wishlist_id)
+    return copy_id
+
