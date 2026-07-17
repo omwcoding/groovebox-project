@@ -6,6 +6,7 @@ e registra gli handler globali per catturare e formattare le risposte JSON di er
 """
 
 from flask import jsonify
+from werkzeug.exceptions import HTTPException
 
 class APIError(Exception):
     """Eccezione base per la rappresentazione degli errori delle API."""
@@ -49,6 +50,14 @@ def register_error_handlers(app):
             "status": "error",
             "message": error.message
         }), error.status_code
+
+    @app.errorhandler(HTTPException)
+    def handle_http_error(error):
+        # Gestisce gli errori standard di Flask/Werkzeug (es. 404 per rotte inesistenti)
+        return jsonify({
+            "status": "error",
+            "message": error.description
+        }), error.code
 
     @app.errorhandler(Exception)
     def handle_generic_error(error):
