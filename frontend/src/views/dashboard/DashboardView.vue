@@ -56,7 +56,7 @@ const authStore = useAuthStore()
     <!-- Quick Links — Admin -->
     <div v-if="authStore.isAdmin" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <RouterLink
-        to="/users"
+        to="/admin?tab=users"
         class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"
       >
         <div class="w-12 h-12 bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
@@ -95,7 +95,7 @@ const authStore = useAuthStore()
       </RouterLink>
 
       <RouterLink
-        to="/stats"
+        to="/admin?tab=insights"
         class="group glass-card p-6 flex flex-col gap-6 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-secondary/5"
       >
         <div class="w-12 h-12 bg-brand-secondary/10 border border-brand-secondary/20 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">

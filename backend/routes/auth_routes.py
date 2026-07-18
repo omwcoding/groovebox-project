@@ -100,6 +100,9 @@ def login():
     if not check_password_hash(user["password_hash"], data["password"]):
         raise UnauthorizedError("Credenziali non valide")
 
+    if user.get("is_banned"):
+        raise UnauthorizedError("Questo account è stato sospeso dall'amministratore")
+
     token = jwt.encode(
         {
             "id_user": user["id_user"],

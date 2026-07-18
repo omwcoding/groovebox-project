@@ -64,5 +64,36 @@
     "title": "Replace redundant direct SQL select queries in routes",
     "status": "resolved",
     "description": "Sostituire le query esplicite SELECT al.*, us.username ... in discogs_routes.py con chiamate standard a find_album_by_id e find_artist_by_id del DAL."
+  },
+  {
+    "id": 12,
+    "title": "Encapsulate Admin User Ban and Audit Logging into User DAL",
+    "status": "open",
+    "description": "Move the raw SQL SELECT, UPDATE, and INSERT queries from `toggle_user_ban` route in `admin_routes.py` into a transactional DAL function `toggle_user_ban_status` inside `user_dal.py`."
+  },
+  {
+    "id": 13,
+    "title": "Centralize System & Technical Stats Retrieval in DAL",
+    "status": "open",
+    "description": "Centralize the raw SQL COUNT queries in `get_technical_stats` route in `admin_routes.py` into a unified `get_technical_stats` DAL function in `stats_dal.py` or a dedicated stats module."
+  },
+  {
+    "id": 14,
+    "title": "Move Moderator Profile Wipes into User DAL",
+    "status": "open",
+    "description": "Move the user bio and avatar wipe SQL updates and audit log insertions from `admin_routes.py` into functions `admin_wipe_user_avatar` and `admin_wipe_user_bio` in `user_dal.py`."
+  },
+  {
+    "id": 15,
+    "title": "Extract Moderation & Audit History queries from User Detail Route",
+    "status": "open",
+    "description": "Extract the raw SQL queries fetching report history and audit history inside `get_user` route in `user_routes.py` into a `get_user_moderation_history` function in the DAL layer."
+  },
+  {
+    "id": 16,
+    "title": "Extract Cache Eviction and Album Deletions into DAL",
+    "status": "open",
+    "description": "Extract the SQL query for expired cache deletion from `refresh_cache` and manual album deletion from `delete_manual_entry` in `admin_routes.py` into functions `clear_expired_discogs_cache` and `delete_manual_album` in the DAL layer."
   }
 ]
+

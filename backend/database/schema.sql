@@ -5,6 +5,8 @@
 
 -- 1. Rimozione tabelle esistenti (se presenti) per reset completo
 DROP TABLE IF EXISTS wishlists CASCADE;
+DROP TABLE IF EXISTS admin_audit_logs CASCADE;
+DROP TABLE IF EXISTS reports CASCADE;
 DROP TABLE IF EXISTS discogs_cache CASCADE;
 DROP TABLE IF EXISTS physical_copies CASCADE;
 DROP TABLE IF EXISTS album_artists CASCADE;
@@ -24,7 +26,8 @@ CREATE TABLE users (
                                     CHECK (role IN ('collector', 'administrator')),
     is_public       BOOLEAN         NOT NULL DEFAULT FALSE,
     bio             TEXT,
-    avatar_path     VARCHAR(255)
+    avatar_path     VARCHAR(255),
+    is_banned       BOOLEAN         NOT NULL DEFAULT FALSE
 );
 
 -- 3. Creazione Tabella: albums
@@ -99,7 +102,30 @@ CREATE TABLE wishlists (
     FOREIGN KEY (id_album) REFERENCES albums(id_album) ON DELETE SET NULL
 );
 
--- 9. Abilitazione Row Level Security (RLS)
+-- 9. Creazione Tabella: reports
+CREATE TABLE reports (
+    id_report       SERIAL PRIMARY KEY,
+    id_reporter     INTEGER NOT NULL REFERENCES users(id_user) ON DELETE CASCADE,
+    id_reported     INTEGER NOT NULL REFERENCES users(id_user) ON DELETE CASCADE,
+    category        VARCHAR(50) NOT NULL,
+    details         TEXT,
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+    resolved_at     TIMESTAMP,
+    CHECK (id_reporter <> id_reported)
+);
+
+-- 10. Creazione Tabella: admin_audit_logs
+CREATE TABLE admin_audit_logs (
+    id_log          SERIAL PRIMARY KEY,
+    id_admin        INTEGER NOT NULL REFERENCES users(id_user) ON DELETE RESTRICT,
+    action_type     VARCHAR(50) NOT NULL,
+    target_id       INTEGER,
+    details         TEXT,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- 11. Abilitazione Row Level Security (RLS)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE albums ENABLE ROW LEVEL SECURITY;
 ALTER TABLE artists ENABLE ROW LEVEL SECURITY;
@@ -107,3 +133,5 @@ ALTER TABLE album_artists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE physical_copies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wishlists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE discogs_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_audit_logs ENABLE ROW LEVEL SECURITY;
