@@ -5,11 +5,10 @@ from dal.wishlist_dal import (
     get_user_wishlist,
     add_to_wishlist,
     delete_from_wishlist,
-    find_wishlist_by_id_and_user
+    find_wishlist_by_id_and_user,
+    promote_wishlist_item
 )
-from dal.copy_dal import insert_copy
 from utils.validators import validate_json_payload
-from dal.discogs_import_dal import import_album_from_discogs
 
 bp = Blueprint("wishlist", __name__, url_prefix="/api/wishlist")
 
@@ -70,7 +69,6 @@ def delete_wishlist_route(wishlist_id):
 @token_required
 @require_role("collector")
 def promote_wishlist_route(wishlist_id):
-        
     item = find_wishlist_by_id_and_user(wishlist_id, g.current_user["id_user"])
     if not item:
         raise NotFoundError("Elemento non trovato in wishlist")
@@ -82,29 +80,19 @@ def promote_wishlist_route(wishlist_id):
     condition = data["condition"].strip()
     personal_notes = (data.get("personal_notes") or "").strip() or None
     
-    # 1. Se l'album non è nel DB locale, importalo ora da Discogs
-    id_album = item["id_album"]
-    if not id_album and item["discogs_id"]:
-        try:
-            id_album, _ = import_album_from_discogs(item["discogs_id"], g.current_user["id_user"])
-        except Exception as e:
-            return jsonify({"status": "error", "message": f"Errore nell'importazione da Discogs: {str(e)}"}), 500
-            
-    if not id_album:
-        raise BadRequestError("Impossibile promuovere elemento senza album locale valido")
+    try:
+        copy_id = promote_wishlist_item(
+            wishlist_id=wishlist_id,
+            format_val=format_val,
+            condition=condition,
+            personal_notes=personal_notes,
+            user_id=g.current_user["id_user"]
+        )
+    except ValueError as e:
+        raise BadRequestError(str(e))
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Errore interno di promozione: {str(e)}"}), 500
         
-    # 2. Inserisci la copia fisica
-    copy_id = insert_copy(
-        format_val=format_val,
-        condition=condition,
-        personal_notes=personal_notes,
-        user_id=g.current_user["id_user"],
-        id_album=id_album
-    )
-    
-    # 3. Elimina elemento dalla wishlist
-    delete_from_wishlist(wishlist_id)
-    
     return jsonify({
         "status": "success",
         "message": "Disco acquistato ed aggiunto al Vault con successo!",

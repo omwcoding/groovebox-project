@@ -44,7 +44,7 @@
   {
     "id": 8,
     "title": "Deepen Wishlist Promote logic and clean inline import",
-    "status": "open",
+    "status": "resolved",
     "description": "Wishlist promotion logic is currently placed in `wishlist_routes.py`. It should be encapsulated in a DAL function `promote_wishlist_item` in `wishlist_dal.py`. Additionally, the inline import of `get_album_artists` in `wishlist_dal.py` can be moved to the top of the file."
   },
   {
@@ -52,5 +52,17 @@
     "title": "Migrate database from SQLite to Supabase PostgreSQL",
     "status": "resolved",
     "description": "Set up Supabase PostgreSQL for production, keeping SQLite for local development. Refer to the migration guide in .context/supabase-migration-guide.md for step-by-step instructions."
+  },
+  {
+    "id": 10,
+    "title": "Encapsulate direct SQL count queries from route files into DAL",
+    "status": "resolved",
+    "description": "Create helper functions count_albums_by_cover_path in album_dal.py and count_artists_by_image_path in artist_dal.py, calling them from delete routes."
+  },
+  {
+    "id": 11,
+    "title": "Replace redundant direct SQL select queries in routes",
+    "status": "resolved",
+    "description": "Sostituire le query esplicite SELECT al.*, us.username ... in discogs_routes.py con chiamate standard a find_album_by_id e find_artist_by_id del DAL."
   }
 ]

@@ -15,15 +15,15 @@ from utils.discogs import (
     get_artist,
     download_discogs_image
 )
-from dal.album_dal import insert_album, enrich_album, search_albums_local
+from dal.album_dal import insert_album, enrich_album, search_albums_local, find_album_by_id
 from dal.artist_dal import (
     find_artist_by_discogs_id,
     find_artist_by_name,
     insert_artist,
-    update_artist_discogs_info
+    update_artist_discogs_info,
+    find_artist_by_id
 )
 from dal.discogs_import_dal import import_album_from_discogs
-from core.database import get_db
 from utils.storage import upload_file
 import os
 import uuid
@@ -103,31 +103,19 @@ def import_album_route():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-    conn = get_db()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            "SELECT al.*, us.username AS creator_username "
-            "FROM albums al "
-            "LEFT JOIN users us ON al.id_user = us.id_user "
-            "WHERE al.id_album = %s;",
-            (album_id,)
-        )
-        album_row = cursor.fetchone()
-    finally:
-        cursor.close()
+    album_data = find_album_by_id(album_id)
 
     if was_existing:
         return jsonify({
             "status": "success",
             "message": "Album già presente a catalogo",
-            "data": enrich_album(album_row)
+            "data": album_data
         }), 200
     else:
         return jsonify({
             "status": "success",
             "message": "Album importato con successo da Discogs",
-            "data": enrich_album(album_row)
+            "data": album_data
         }), 201
 
 
@@ -182,18 +170,13 @@ def import_artist_route():
         update_artist_discogs_info(art_id, discogs_id, bio, photo_filename)
         
         # Recupera aggiornato
-        conn = get_db()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT * FROM artists WHERE id_artist = %s;", (art_id,))
-            updated = cursor.fetchone()
-        finally:
-            cursor.close()
+        updated = find_artist_by_id(art_id)
         return jsonify({
             "status": "success",
             "message": "Artista aggiornato con successo con dati Discogs",
-            "data": dict(updated)
+            "data": dict(updated) if updated else {}
         }), 200
+        
         
     # Se non esiste per discogs_id, controlla se c'è per nome
     local_art_name = find_artist_by_name(art_details["name"])
@@ -218,18 +201,13 @@ def import_artist_route():
                 
         update_artist_discogs_info(art_id, discogs_id, bio, photo_filename)
         
-        conn = get_db()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT * FROM artists WHERE id_artist = %s;", (art_id,))
-            updated = cursor.fetchone()
-        finally:
-            cursor.close()
+        updated = find_artist_by_id(art_id)
         return jsonify({
             "status": "success",
             "message": "Artista collegato ed aggiornato con successo con dati Discogs",
-            "data": dict(updated)
+            "data": dict(updated) if updated else {}
         }), 200
+        
         
     # Altrimenti crea un nuovo record
     if photo_url:
@@ -249,15 +227,9 @@ def import_artist_route():
             
     art_id = insert_artist(art_details["name"], discogs_id, bio, photo_filename)
     
-    conn = get_db()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT * FROM artists WHERE id_artist = %s;", (art_id,))
-        new_art = cursor.fetchone()
-    finally:
-        cursor.close()
+    new_art = find_artist_by_id(art_id)
     return jsonify({
         "status": "success",
         "message": "Artista importato con successo da Discogs",
-        "data": dict(new_art)
+        "data": dict(new_art) if new_art else {}
     }), 201

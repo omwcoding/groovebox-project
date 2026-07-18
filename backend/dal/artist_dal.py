@@ -100,3 +100,15 @@ def delete_artist_by_id(artist_id):
     with conn:
         with conn.cursor() as cursor:
             cursor.execute("DELETE FROM artists WHERE id_artist = %s;", (artist_id,))
+
+def count_artists_by_image_path(image_path):
+    """Conta quanti artisti utilizzano un determinato percorso dell'immagine di foto."""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) AS total FROM artists WHERE image_path = %s;", (image_path,))
+        row = cursor.fetchone()
+        return row["total"] if row else 0
+    finally:
+        cursor.close()
+

@@ -58,7 +58,10 @@ def seed_db():
             print("[OK] Seed saltato: il database contiene gia' dei dati")
             return
 
-        # Inserimento dell'amministratore di default (admin / admin)
+        admin_pwd = os.environ.get("SEED_ADMIN_PASSWORD", "admin")
+        test_pwd = os.environ.get("SEED_TEST_PASSWORD", "test")
+
+        # Inserimento dell'amministratore di default
         cursor.execute(
             """INSERT INTO users (username, name, surname, email, password_hash, role)
                VALUES (%s, %s, %s, %s, %s, %s);""",
@@ -67,21 +70,21 @@ def seed_db():
                 "Admin",
                 "Mint",
                 "admin@mint.local",
-                generate_password_hash("admin"),
+                generate_password_hash(admin_pwd),
                 "administrator"
             )
         )
 
-        # Inserimento del collector di esempio (test / test)
+        # Inserimento del collector di esempio
         cursor.execute(
             """INSERT INTO users (username, name, surname, email, password_hash, role)
                VALUES (%s, %s, %s, %s, %s, %s);""",
             (
                 "test",
                 "Test",
-                "Test",
-                "test@test.com",
-                generate_password_hash("test"),
+                "Mint",
+                "test@mint.local",
+                generate_password_hash(test_pwd),
                 "collector"
             )
         )

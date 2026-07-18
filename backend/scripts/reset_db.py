@@ -13,18 +13,24 @@ def reset_database():
     print("Mint - Ripristino e Inizializzazione Database (Supabase)")
     print("====================================================")
     
-    # 1. Trunca tutte le tabelle su PostgreSQL
-    print("-> Svuotamento delle tabelle PostgreSQL su Supabase...")
+    # 1. Ricrea lo schema DDL su PostgreSQL (Supabase)
+    print("-> Ricreazione dello schema PostgreSQL su Supabase...")
     try:
+        schema_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "database",
+            "schema.sql"
+        )
+        with open(schema_path, "r", encoding="utf-8") as f:
+            sql_schema = f.read()
+
         conn = get_db()
         with conn:
             with conn.cursor() as cursor:
-                cursor.execute(
-                    "TRUNCATE TABLE wishlists, discogs_cache, physical_copies, album_artists, artists, albums, users RESTART IDENTITY CASCADE;"
-                )
-        print("[OK] Tabelle svuotate con successo (TRUNCATE).")
+                cursor.execute(sql_schema)
+        print("[OK] Schema ricreato con successo su Supabase.")
     except Exception as e:
-        print(f"[ERROR] Impossibile svuotare le tabelle: {e}")
+        print(f"[ERROR] Impossibile ricreare lo schema: {e}")
         return
 
     # 2. Pulisce i bucket Supabase Storage

@@ -340,8 +340,7 @@ def get_artist(artist_id):
 
 def download_discogs_image(url, filepath):
     """
-    Scarica un'immagine dai server Discogs (CDN) utilizzando gli header autenticati.
-    Salva il file nel percorso specificato.
+    Scarica un'immagine da un URL (Discogs o iTunes) e la salva.
     """
     if not url:
         return False
@@ -349,7 +348,8 @@ def download_discogs_image(url, filepath):
     # Crea cartelle genitore se mancanti
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     
-    response = requests.get(url, headers=_get_headers(), stream=True)
+    headers = _get_headers() if ("discogs" in url or "i.discogs.com" in url) else {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    response = requests.get(url, headers=headers, stream=True)
     if response.status_code == 200:
         with open(filepath, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
@@ -408,3 +408,83 @@ def clean_title(title):
                 return parts[0]
             return parts[0]
     return title.strip()
+
+def get_itunes_cover_url(album_title, artist_name):
+    """
+    Cerca l'album sull'API di iTunes Search e restituisce l'URL della copertina
+    a risoluzione 1000x1000px, se disponibile.
+    """
+    if not album_title or not artist_name:
+        return None
+    
+    # Rimuovi traduzioni / diciture extra per migliorare la ricerca su iTunes
+    cleaned_title = clean_title(album_title)
+    cleaned_title = re.sub(r'\(.*?\)|\[.*?\]', '', cleaned_title).strip()
+    clean_artist = re.sub(r'\(\d+\)', '', artist_name).strip() # Pink Floyd (2) -> Pink Floyd
+    
+    query = f"{clean_artist} {cleaned_title}"
+    url = "https://itunes.apple.com/search"
+    # 1. Prova prima come entità "album"
+    params = {
+        "term": query,
+        "entity": "album",
+        "limit": 5
+    }
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+            for res in results:
+                res_artist = res.get("artistName", "").lower()
+                res_album = res.get("collectionName", "").lower()
+                
+                # Se c'è una corrispondenza parziale del nome artista e del titolo album
+                if (clean_artist.lower() in res_artist or res_artist in clean_artist.lower()) and \
+                   (cleaned_title.lower() in res_album or res_album in cleaned_title.lower()):
+                    artwork_url = res.get("artworkUrl100")
+                    if artwork_url:
+                        artwork_url = artwork_url.replace("100x100bb.jpg", "1000x1000bb.jpg")
+                        artwork_url = artwork_url.replace("100x100.jpg", "1000x1000.jpg")
+                        return artwork_url
+    except Exception as e:
+        print(f"[ITUNES API ERROR] Ricerca album fallita: {e}")
+
+    # 2. Se non ha funzionato, prova come entità "song" (gestisce album stream-only/acquisto limitato)
+    params = {
+        "term": query,
+        "entity": "song",
+        "limit": 5
+    }
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+            for res in results:
+                res_artist = res.get("artistName", "").lower()
+                res_album = res.get("collectionName", "").lower()
+                
+                if (clean_artist.lower() in res_artist or res_artist in clean_artist.lower()) and \
+                   (cleaned_title.lower() in res_album or res_album in cleaned_title.lower()):
+                    artwork_url = res.get("artworkUrl100")
+                    if artwork_url:
+                        artwork_url = artwork_url.replace("100x100bb.jpg", "1000x1000bb.jpg")
+                        artwork_url = artwork_url.replace("100x100.jpg", "1000x1000.jpg")
+                        return artwork_url
+            
+            # Se nessun matching stringente ha funzionato ma c'è almeno un risultato song, 
+            # usiamo il primo se l'artista corrisponde (es. il titolo dell'album differisce leggermente)
+            if results:
+                first = results[0]
+                res_artist = first.get("artistName", "").lower()
+                if clean_artist.lower() in res_artist or res_artist in clean_artist.lower():
+                    artwork_url = first.get("artworkUrl100")
+                    if artwork_url:
+                        artwork_url = artwork_url.replace("100x100bb.jpg", "1000x1000bb.jpg")
+                        artwork_url = artwork_url.replace("100x100.jpg", "1000x1000.jpg")
+                        return artwork_url
+    except Exception as e:
+        print(f"[ITUNES API ERROR] Ricerca brani fallita: {e}")
+    return None
+
