@@ -47,6 +47,9 @@ def token_required(f):
         if not user:
             raise UnauthorizedError("Utente associato al token non trovato")
 
+        if user.get("is_banned"):
+            raise UnauthorizedError("Questo account è stato sospeso dall'amministratore")
+
         g.current_user = dict(user)
         return f(*args, **kwargs)
 

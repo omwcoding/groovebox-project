@@ -19,10 +19,8 @@ const ArtistCatalog = () => import('@/views/catalog/ArtistCatalog.vue')
 const ArtistDetail = () => import('@/views/catalog/ArtistDetail.vue')
 const VaultView = () => import('@/views/vault/VaultView.vue')
 const VaultDetail = () => import('@/views/vault/VaultDetail.vue')
-const UserList = () => import('@/views/admin/UserList.vue')
-const UserDetail = () => import('@/views/admin/UserDetail.vue')
+const AdminDashboard = () => import('@/views/admin/AdminDashboard.vue')
 const ProfileView = () => import('@/views/dashboard/ProfileView.vue')
-const StatsView = () => import('@/views/admin/StatsView.vue')
 const WishlistView = () => import('@/views/wishlist/WishlistView.vue')
 const ProfileShareView = () => import('@/views/vault/ProfileShareView.vue')
 
@@ -77,7 +75,7 @@ const routes = [
     path: '/artists',
     name: 'artists',
     component: ArtistCatalog,
-    meta: { requiresAuth: true, role: 'administrator' }
+    meta: { requiresAuth: true }
   },
   {
     path: '/artists/:id',
@@ -117,21 +115,9 @@ const routes = [
     redirect: to => `/vault/${to.params.id}`
   },
   {
-    path: '/users',
-    name: 'users',
-    component: UserList,
-    meta: { requiresAuth: true, role: 'administrator' }
-  },
-  {
-    path: '/users/:id',
-    name: 'user-detail',
-    component: UserDetail,
-    meta: { requiresAuth: true, role: 'administrator' }
-  },
-  {
-    path: '/stats',
-    name: 'stats',
-    component: StatsView,
+    path: '/admin',
+    name: 'admin',
+    component: AdminDashboard,
     meta: { requiresAuth: true, role: 'administrator' }
   },
   {

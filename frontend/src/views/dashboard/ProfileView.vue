@@ -35,7 +35,10 @@ const form = ref({
   confirmPassword: ''
 })
 
-onMounted(() => {
+onMounted(async () => {
+  if (authStore.isAuthenticated) {
+    await authStore.fetchCurrentUser()
+  }
   resetForm()
   if (route.query.edit === 'true') {
     editing.value = true

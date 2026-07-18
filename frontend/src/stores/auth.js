@@ -61,6 +61,20 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('mint_user', JSON.stringify(user.value))
   }
 
+  // Recupera i dati aggiornati del profilo dal server per risincronizzare lo stato locale.
+  async function fetchCurrentUser() {
+    try {
+      const response = await api.get('/users/me')
+      if (response.data) {
+        user.value = response.data
+        localStorage.setItem('mint_user', JSON.stringify(user.value))
+      }
+    } catch (_) {
+      // Se il token è invalido o l'utente è stato sospeso, effettua il logout
+      logout()
+    }
+  }
+
   loadFromStorage()
 
   return {
@@ -72,6 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     logout,
-    updateUser
+    updateUser,
+    fetchCurrentUser
   }
 })

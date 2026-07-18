@@ -15,8 +15,11 @@ from dal.user_dal import (
     update_user_profile,
     delete_user_and_keep_albums,
     get_user_public_profile,
-    get_user_stats
+    get_user_stats,
+    get_user_by_username
 )
+from dal.report_dal import add_report
+from utils.validators import validate_json_payload
 from utils.storage import upload_file, delete_file, get_public_url
 from core.errors import BadRequestError, ForbiddenError, NotFoundError, ConflictError
 import uuid
@@ -134,6 +137,37 @@ def get_user(user_id):
     stats = get_user_stats(user_id)
     user_dict = dict(user)
     user_dict.update(stats)
+
+    # Recupera lo storico delle segnalazioni ricevute e dei provvedimenti di ban
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT id_report, category, details, status, created_at, resolved_at 
+            FROM reports 
+            WHERE id_reported = %s 
+            ORDER BY created_at DESC;
+            """,
+            (user_id,)
+        )
+        reports_history = cursor.fetchall()
+        
+        cursor.execute(
+            """
+            SELECT id_log, action_type, details, created_at 
+            FROM admin_audit_logs 
+            WHERE target_id = %s OR (action_type IN ('ban_user', 'unban_user') AND target_id = %s)
+            ORDER BY created_at DESC;
+            """,
+            (user_id, user_id)
+        )
+        audit_history = cursor.fetchall()
+        
+        user_dict["reports_history"] = [dict(r) for r in reports_history]
+        user_dict["audit_history"] = [dict(a) for a in audit_history]
+    finally:
+        cursor.close()
 
     return jsonify({
         "status": "success",
@@ -273,3 +307,46 @@ def get_avatar(user_id):
 
     url = get_public_url("avatars", user["avatar_path"])
     return redirect(url)
+
+
+@bp.route("/reports", methods=["POST"])
+@token_required
+@require_role("collector")
+def report_profile():
+    """Consente ad un collector di segnalare un altro profilo utente per comportamento scorretto."""
+    data = request.get_json()
+    validate_json_payload(data, ["reported_username", "category"])
+    
+    reported_username = data["reported_username"].strip()
+    category = data["category"].strip()
+    details = data.get("details", "").strip()
+    
+    if not reported_username or not category:
+        raise BadRequestError("Username segnalato e categoria sono obbligatori")
+        
+    if category == "other" and not details:
+        raise BadRequestError("Per la categoria 'Altro', la nota esplicativa è obbligatoria")
+        
+    reported_user = get_user_by_username(reported_username)
+    if not reported_user:
+        raise NotFoundError("Utente da segnalare non trovato")
+        
+    if reported_user["id_user"] == g.current_user["id_user"]:
+        raise BadRequestError("Non puoi segnalare il tuo stesso profilo")
+        
+    if reported_user["role"] == "administrator":
+        raise ForbiddenError("Non è consentito segnalare un profilo amministrativo")
+        
+    report_id = add_report(
+        reporter_id=g.current_user["id_user"],
+        reported_id=reported_user["id_user"],
+        category=category,
+        details=details
+    )
+    
+    return jsonify({
+        "status": "success",
+        "message": "Segnalazione inviata con successo all'amministratore",
+        "data": {"id_report": report_id}
+    }), 201
+

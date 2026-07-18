@@ -48,7 +48,7 @@ def delete_file(bucket, filename):
     """
     if not filename:
         return False
-    url = f"{Config.SUPABASE_URL}/storage/v1/object/remove/{bucket}"
+    url = f"{Config.SUPABASE_URL}/storage/v1/object/{bucket}"
     headers = {
         "Authorization": f"Bearer {Config.SUPABASE_ANON_KEY}",
         "apikey": Config.SUPABASE_ANON_KEY,
@@ -56,7 +56,7 @@ def delete_file(bucket, filename):
     }
     data = {"prefixes": [filename]}
     try:
-        response = requests.post(url, headers=headers, json=data, timeout=10)
+        response = requests.delete(url, headers=headers, json=data, timeout=10)
         return response.status_code == 200
     except Exception as e:
         print(f"[STORAGE ERROR] Impossibile eliminare file: {e}")
@@ -76,8 +76,8 @@ def clear_bucket(bucket):
             files = response.json()
             names = [f["name"] for f in files if "name" in f]
             if names:
-                url_remove = f"{Config.SUPABASE_URL}/storage/v1/object/remove/{bucket}"
-                requests.post(url_remove, headers=headers, json={"prefixes": names}, timeout=10)
+                url_remove = f"{Config.SUPABASE_URL}/storage/v1/object/{bucket}"
+                requests.delete(url_remove, headers=headers, json={"prefixes": names}, timeout=10)
             return True
     except Exception as e:
         print(f"[STORAGE ERROR] Impossibile pulire il bucket {bucket}: {e}")

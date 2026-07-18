@@ -13,7 +13,7 @@ def get_user_by_id(user_id):
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "SELECT id_user, username, name, surname, email, role, is_public, bio, avatar_path "
+            "SELECT id_user, username, name, surname, email, role, is_public, bio, avatar_path, is_banned "
             "FROM users WHERE id_user = %s;",
             (user_id,)
         )
@@ -40,7 +40,7 @@ def get_all_collectors():
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "SELECT id_user, username, name, surname, email, role "
+            "SELECT id_user, username, name, surname, email, role, is_banned "
             "FROM users WHERE role = 'collector' ORDER BY username;"
         )
         return cursor.fetchall()
@@ -90,14 +90,14 @@ def delete_user_and_keep_albums(user_id):
 def get_user_public_profile(username):
     """
     Recupera il profilo pubblico di un collector tramite username.
-    Ritorna None se l'utente non esiste, non è un collector, o ha is_public = 0.
+    Ritorna None se l'utente non esiste, non è un collector, ha is_public = 0, o è bannato.
     """
     conn = get_db()
     cursor = conn.cursor()
     try:
         cursor.execute(
             "SELECT id_user, username, name, surname, bio, avatar_path "
-            "FROM users WHERE username = %s AND role = 'collector' AND is_public = TRUE;",
+            "FROM users WHERE username = %s AND role = 'collector' AND is_public = TRUE AND is_banned = FALSE;",
             (username,)
         )
         return cursor.fetchone()

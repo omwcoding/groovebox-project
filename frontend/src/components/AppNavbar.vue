@@ -101,12 +101,19 @@ function closeDropdown() {
           </RouterLink>
 
           <RouterLink
+            v-slot="{ href, navigate, isActive: isRouteActive }"
             v-if="authStore.isAdmin"
-            to="/users"
-            class="px-4 py-2 rounded-full transition-all duration-300"
-            :class="isActive('/users') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
+            to="/admin"
+            custom
           >
-            Utenti
+            <a
+              :href="href"
+              @click="navigate"
+              class="px-4 py-2 rounded-full transition-all duration-300"
+              :class="isRouteActive ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
+            >
+              Admin
+            </a>
           </RouterLink>
 
           <RouterLink
@@ -118,21 +125,11 @@ function closeDropdown() {
           </RouterLink>
 
           <RouterLink
-            v-if="authStore.isAdmin"
             to="/artists"
             class="px-4 py-2 rounded-full transition-all duration-300"
             :class="isActive('/artists') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
           >
             Artisti
-          </RouterLink>
-
-          <RouterLink
-            v-if="authStore.isAdmin"
-            to="/stats"
-            class="px-4 py-2 rounded-full transition-all duration-300"
-            :class="isActive('/stats') ? 'bg-white/10 text-white shadow-sm' : 'text-white/50 hover:text-white'"
-          >
-            Statistiche
           </RouterLink>
         </nav>
       </div>
@@ -232,11 +229,11 @@ function closeDropdown() {
         </RouterLink>
         <RouterLink 
           v-if="authStore.isAdmin"
-          to="/users" @click="mobileMenuOpen = false" 
+          to="/admin" @click="mobileMenuOpen = false" 
           class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
-          :class="isActive('/users') ? 'bg-white/10 text-white' : 'text-white/60'"
+          :class="isActive('/admin') ? 'bg-white/10 text-white' : 'text-white/60'"
         >
-          Gestione utenti
+          Pannello Admin
         </RouterLink>
         <RouterLink 
           to="/search" @click="mobileMenuOpen = false" 
@@ -246,20 +243,11 @@ function closeDropdown() {
           Cerca musica
         </RouterLink>
         <RouterLink 
-          v-if="authStore.isAdmin"
           to="/artists" @click="mobileMenuOpen = false" 
           class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
           :class="isActive('/artists') ? 'bg-white/10 text-white' : 'text-white/60'"
         >
           Catalogo artisti
-        </RouterLink>
-        <RouterLink 
-          v-if="authStore.isAdmin"
-          to="/stats" @click="mobileMenuOpen = false" 
-          class="px-4 py-2.5 rounded-2xl hover:bg-white/5 transition text-sm font-semibold"
-          :class="isActive('/stats') ? 'bg-white/10 text-white' : 'text-white/60'"
-        >
-          Statistiche
         </RouterLink>
         <hr class="border-white/5 my-1" />
         <div class="flex items-center justify-between px-4 py-2.5">

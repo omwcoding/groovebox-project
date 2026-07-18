@@ -6,14 +6,17 @@ Raggiungibile pubblicamente alla route /share/:username.
 -->
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import ErrorMessage from '@/components/ErrorMessage.vue'
 import VaultShelf from '@/components/VaultShelf.vue'
 import { useVault } from '@/composables/useVault'
+import { useAuthStore } from '@/stores/auth'
+import { api } from '@/stores/api'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const username = route.params.username
 
 const {
@@ -28,6 +31,53 @@ const {
 } = useVault(username)
 
 const viewMode = ref('shelf') // 'shelf' | 'grid'
+
+// Gestione segnalazione profilo
+const showReportModal = ref(false)
+const reportCategory = ref('avatar')
+const reportDetails = ref('')
+const reportSuccess = ref('')
+const reportError = ref('')
+const reporting = ref(false)
+
+const canReport = computed(() => {
+  return authStore.isAuthenticated && 
+         authStore.user && 
+         user.value && 
+         authStore.user.id_user !== user.value.id_user && 
+         authStore.user.role === 'collector'
+})
+
+async function submitReport() {
+  if (reporting.value) return
+  
+  if (reportCategory.value === 'other' && !reportDetails.value.trim()) {
+    reportError.value = "La nota esplicativa è obbligatoria per la categoria 'Altro'"
+    return
+  }
+  
+  reporting.value = true
+  reportError.value = ''
+  reportSuccess.value = ''
+  
+  try {
+    const res = await api.post('/users/reports', {
+      reported_username: username,
+      category: reportCategory.value,
+      details: reportDetails.value
+    })
+    reportSuccess.value = res.message || "Segnalazione inviata con successo."
+    reportDetails.value = ''
+    setTimeout(() => {
+      showReportModal.value = false
+      reportSuccess.value = ''
+    }, 2000)
+  } catch (e) {
+    reportError.value = e.message || "Impossibile inviare la segnalazione."
+  } finally {
+    reporting.value = false
+  }
+}
 
 onMounted(() => {
   fetchCopies()
@@ -48,22 +98,33 @@ onMounted(() => {
 
     <template v-else-if="user">
       <!-- Header Profilo Condiviso -->
-      <div class="flex flex-col sm:flex-row sm:items-center gap-6 p-6 border border-white/10 rounded-apple-3xl bg-white/[0.02]">
-        <img v-if="user.avatar_path" :src="`/api/users/${user.id_user}/avatar`" class="w-16 h-16 rounded-full object-cover border border-brand-secondary/40 shrink-0" />
-        <div v-else class="w-16 h-16 rounded-full bg-brand-secondary/20 border border-brand-secondary/40 flex items-center justify-center text-xl font-extrabold text-brand-secondary shrink-0">
-          {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 border border-white/10 rounded-apple-3xl bg-white/[0.02]">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-6">
+          <img v-if="user.avatar_path" :src="`/api/users/${user.id_user}/avatar`" class="w-16 h-16 rounded-full object-cover border border-brand-secondary/40 shrink-0" />
+          <div v-else class="w-16 h-16 rounded-full bg-brand-secondary/20 border border-brand-secondary/40 flex items-center justify-center text-xl font-extrabold text-brand-secondary shrink-0">
+            {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
+          </div>
+          <div class="space-y-1">
+            <h1 class="text-3xl font-extrabold tracking-tight text-white/90">
+              Il Vault di {{ user.username }}
+            </h1>
+            <p class="text-sm text-white/40 font-medium">
+              Profilo pubblico (@{{ user.username }}) &middot; {{ copies.length }} dischi custoditi.
+            </p>
+            <p v-if="user.bio" class="text-sm text-white/60 italic pt-1 max-w-lg leading-relaxed">
+              "{{ user.bio }}"
+            </p>
+          </div>
         </div>
-        <div class="space-y-1">
-          <h1 class="text-3xl font-extrabold tracking-tight text-white/90">
-            Il Vault di {{ user.username }}
-          </h1>
-          <p class="text-sm text-white/40 font-medium">
-            Profilo pubblico (@{{ user.username }}) &middot; {{ copies.length }} dischi custoditi.
-          </p>
-          <p v-if="user.bio" class="text-sm text-white/60 italic pt-1 max-w-lg leading-relaxed">
-            "{{ user.bio }}"
-          </p>
-        </div>
+
+        <button
+          v-if="canReport"
+          @click="showReportModal = true"
+          class="px-4 py-2 border border-rose-500/30 hover:bg-rose-500/10 text-rose-400 rounded-full text-xs font-bold transition-all shrink-0 self-start md:self-center flex items-center gap-1.5 cursor-pointer shadow-md"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+          Segnala Profilo
+        </button>
       </div>
 
 
@@ -151,5 +212,72 @@ onMounted(() => {
         </div>
       </div>
     </template>
+
+    <!-- Modale Segnalazione -->
+    <transition name="fade">
+      <div v-if="showReportModal" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[10000] flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-6 space-y-6 border border-white/10 rounded-3xl relative animate-fade-in shadow-2xl">
+          <button 
+            @click="showReportModal = false; reportSuccess = ''; reportError = ''" 
+            class="absolute top-4 right-4 text-white/40 hover:text-white cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+          </button>
+          
+          <div class="space-y-1">
+            <h3 class="text-xl font-bold text-white/90">Segnala Profilo</h3>
+            <p class="text-xs text-white/40">Segnala il profilo di @{{ user.username }} all'amministratore.</p>
+          </div>
+
+          <div v-if="reportSuccess" class="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm rounded-2xl text-center">
+            {{ reportSuccess }}
+          </div>
+          
+          <div v-else class="space-y-4">
+            <div v-if="reportError" class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl">
+              {{ reportError }}
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-xs font-semibold text-white/50 uppercase tracking-wider">Motivo della segnalazione</label>
+              <select v-model="reportCategory" class="apple-input text-sm cursor-pointer appearance-none">
+                <option value="avatar">Avatar inappropriato</option>
+                <option value="bio">Biografia offensiva</option>
+                <option value="username">Username non idoneo</option>
+                <option value="spam">Spam / Account falso</option>
+                <option value="other">Altro</option>
+              </select>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-xs font-semibold text-white/50 uppercase tracking-wider">Dettagli aggiuntivi</label>
+              <textarea 
+                v-model="reportDetails" 
+                rows="4" 
+                placeholder="Spiega brevemente il motivo per aiutare l'amministrazione..." 
+                class="apple-input text-sm resize-none"
+              ></textarea>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button 
+                @click="showReportModal = false"
+                class="flex-1 py-3 border border-white/5 bg-white/5 text-white/70 hover:bg-white/10 rounded-2xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Annulla
+              </button>
+              <button 
+                @click="submitReport"
+                :disabled="reporting"
+                class="flex-1 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg"
+              >
+                <span v-if="reporting" class="border-2 border-white/20 border-t-white w-4 h-4 rounded-full animate-spin"></span>
+                Invia
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
